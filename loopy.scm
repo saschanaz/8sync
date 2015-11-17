@@ -4,7 +4,7 @@
              (ice-9 match))
 
 ;; @@: Using immutable agendas here, so wouldn't it make sense to
-;;   replace this
+;;   replace this queue stuff with using pfds based immutable queues?
 
 (define-immutable-record-type <agenda>
   (make-agenda-intern queue prompt-tag)
@@ -24,7 +24,10 @@
 
 (define* (start-agenda agenda #:optional stop-condition)
   (let loop ((agenda agenda))
-    (let ((new-agenda
+    (let ((new-agenda   
+           ;; @@: Hm, maybe here would be a great place to handle
+           ;;   select'ing on ports.
+           ;;   We could compose over agenda-run-once and agenda-read-ports
            (parameterize ((%current-agenda agenda))
              (agenda-run-once agenda))))
       (if (and stop-condition (stop-condition agenda))
