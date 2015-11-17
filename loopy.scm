@@ -21,7 +21,7 @@
     (let ((new-agenda
            (parameterize ((%current-agenda agenda))
              (agenda-run-once agenda))))
-      (if (and stop-condition (stop-condition))
+      (if (and stop-condition (stop-condition agenda))
           'done
           (loop new-agenda)))))
 
