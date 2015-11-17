@@ -7,12 +7,18 @@
 ;;   replace this
 
 (define-immutable-record-type <agenda>
-  (make-agenda-intern queue)
+  (make-agenda-intern queue prompt-tag)
   agenda?
-  (queue agenda-queue))
+  (queue agenda-queue)
+  (prompt-tag agenda-prompt-tag))
 
-(define* (make-agenda #:key (queue (make-q)))
-  (make-agenda-intern queue))
+(define (make-async-prompt-tag)
+  (make-prompt-tag "prompt"))
+
+(define* (make-agenda #:key
+                      (queue (make-q))
+                      (prompt (make-prompt-tag)))
+  (make-agenda-intern queue prompt))
 
 (define %current-agenda (make-parameter #f))
 
@@ -28,11 +34,19 @@
 (define (agenda-run-once agenda)
   "Run once through the agenda, and produce a new agenda
 based on the results"
+  (define (call-proc proc)
+    (call-with-prompt
+        (agenda-prompt-tag agenda)
+      (lambda ()
+        (proc))
+      ;; TODO
+      (lambda (k) k)))
+
   (let ((queue (agenda-queue agenda))
         (next-queue (make-q)))
     (while (not (q-empty? queue))
       (let* ((proc (q-pop! queue))
-             (proc-result (proc))
+             (proc-result (call-proc proc))
              (enqueue
               (lambda (new-proc)
                 (enq! next-queue new-proc))))
