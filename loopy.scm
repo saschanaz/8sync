@@ -7,18 +7,20 @@
 ;;   replace this
 
 (define-immutable-record-type <agenda>
-  (make-agenda queue)
+  (make-agenda-intern queue)
   agenda?
   (queue agenda-queue))
 
-(define %current-agenda
-  (make-parameter (make-agenda (make-q))))
+(define* (make-agenda #:key (queue (make-q)))
+  (make-agenda-intern queue))
+
+(define %current-agenda (make-parameter #f))
 
 (define* (start-agenda agenda #:optional stop-condition)
   (let loop ((agenda agenda))
     (let ((new-agenda
-           (agenda-run-once agenda)))
-      (%current-agenda new-agenda)
+           (parameterize ((%current-agenda agenda))
+             (agenda-run-once agenda))))
       (if (and stop-condition (stop-condition))
           'done
           (loop new-agenda)))))
@@ -38,11 +40,11 @@ based on the results"
         (match proc-result
           ((? procedure? new-proc)
            (enqueue new-proc))
-          (((? procedure? new-procs) ..)
+          (((? procedure? new-procs) ...)
            (for-each
             (lambda (new-proc)
               (enqueue new-proc))
-            new-procs)))
-        ;; TODO: Selecting on ports would happen here?
-        ;; Return new agenda, with next queue set
-        (set-field agenda (agenda-queue) next-queue)))))
+            new-procs)))))
+    ;; TODO: Selecting on ports would happen here?
+    ;; Return new agenda, with next queue set
+    (set-field agenda (agenda-queue) next-queue)))
