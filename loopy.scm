@@ -14,10 +14,11 @@
             time-segment?
             time-segment-time time-segment-queue
 
-            time-< time-=
+            time-< time-= time-<=
 
             make-schedule
             schedule-add! schedule-empty?
+            schedule-segments
 
             make-port-mapping
             port-mapping-set! port-mapping-remove!
@@ -86,7 +87,7 @@
 (define (time-segment-right-format time)
   (match time
     ;; time is already a cons of second and microsecnd
-    (((? integer? s) (? integer? u)) time)
+    (((? integer? s) . (? integer? u)) time)
     ;; time was just an integer (just the second)
     ((? integer? _) (cons time 0))
     (_ (throw 'invalid-time "Invalid time" time))))
@@ -109,21 +110,61 @@
   (and (= (car time1) (car time2))
        (= (cdr time1) (cdr time2))))
 
-(define (make-schedule)
-  '())
+(define (time-<= time1 time2)
+  (or (time-< time1 time2)
+      (time-= time1 time2)))
 
+(define-record-type <schedule>
+  (make-schedule-intern segments)
+  schedule?
+  (segments schedule-segments set-schedule-segments!))
+
+(define* (make-schedule #:optional segments)
+  (make-schedule-intern (or segments '())))
+
+;; TODO: This code is reasonably easy to read but it
+;;   mutates AND is worst case of O(n) in both space and time :(
+;;   but at least it'll be reasonably easy to refactor to
+;;   a more functional setup?
 (define (schedule-add! time proc schedule)
   (let ((time (time-segment-right-format time)))
-    (define (belongs-before? segments)
-      (or (null? segments)
-          (error))
-    )
+    (define (new-time-segment)
+      (let ((new-segment
+             (make-time-segment time)))
+        (enq! (time-segment-queue new-segment) proc)
+        new-segment))
+    (define (loop segments)
+      (define (segment-equals-time? segment)
+        (time-= time (time-segment-time segment)))
 
-  ;; Find and add a schedule segment
-  (error)))
+      (define (segment-more-than-time? segment)
+        (time-< time (time-segment-time segment)))
+
+      ;; We could switch this out to be more mutate'y
+      ;; and avoid the O(n) of space... is that over-optimizing?
+      (match segments
+        ;; If we're at the end of the list, time to make a new
+        ;; segment...
+        ('() (cons (make-time-segment time) '()))
+        ;; If the segment's time is exactly our time, good news
+        ;; everyone!  Let's append our stuff to its queue
+        (((? segment-equals-time? first) rest ...)
+         (enq! (time-segment-queue first) proc)
+         segments)
+        ;; If the first segment is more than our time,
+        ;; ours belongs before this one, so add it and
+        ;; start consing our way back
+        (((? segment-more-than-time? first) rest ...)
+         (cons (new-time-segment) segments))
+        ;; Otherwise, build up recursive result
+        ((first rest ... )
+         (cons first (loop rest)))))
+    (set-schedule-segments!
+     schedule
+     (loop (schedule-segments schedule)))))
 
 (define (schedule-empty? schedule)
-  (eq? schedule '()))
+  (eq? (schedule-segments schedule) '()))
 
 
 
