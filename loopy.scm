@@ -25,7 +25,7 @@
 (define (make-port-mapping)
   (make-hash-table))
 
-(define (port-mapping-set! port-mapping port #:optional read write except)
+(define* (port-mapping-set! port-mapping port #:optional read write except)
   "Sets port-mapping for reader / writer / exception handlers"
   (if (not (or read write except))
       (throw 'no-handlers-given "No handlers given for port" port))
