@@ -2,10 +2,36 @@
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (ice-9 q)
-  #:use-module (ice-9 match))
+  #:use-module (ice-9 match)
+  #:export (make-agenda
+            agenda?
+            agenda-queue agenda-prompt-tag
+            agenda-port-pmapping agenda-schedule
+            
+            make-async-prompt-tag
+
+            make-time-segment
+            time-segment?
+            time-segment-time time-segment-queue
+
+            time-< time-=
+
+            make-schedule
+            schedule-add! schedule-empty?
+
+            make-port-mapping
+            port-mapping-set! port-mapping-remove!
+            port-mapping-empty? port-mapping-non-empty?
+
+            %current-agenda
+            start-agenda agenda-run-once))
 
 ;; @@: Using immutable agendas here, so wouldn't it make sense to
 ;;   replace this queue stuff with using pfds based immutable queues?
+
+
+;;; Agenda definition
+;;; =================
 
 ;;; The agenda consists of:
 ;;;  - a queue of immediate items to handle
@@ -40,8 +66,10 @@
   (make-agenda-intern queue prompt port-mapping schedule))
 
 
+
 ;;; Schedule
-;;;
+;;; ========
+
 ;;; This is where we handle timed events for the future
 
 ;; This section totally borrows from SICP
@@ -53,7 +81,7 @@
   (make-time-segment-intern time queue)
   time-segment?
   (time time-segment-time)
-  (queue time-segment-queue time-segment-set-queue!))
+  (queue time-segment-queue))
 
 (define (time-segment-right-format time)
   (match time
@@ -65,9 +93,6 @@
 
 (define* (make-time-segment time #:optional (queue (make-q)))
   (make-time-segment-intern time queue))
-
-(define (make-schedule)
-  '())
 
 (define (time-< time1 time2)
   (cond ((< (car time1)
@@ -84,6 +109,9 @@
   (and (= (car time1) (car time2))
        (= (cdr time1) (cdr time2))))
 
+(define (make-schedule)
+  '())
+
 (define (schedule-add! time proc schedule)
   (let ((time (time-segment-right-format time)))
     (define (belongs-before? segments)
@@ -98,7 +126,9 @@
   (eq? schedule '()))
 
 
+
 ;;; Port handling
+;;; =============
 
 (define (make-port-mapping)
   (make-hash-table))
@@ -126,7 +156,9 @@
   (not (port-mapping-empty? port-mapping)))
 
 
+
 ;;; Execution of agenda, and current agenda
+;;; =======================================
 
 (define %current-agenda (make-parameter #f))
 
