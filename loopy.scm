@@ -1,7 +1,8 @@
-(use-modules (srfi srfi-9)
-             (srfi srfi-9 gnu)
-             (ice-9 q)
-             (ice-9 match))
+(define-module (loopy agenda)
+  #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-9 gnu)
+  #:use-module (ice-9 q)
+  #:use-module (ice-9 match))
 
 ;; @@: Using immutable agendas here, so wouldn't it make sense to
 ;;   replace this queue stuff with using pfds based immutable queues?
@@ -36,7 +37,7 @@
                       (prompt (make-prompt-tag))
                       (port-mapping (make-port-mapping))
                       (schedule (make-schedule)))
-  (make-agenda-intern queue prompt port-mapping))
+  (make-agenda-intern queue prompt port-mapping schedule))
 
 
 ;;; Schedule
@@ -54,24 +55,44 @@
   (time time-segment-time)
   (queue time-segment-queue time-segment-set-queue!))
 
+(define (time-segment-right-format time)
+  (match time
+    ;; time is already a cons of second and microsecnd
+    (((? integer? s) (? integer? u)) time)
+    ;; time was just an integer (just the second)
+    ((? integer? _) (cons time 0))
+    (_ (throw 'invalid-time "Invalid time" time))))
+
 (define* (make-time-segment time #:optional (queue (make-q)))
-  (let ((time (match time
-                ;; time was just an integer (just the second)
-                ((? integer? _) (cons time 0))
-                ;; time is already a cons of second and microsecnd
-                (((? integer? s) (? integer? u)) time)
-                (_ (throw 'invalid-time "Invalid time" time)))))
-    (make-time-segment-intern time queue)))
+  (make-time-segment-intern time queue))
 
 (define (make-schedule)
   '())
 
-(define (schedule-add-new-segment! schedule time)
-  (error))
+(define (time-< time1 time2)
+  (cond ((< (car time1)
+            (car time2))
+         #t)
+        ((and (= (car time1)
+                 (car time2))
+              (< (cdr time1)
+                 (cdr time2)))
+         #t)
+        (else #f)))
 
-(define (schedule-add! schedule time proc)
+(define (time-= time1 time2)
+  (and (= (car time1) (car time2))
+       (= (cdr time1) (cdr time2))))
+
+(define (schedule-add! time proc schedule)
+  (let ((time (time-segment-right-format time)))
+    (define (belongs-before? segments)
+      (or (null? segments)
+          (error))
+    )
+
   ;; Find and add a schedule segment
-  (error))
+  (error)))
 
 (define (schedule-empty? schedule)
   (eq? schedule '()))
