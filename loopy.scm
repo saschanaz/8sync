@@ -309,15 +309,19 @@ based on the results"
       (let* ((proc (q-pop! queue))
              (proc-result (call-proc proc))
              (enqueue
-              (lambda (new-proc)
-                (enq! next-queue new-proc))))
+              (lambda (run-request)
+                (cond
+                 ((run-request-when run-request)
+                  (error "TODO"))
+                 (else
+                  (enq! next-queue (run-request-proc run-request)))))))
         ;; @@: We might support delay-wrapped procedures here
         (match proc-result
           ;; TODO: replace procedure with something that indicates
           ;;   intent to run.  Use a (run foo) procedure
-          ((? procedure? new-proc)
+          ((? run-request? new-proc)
            (enqueue new-proc))
-          (((? procedure? new-procs) ...)
+          (((? run-request? new-procs) ...)
            (for-each
             (lambda (new-proc)
               (enqueue new-proc))
