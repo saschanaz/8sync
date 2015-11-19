@@ -184,10 +184,45 @@
   (test-equal (run-request-when run-two-squared) '(88 . 0)))
 
 
-;; Agenda tests
-;; ------------
+;;; Agenda tests
+;;; ------------
 
+;; helpers
 
+(define (speak-it)
+  (let ((messages '()))
+    (lambda* (#:optional message)
+      (if message (set! messages (append messages (list message))))
+      messages)))
+
+;; the dummy test
+
+(define speaker (speak-it))
+
+(define (dummy-func)
+  (speaker "I'm a dummy\n"))
+
+(define (run-dummy)
+  (speaker "I bet I can make you say you're a dummy!\n")
+  (run dummy-func))
+
+(let ((q (make-q)))
+  (set! speaker (speak-it))  ; reset the speaker
+  (enq! q run-dummy)
+  (start-agenda (make-agenda #:queue q)
+                (true-after-n-times 2))
+  (test-equal (speaker)
+    '("I bet I can make you say you're a dummy!\n"
+      "I'm a dummy\n")))
+
+;; should only do the first one after one round though
+(let ((q (make-q)))
+  (set! speaker (speak-it))  ; reset the speaker
+  (enq! q run-dummy)
+  (start-agenda (make-agenda #:queue q)
+                (true-after-n-times 1))
+  (test-equal (speaker)
+    '("I bet I can make you say you're a dummy!\n")))
 
 
 ;; End tests
