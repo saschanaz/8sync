@@ -232,7 +232,7 @@
   (set! speaker (speak-it))  ; reset the speaker
   (enq! q run-dummy)
   (start-agenda (make-agenda #:queue q)
-                (true-after-n-times 2))
+                #:stop-condition (true-after-n-times 2))
   (test-equal (speaker)
     '("I bet I can make you say you're a dummy!\n"
       "I'm a dummy\n")))
@@ -242,7 +242,7 @@
   (set! speaker (speak-it))  ; reset the speaker
   (enq! q run-dummy)
   (start-agenda (make-agenda #:queue q)
-                (true-after-n-times 1))
+                #:stop-condition (true-after-n-times 1))
   (test-equal (speaker)
     '("I bet I can make you say you're a dummy!\n")))
 

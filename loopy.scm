@@ -303,7 +303,7 @@
 
 (define %current-agenda (make-parameter #f))
 
-(define* (start-agenda agenda #:optional stop-condition)
+(define* (start-agenda agenda #:key stop-condition)
   (let loop ((agenda agenda))
     (let ((agenda   
            ;; @@: Hm, maybe here would be a great place to handle
