@@ -303,7 +303,7 @@
 
 (define* (start-agenda agenda #:optional stop-condition)
   (let loop ((agenda agenda))
-    (let ((new-agenda   
+    (let ((agenda   
            ;; @@: Hm, maybe here would be a great place to handle
            ;;   select'ing on ports.
            ;;   We could compose over agenda-run-once and agenda-read-ports
@@ -311,12 +311,18 @@
              (agenda-run-once agenda))))
       (if (and stop-condition (stop-condition agenda))
           'done
-          (let ((updated-agenda
-                 ;; Adjust the agenda's time just in time
-                 ;; We do this here rather than in agenda-run-once to make
-                 ;; agenda-run-once's behavior fairly predictable
-                 (set-field new-agenda (agenda-time) (gettimeofday))))
-            (loop updated-agenda))))))
+          (let* ((new-time (gettimeofday))
+                 (agenda
+                  ;; Adjust the agenda's time just in time
+                  ;; We do this here rather than in agenda-run-once to make
+                  ;; agenda-run-once's behavior fairly predictable
+                  (set-field agenda (agenda-time) new-time)))
+            ;; Update the agenda's current queue based on
+            ;; currently applicable time segments
+            (add-segments-contents-to-queue!
+             (schedule-extract-until! (agenda-schedule agenda) new-time)
+             (agenda-queue agenda))
+            (loop agenda))))))
 
 (define (agenda-run-once agenda)
   "Run once through the agenda, and produce a new agenda
