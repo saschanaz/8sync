@@ -3,6 +3,7 @@
   #:use-module (srfi srfi-9 gnu)
   #:use-module (ice-9 q)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 receive)
   #:export (make-agenda
             agenda?
             agenda-queue agenda-prompt-tag
@@ -19,6 +20,8 @@
             make-schedule
             schedule-add! schedule-empty?
             schedule-segments
+
+            schedule-segments-until schedule-extract-until!
 
             make-port-mapping
             port-mapping-set! port-mapping-remove!
@@ -145,7 +148,7 @@
       (match segments
         ;; If we're at the end of the list, time to make a new
         ;; segment...
-        ('() (cons (make-time-segment time) '()))
+        ('() (cons (new-time-segment) '()))
         ;; If the segment's time is exactly our time, good news
         ;; everyone!  Let's append our stuff to its queue
         (((? segment-equals-time? first) rest ...)
@@ -165,6 +168,41 @@
 
 (define (schedule-empty? schedule)
   (eq? (schedule-segments schedule) '()))
+
+(define (schedule-segments-until schedule time)
+  "Does a multiple value return of time segments before/at and after TIME"
+  (let ((time (time-segment-right-format time)))
+    (define (segment-is-now? segment)
+      (time-= (time-segment-time segment) time))
+    (define (segment-is-before-now? segment)
+      (time-< (time-segment-time segment) time))
+
+    (let loop ((segments-before '())
+               (segments-left (schedule-segments schedule)))
+      (match segments-left
+        ;; end of the line, return
+        ('()
+         (values (reverse segments-before) '()))
+
+        ;; It's right now, so time to stop, but include this one in before
+        ;; but otherwise return
+        (((? segment-is-now? first) rest ...)
+         (values (reverse (cons first segments-before)) rest))
+
+        ;; This is prior or at now, so add it and keep going
+        (((? segment-is-before-now? first) rest ...)
+         (loop (cons first segments-before) rest))
+
+        ;; Otherwise it's past now, just return what we have
+        (segments-after
+         (values segments-before segments-after))))))
+
+(define (schedule-extract-until! schedule time)
+  "Extract all segments until TIME from SCHEDULE, and pop old segments off"
+  (receive (segments-before segments-after)
+      (schedule-split-segments-until schedule time)
+    (set-schedule-segments! schedule segments-after)
+    segments-before))
 
 
 
