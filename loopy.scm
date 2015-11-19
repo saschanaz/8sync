@@ -18,7 +18,7 @@
             time-< time-= time-<= time-+
 
             <time-delta>
-            make-time-delta time-delta?
+            make-time-delta tdelta time-delta?
             time-delta-sec time-delta-usec
 
             <schedule>
@@ -140,6 +140,8 @@
 
 (define* (make-time-delta sec #:optional usec)
   (make-time-delta-intern sec (or usec 0)))
+
+(define tdelta make-time-delta)
 
 (define (time-+ time time-delta)
   (cons (+ (car time) (time-delta-sec time-delta))
