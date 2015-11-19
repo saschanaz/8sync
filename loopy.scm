@@ -4,20 +4,21 @@
   #:use-module (ice-9 q)
   #:use-module (ice-9 match)
   #:use-module (ice-9 receive)
-  #:export (make-agenda
-            agenda?
+  #:export (<agenda>
+            make-agenda agenda?
             agenda-queue agenda-prompt-tag
             agenda-port-pmapping agenda-schedule
             
             make-async-prompt-tag
 
-            make-time-segment
-            time-segment?
+            <time-segment>
+            make-time-segment time-segment?
             time-segment-time time-segment-queue
 
             time-< time-= time-<=
 
-            make-schedule
+            <schedule>
+            make-schedule schedule?
             schedule-add! schedule-empty?
             schedule-segments
 
@@ -27,6 +28,12 @@
             make-port-mapping
             port-mapping-set! port-mapping-remove!
             port-mapping-empty? port-mapping-non-empty?
+
+            <run-request>
+            make-run-request run-request?
+            run-request-proc run-request-when
+
+            run wrap run-wrap run-wrap-at
 
             %current-agenda
             start-agenda agenda-run-once))
@@ -243,6 +250,29 @@
   "Whether this port-mapping contains any elements"
   (not (port-mapping-empty? port-mapping)))
 
+
+
+;;; Request to run stuff
+;;; ====================
+
+(define-record-type <run-request>
+  (make-run-request proc when)
+  run-request?
+  (proc run-request-proc)
+  (when run-request-when))
+
+(define* (run proc #:optional when)
+  (make-run-request proc when))
+
+(define-syntax-rule (wrap body ...)
+  (lambda ()
+    body ...))
+
+(define-syntax-rule (run-wrap body ...)
+  (run (wrap body ...)))
+
+(define-syntax-rule (run-wrap-at body ... when)
+  (run (wrap body ...) when))
 
 
 ;;; Execution of agenda, and current agenda
