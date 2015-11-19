@@ -292,11 +292,12 @@
              (agenda-run-once agenda))))
       (if (and stop-condition (stop-condition agenda))
           'done
-          (loop
-           ;; Adjust the agenda's time just in time
-           ;; We do this here rather than in agenda-run-once to make
-           ;; agenda-run-once's behavior fairly predictable
-           (set-field new-agenda (agenda-time) (gettimeofday)))))))
+          (let ((updated-agenda
+                 ;; Adjust the agenda's time just in time
+                 ;; We do this here rather than in agenda-run-once to make
+                 ;; agenda-run-once's behavior fairly predictable
+                 (set-field new-agenda (agenda-time) (gettimeofday))))
+            (loop updated-agenda))))))
 
 (define (agenda-run-once agenda)
   "Run once through the agenda, and produce a new agenda
