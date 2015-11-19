@@ -283,6 +283,8 @@ based on the results"
                 (enq! next-queue new-proc))))
         ;; @@: We might support delay-wrapped procedures here
         (match proc-result
+          ;; TODO: replace procedure with something that indicates
+          ;;   intent to run.  Use a (run foo) procedure
           ((? procedure? new-proc)
            (enqueue new-proc))
           (((? procedure? new-procs) ...)
