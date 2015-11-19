@@ -21,7 +21,7 @@
             schedule-add! schedule-empty?
             schedule-segments
 
-            schedule-segments-until schedule-extract-until!
+            schedule-segments-split schedule-extract-until!
 
             make-port-mapping
             port-mapping-set! port-mapping-remove!
@@ -169,7 +169,7 @@
 (define (schedule-empty? schedule)
   (eq? (schedule-segments schedule) '()))
 
-(define (schedule-segments-until schedule time)
+(define (schedule-segments-split schedule time)
   "Does a multiple value return of time segments before/at and after TIME"
   (let ((time (time-segment-right-format time)))
     (define (segment-is-now? segment)
@@ -200,7 +200,7 @@
 (define (schedule-extract-until! schedule time)
   "Extract all segments until TIME from SCHEDULE, and pop old segments off"
   (receive (segments-before segments-after)
-      (schedule-split-segments-until schedule time)
+      (schedule-segments-split schedule time)
     (set-schedule-segments! schedule segments-after)
     segments-before))
 
