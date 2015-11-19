@@ -61,7 +61,7 @@
 (test-assert (schedule-empty? sched))
 
 ;; Add a segment at (10 . 0)
-(schedule-add! 10 a-proc sched)
+(schedule-add! sched 10 a-proc)
 (test-assert (not (schedule-empty? sched)))
 (test-equal (length (schedule-segments sched)) 1)
 (test-equal (time-segment-time (car (schedule-segments sched)))
@@ -78,7 +78,7 @@
                        '((10 . 0)))
 
 ;; Add another segment at (10 . 0)
-(schedule-add! '(10 . 0) b-proc sched)
+(schedule-add! sched '(10 . 0) b-proc)
 (test-assert (not (schedule-empty? sched)))
 (test-equal (length (schedule-segments sched)) 1)
 (test-equal (time-segment-time (car (schedule-segments sched)))
@@ -93,9 +93,9 @@
                        '((10 . 0)))
 
 ;; Add a segment to (11 . 0), (8 . 1) and (10 . 10)
-(schedule-add! 11 c-proc sched)
-(schedule-add! '(8 . 1) d-proc sched)
-(schedule-add! '(10 . 10) e-proc sched)
+(schedule-add! sched 11 c-proc)
+(schedule-add! sched '(8 . 1) d-proc)
+(schedule-add! sched '(10 . 10) e-proc)
 (test-assert (not (schedule-empty? sched)))
 (test-equal (length (schedule-segments sched)) 4)
 (assert-times-expected (schedule-segments sched)
@@ -150,7 +150,7 @@
 
 ;; Add one more and test flattening to a queue
 (test-assert (not (schedule-empty? sched)))
-(schedule-add! '(10 . 10) f-proc sched)
+(schedule-add! sched '(10 . 10) f-proc)
 (define remaining-segments
   (schedule-extract-until! sched '(9000 . 1)))
 (test-assert (schedule-empty? sched))
@@ -239,7 +239,6 @@
                 (true-after-n-times 1))
   (test-equal (speaker)
     '("I bet I can make you say you're a dummy!\n")))
-
 
 ;; End tests
 
