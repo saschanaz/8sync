@@ -60,12 +60,13 @@
 ;;;    and with reasonable separation from functional components?
 
 (define-immutable-record-type <agenda>
-  (make-agenda-intern queue prompt-tag port-mapping schedule)
+  (make-agenda-intern queue prompt-tag port-mapping schedule time)
   agenda?
   (queue agenda-queue)
   (prompt-tag agenda-prompt-tag)
   (port-mapping agenda-port-mapping)
-  (schedule agenda-schedule))
+  (schedule agenda-schedule)
+  (time agenda-time))
 
 (define (make-async-prompt-tag)
   (make-prompt-tag "prompt"))
@@ -74,8 +75,9 @@
                       (queue (make-q))
                       (prompt (make-prompt-tag))
                       (port-mapping (make-port-mapping))
-                      (schedule (make-schedule)))
-  (make-agenda-intern queue prompt port-mapping schedule))
+                      (schedule (make-schedule))
+                      (time (gettimeofday)))
+  (make-agenda-intern queue prompt port-mapping schedule time))
 
 
 
@@ -290,7 +292,11 @@
              (agenda-run-once agenda))))
       (if (and stop-condition (stop-condition agenda))
           'done
-          (loop new-agenda)))))
+          (loop
+           ;; Adjust the agenda's time just in time
+           ;; We do this here rather than in agenda-run-once to make
+           ;; agenda-run-once's behavior fairly predictable
+           (set-field new-agenda (agenda-time) (gettimeofday)))))))
 
 (define (agenda-run-once agenda)
   "Run once through the agenda, and produce a new agenda
