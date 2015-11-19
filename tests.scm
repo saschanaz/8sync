@@ -119,7 +119,38 @@
   (schedule-extract-until! sched 10))
 (assert-times-expected some-extracted '((8 . 1) (10 . 0)))
 (assert-times-expected (schedule-segments sched) '((10 . 10) (11 . 0)))
+(define first-extracted-queue
+  (time-segment-queue (car some-extracted)))
+(define second-extracted-queue
+  (time-segment-queue (cadr some-extracted)))
+(test-assert (not (q-empty? first-extracted-queue)))
+(test-equal ((deq! first-extracted-queue)) 'd)
+(test-assert (q-empty? first-extracted-queue))
 
+(test-assert (not (q-empty? second-extracted-queue)))
+(test-equal ((deq! second-extracted-queue)) 'a)
+(test-equal ((deq! second-extracted-queue)) 'b)
+(test-assert (q-empty? second-extracted-queue))
+
+;; Add one more and test flattening to a queue
+(test-assert (not (schedule-empty? sched)))
+(schedule-add! '(10 . 10) f-proc sched)
+(define remaining-segments
+  (schedule-extract-until! sched '(9000 . 1)))
+(test-assert (schedule-empty? sched))
+(define some-queue (make-q))
+(enq! some-queue (const 'ho-ho))
+(enq! some-queue (const 'ha-ha))
+(add-segments-contents-to-queue! remaining-segments some-queue)
+(test-assert (not (q-empty? some-queue)))
+(test-equal 'ho-ho ((deq! some-queue)))
+(test-equal 'ha-ha ((deq! some-queue)))
+(test-equal 'e ((deq! some-queue)))
+(test-equal 'f ((deq! some-queue)))
+(test-equal 'c ((deq! some-queue)))
+(test-assert (q-empty? some-queue))
+
+;; ... whew!
 
 ;; End tests
 
