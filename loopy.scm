@@ -15,7 +15,11 @@
             make-time-segment time-segment?
             time-segment-time time-segment-queue
 
-            time-< time-= time-<=
+            time-< time-= time-<= time-+
+
+            <time-delta>
+            make-time-delta time-delta?
+            time-delta-sec time-delta-usec
 
             <schedule>
             make-schedule schedule?
@@ -126,6 +130,21 @@
 (define (time-<= time1 time2)
   (or (time-< time1 time2)
       (time-= time1 time2)))
+
+
+(define-record-type <time-delta>
+  (make-time-delta-intern sec usec)
+  time-delta?
+  (sec time-delta-sec)
+  (usec time-delta-usec))
+
+(define* (make-time-delta sec #:optional usec)
+  (make-time-delta-intern sec (or usec 0)))
+
+(define (time-+ time time-delta)
+  (cons (+ (car time) (time-delta-sec time-delta))
+        (+ (cdr time) (time-delta-usec time-delta))))
+
 
 (define-record-type <schedule>
   (make-schedule-intern segments)
