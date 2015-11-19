@@ -349,12 +349,12 @@ based on the results"
                     ((? time-delta? time-delta)
                      (let ((time (time-+ (agenda-time agenda)
                                          time-delta)))
-                       (schedule-at! time (run-request-proc proc))))
+                       (schedule-at! time (run-request-proc run-request))))
                     ((? integer? sec)
                      (let ((time (cons sec 0)))
-                       (schedule-at! time (run-request-proc proc))))
+                       (schedule-at! time (run-request-proc run-request))))
                     (((? integer? sec) . (? integer? usec))
-                     (schedule-at! request-time (run-request-proc proc)))
+                     (schedule-at! request-time (run-request-proc run-request)))
                     (#f
                      (enq! next-queue (run-request-proc run-request))))))))
         ;; @@: We might support delay-wrapped procedures here
