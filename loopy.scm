@@ -22,6 +22,7 @@
             schedule-segments
 
             schedule-segments-split schedule-extract-until!
+            add-segments-contents-to-queue!
 
             make-port-mapping
             port-mapping-set! port-mapping-remove!
@@ -203,6 +204,14 @@
       (schedule-segments-split schedule time)
     (set-schedule-segments! schedule segments-after)
     segments-before))
+
+(define (add-segments-contents-to-queue! segments queue)
+  (for-each
+   (lambda (segment)
+     (let ((seg-queue (time-segment-queue segment)))
+       (while (not (q-empty? seg-queue))
+         (enq! queue (deq! seg-queue)))))
+   segments))
 
 
 
