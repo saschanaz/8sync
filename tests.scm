@@ -211,6 +211,12 @@
       (if message (set! messages (append messages (list message))))
       messages)))
 
+(define (true-after-n-times n)
+  (let ((count 0))
+    (lambda _
+      (set! count (+ count 1))
+      (if (>= count n) #t #f))))
+
 ;; the dummy test
 
 (define speaker (speak-it))
