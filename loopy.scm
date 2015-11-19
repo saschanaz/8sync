@@ -158,7 +158,7 @@
 ;;   mutates AND is worst case of O(n) in both space and time :(
 ;;   but at least it'll be reasonably easy to refactor to
 ;;   a more functional setup?
-(define (schedule-add! time proc schedule)
+(define (schedule-add! schedule time proc)
   (let ((time (time-segment-right-format time)))
     (define (new-time-segment)
       (let ((new-segment
@@ -336,16 +336,21 @@ based on the results"
              (proc-result (call-proc proc))
              (enqueue
               (lambda (run-request)
-                (match (run-request-when run-request)
-                  ((? time-delta? _)
-                   (error "TODO"))
-                  ((? integer? sec)
-                   (let ((time (cons sec 0)))
-                     (error "Also TODO")))
-                  (((? integer? sec) . (? integer? usec))
-                   (error "Also also TODO"))
-                  (#f
-                   (enq! next-queue (run-request-proc run-request)))))))
+                (define (schedule-at! time proc)
+                  (schedule-add! (agenda-schedule agenda) time proc))
+                (let ((request-time (run-request-when run-request)))
+                  (match request-time
+                    ((? time-delta? time-delta)
+                     (let ((time (time-+ (agenda-time agenda)
+                                         time-delta)))
+                       (schedule-at! time (run-request-proc proc))))
+                    ((? integer? sec)
+                     (let ((time (cons sec 0)))
+                       (schedule-at! time (run-request-proc proc))))
+                    (((? integer? sec) . (? integer? usec))
+                     (schedule-at! request-time (run-request-proc proc)))
+                    (#f
+                     (enq! next-queue (run-request-proc run-request))))))))
         ;; @@: We might support delay-wrapped procedures here
         (match proc-result
           ;; TODO: replace procedure with something that indicates
@@ -359,6 +364,7 @@ based on the results"
             new-procs))
           ;; do nothing
           (_ #f))))
-    ;; TODO: Selecting on ports would happen here?
+    ;; TODO: Alternately, we could return the next-queue
+    ;;   along with changes to be added to the schedule here?
     ;; Return new agenda, with next queue set
     (set-field agenda (agenda-queue) next-queue)))
