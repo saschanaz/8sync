@@ -114,6 +114,13 @@
                '((8 . 1) (10 . 0) (10 . 10) (11 . 0))
                '())
 
+;; Break off half of those and do some tests on them
+(define some-extracted
+  (schedule-extract-until! sched 10))
+(assert-times-expected some-extracted '((8 . 1) (10 . 0)))
+(assert-times-expected (schedule-segments sched) '((10 . 10) (11 . 0)))
+
+
 ;; End tests
 
 (test-end "tests")
