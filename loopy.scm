@@ -90,7 +90,7 @@
 
 ;;; This is where we handle timed events for the future
 
-;; This section totally borrows from SICP
+;; This section totally borrows from the ideas in SICP
 ;; <3 <3 <3
 
 ;; NOTE: time is a cons of (seconds . microseconds)
