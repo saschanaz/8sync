@@ -336,11 +336,16 @@ based on the results"
              (proc-result (call-proc proc))
              (enqueue
               (lambda (run-request)
-                (cond
-                 ((run-request-when run-request)
-                  (error "TODO"))
-                 (else
-                  (enq! next-queue (run-request-proc run-request)))))))
+                (match (run-request-when run-request)
+                  ((? time-delta? _)
+                   (error "TODO"))
+                  ((? integer? sec)
+                   (let ((time (cons sec 0)))
+                     (error "Also TODO")))
+                  (((? integer? sec) . (? integer? usec))
+                   (error "Also also TODO"))
+                  (#f
+                   (enq! next-queue (run-request-proc run-request)))))))
         ;; @@: We might support delay-wrapped procedures here
         (match proc-result
           ;; TODO: replace procedure with something that indicates
