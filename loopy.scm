@@ -77,6 +77,9 @@
   (time agenda-time))
 
 (define (make-async-prompt-tag)
+  "Make an async prompt tag for an agenda.
+
+Generally done automatically for the user through (make-agenda)."
   (make-prompt-tag "prompt"))
 
 (define* (make-agenda #:key
