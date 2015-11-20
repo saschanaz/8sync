@@ -183,16 +183,19 @@ Will produce (0 . 0) instead of a negative number, if needed."
         (else time)))
 
 (define (time-delta+ time time-delta)
+  "Increment a TIME by the value of TIME-DELTA"
   (time-carry-correct
    (cons (+ (car time) (time-delta-sec time-delta))
          (+ (cdr time) (time-delta-usec time-delta)))))
 
 (define (time-minus time1 time2)
+  "Subtract TIME2 from TIME1"
   (time-carry-correct
    (cons (- (car time1) (car time2))
          (- (cdr time2) (cdr time2)))))
 
 (define (time-plus time1 time2)
+  "Add TIME1 and TIME2"
   (time-carry-correct
    (cons (+ (car time1) (car time2))
          (+ (cdr time2) (cdr time2)))))
@@ -204,6 +207,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
   (segments schedule-segments set-schedule-segments!))
 
 (define* (make-schedule #:optional segments)
+  "Make a schedule, optionally pre-composed of SEGMENTS"
   (make-schedule-intern (or segments '())))
 
 (define (schedule-soonest-time schedule)
@@ -218,6 +222,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;   but at least it'll be reasonably easy to refactor to
 ;;   a more functional setup?
 (define (schedule-add! schedule time proc)
+  "Mutate SCHEDULE, adding PROC at an appropriate time segment for TIME"
   (let ((time (time-segment-right-format time)))
     (define (new-time-segment)
       (let ((new-segment
@@ -255,6 +260,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
      (loop (schedule-segments schedule)))))
 
 (define (schedule-empty? schedule)
+  "Check if the SCHEDULE is currently empty"
   (eq? (schedule-segments schedule) '()))
 
 (define (schedule-segments-split schedule time)
