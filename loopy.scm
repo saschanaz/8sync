@@ -308,36 +308,6 @@ Will produce (0 . 0) instead of a negative number, if needed."
 
 
 
-;;; Port handling
-;;; =============
-
-(define (make-port-mapping)
-  (make-hash-table))
-
-(define* (port-mapping-set! port-mapping port #:optional read write except)
-  "Sets port-mapping for reader / writer / exception handlers"
-  (if (not (or read write except))
-      (throw 'no-handlers-given "No handlers given for port" port))
-  (hashq-set! port-mapping port
-              `#(,read ,write ,except)))
-
-(define (port-mapping-remove! port-mapping port)
-  (hashq-remove! port-mapping port))
-
-;; TODO: This is O(n), I'm pretty sure :\
-;; ... it might be worthwhile for us to have a
-;;   port-mapping record that keeps a count of how many
-;;   handlers (maybe via a promise?)
-(define (port-mapping-empty? port-mapping)
-  "Is this port mapping empty?"
-  (eq? (hash-count (const #t) port-mapping) 0))
-
-(define (port-mapping-non-empty? port-mapping)
-  "Whether this port-mapping contains any elements"
-  (not (port-mapping-empty? port-mapping)))
-
-
-
 ;;; Request to run stuff
 ;;; ====================
 
