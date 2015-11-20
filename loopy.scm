@@ -432,17 +432,20 @@ Will produce (0 . 0) instead of a negative number, if needed."
              (agenda-run-once agenda))))
       (if (and stop-condition (stop-condition agenda))
           'done
-          (let* ((new-time (get-time))
-                 (agenda
-                  (handle-ports
-                   ;; Adjust the agenda's time just in time
-                   ;; We do this here rather than in agenda-run-once to make
-                   ;; agenda-run-once's behavior fairly predictable
-                   (set-field agenda (agenda-time) new-time))))
+          (let* ((agenda
+                  ;; We have to update the time after ports handled, too
+                  ;; because it may have changed after a select
+                  (set-field
+                   (handle-ports
+                    ;; Adjust the agenda's time just in time
+                    ;; We do this here rather than in agenda-run-once to make
+                    ;; agenda-run-once's behavior fairly predictable
+                    (set-field agenda (agenda-time) (get-time)))
+                   (agenda-time) (get-time))))
             ;; Update the agenda's current queue based on
             ;; currently applicable time segments
             (add-segments-contents-to-queue!
-             (schedule-extract-until! (agenda-schedule agenda) new-time)
+             (schedule-extract-until! (agenda-schedule agenda) (agenda-time agenda))
              (agenda-queue agenda))
             (loop agenda))))))
 
