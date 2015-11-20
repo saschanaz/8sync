@@ -356,11 +356,11 @@ Will produce (0 . 0) instead of a negative number, if needed."
         (cons 0 0))
        (soonest-time    ; ie, the agenda is non-empty
         (let* ((current-time (agenda-time agenda)))
-          (if (time<= (pk 'soonest-time soonest-time) (pk 'current-time current-time))
+          (if (time<= soonest-time current-time)
               ;; Well there's something due so let's select
               ;; (this avoids a (possible?) race condition chance)
               (cons 0 0)
-              (pk 'time-minus (time-minus soonest-time current-time)))))
+              (time-minus soonest-time current-time))))
        (else
         (cons #f #f)))))
   (define (do-select)
