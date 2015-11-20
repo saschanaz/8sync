@@ -1,4 +1,5 @@
 (define-module (loopy agenda)
+  #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
   #:use-module (ice-9 q)
@@ -7,7 +8,8 @@
   #:export (<agenda>
             make-agenda agenda?
             agenda-queue agenda-prompt-tag
-            agenda-port-pmapping agenda-schedule
+            agenda-read-port-map agenda-write-port-map agenda-except-port-map
+            agenda-schedule
             
             make-async-prompt-tag
 
@@ -25,13 +27,10 @@
             make-schedule schedule?
             schedule-add! schedule-empty?
             schedule-segments
+            schedule-soonest-time
 
             schedule-segments-split schedule-extract-until!
             add-segments-contents-to-queue!
-
-            make-port-mapping
-            port-mapping-set! port-mapping-remove!
-            port-mapping-empty? port-mapping-non-empty?
 
             <run-request>
             make-run-request run-request?
@@ -64,11 +63,15 @@
 ;;;    and with reasonable separation from functional components?
 
 (define-immutable-record-type <agenda>
-  (make-agenda-intern queue prompt-tag port-mapping schedule time)
+  (make-agenda-intern queue prompt-tag
+                      read-port-map write-port-map except-port-map
+                      schedule time)
   agenda?
   (queue agenda-queue)
   (prompt-tag agenda-prompt-tag)
-  (port-mapping agenda-port-mapping)
+  (read-port-map agenda-read-port-map)
+  (write-port-map agenda-write-port-map)
+  (except-port-map agenda-except-port-map)
   (schedule agenda-schedule)
   (time agenda-time))
 
@@ -78,10 +81,14 @@
 (define* (make-agenda #:key
                       (queue (make-q))
                       (prompt (make-prompt-tag))
-                      (port-mapping (make-port-mapping))
+                      (read-port-map (make-hash-table))
+                      (write-port-map (make-hash-table))
+                      (except-port-map (make-hash-table))
                       (schedule (make-schedule))
                       (time (gettimeofday)))
-  (make-agenda-intern queue prompt port-mapping schedule time))
+  (make-agenda-intern queue prompt
+                      read-port-map write-port-map except-port-map
+                      schedule time))
 
 
 
@@ -155,6 +162,13 @@
 
 (define* (make-schedule #:optional segments)
   (make-schedule-intern (or segments '())))
+
+(define (schedule-soonest-time schedule)
+  "Return a cons of (sec . usec) for next time segement, or #f if none"
+  (let ((segments (schedule-segments schedule)))
+    (if (eq? segments '())
+        #f
+        (time-segment-time (car segments)))))
 
 ;; TODO: This code is reasonably easy to read but it
 ;;   mutates AND is worst case of O(n) in both space and time :(
@@ -303,9 +317,87 @@
 
 (define %current-agenda (make-parameter #f))
 
+(define (update-agenda-from-select! agenda)
+  (define (hash-keys selector)
+    (hash-map->list (lambda (k v) k) hash))
+  (define (get-wait-time)
+    ;; TODO: we need to figure this out based on whether there's anything
+    ;;   in the queue, and if not, how long till the next scheduled item
+    (let ((soonest-time (schedule-soonest-time (agenda-schedule agenda))))
+      (cond 
+       ((not (q-empty? (agenda-queue agenda)))
+        (values 0 0))
+       (soonest-time    ; ie, the agenda is non-empty
+        (let* ((current-time (agenda-time agenda)))
+          (if (time-<= soonest-time current-time)
+              ;; Well there's something due so let's select
+              ;; (this avoids a (possible?) race condition chance)
+              (values 0 0)
+              (values
+               (- (car soonest-time) (car current-time))
+               (- (cdr soonest-time) (cdr current-time))))))
+       (else
+        (values #f #f)))))
+  (define (do-select)
+    ;; TODO: support usecond wait time too
+    (receive (sec usec)
+        (get-wait-time)
+      (select (hash-keys (agenda-read-port-map agenda))
+              (hash-keys (agenda-write-port-map agenda))
+              (hash-keys (agenda-except-port-map agenda))
+              sec usec)))
+  (define (get-procs-to-run)
+    (define (ports->procs ports port-map)
+      (lambda (initial-procs)
+        (fold
+         (lambda (port prev)
+           (cons (lambda ()
+                   ((hash-ref port-map port) port))
+                 prev))
+         initial-procs
+         ports)))
+    (match (do-select)
+      ((read-ports write-ports except-ports)
+       ;; @@: Come on, we can do better than append ;P
+       ((compose (ports->procs
+                  read-ports
+                  (agenda-read-port-map agenda))
+                 (ports->procs
+                  write-ports
+                  (agenda-write-port-map agenda))
+                 (ports->procs
+                  except-ports
+                  (agenda-except-port-map agenda)))
+        '()))))
+  (define (update-agenda)
+    (let ((procs-to-run (get-procs-to-run))
+          (q (agenda-queue agenda)))
+      (for-each
+       (lambda (proc)
+         (enq! q proc))
+       procs-to-run))
+    agenda)
+  (define (ports-to-select?)
+    (define (has-items? selector)
+      ;; @@: O(n)
+      ;;    ... we could use hash-for-each and a continuation to jump
+      ;;    out with a #t at first indication of an item
+      (not (= (hash-count (const #t)
+                          (selector agenda))
+              0)))
+    (or (has-items? agenda-read-port-map)
+        (has-items? agenda-write-port-map)
+        (has-items? agenda-except-port-map)))
+
+  (if (ports-to-select?)
+      (update-agenda)
+      agenda))
+
+
 (define* (start-agenda agenda
                        #:key stop-condition
-                       (get-time gettimeofday))
+                       (get-time gettimeofday)
+                       (handle-ports update-agenda-from-select!))
   (let loop ((agenda agenda))
     (let ((agenda   
            ;; @@: Hm, maybe here would be a great place to handle
@@ -317,10 +409,11 @@
           'done
           (let* ((new-time (get-time))
                  (agenda
-                  ;; Adjust the agenda's time just in time
-                  ;; We do this here rather than in agenda-run-once to make
-                  ;; agenda-run-once's behavior fairly predictable
-                  (set-field agenda (agenda-time) new-time)))
+                  (handle-ports
+                   ;; Adjust the agenda's time just in time
+                   ;; We do this here rather than in agenda-run-once to make
+                   ;; agenda-run-once's behavior fairly predictable
+                   (set-field agenda (agenda-time) new-time))))
             ;; Update the agenda's current queue based on
             ;; currently applicable time segments
             (add-segments-contents-to-queue!
