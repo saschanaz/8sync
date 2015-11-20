@@ -37,7 +37,7 @@
             make-run-request run-request?
             run-request-proc run-request-when
 
-            run wrap run-wrap run-wrap-at
+            run-it wrap run run-at delay
 
             %current-agenda
             start-agenda agenda-run-once))
@@ -319,24 +319,37 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;; Request to run stuff
 ;;; ====================
 
-(define-record-type <run-request>
+(define-immutable-record-type <run-request>
   (make-run-request proc when)
   run-request?
   (proc run-request-proc)
   (when run-request-when))
 
-(define* (run proc #:optional when)
+(define* (run-it proc #:optional when)
+  "Make a request to run PROC (possibly at WHEN)"
   (make-run-request proc when))
 
 (define-syntax-rule (wrap body ...)
+  "Wrap contents in a procedure"
   (lambda ()
     body ...))
 
-(define-syntax-rule (run-wrap body ...)
-  (run (wrap body ...)))
+(define-syntax-rule (run body ...)
+  "Run everything in BODY but wrap in a convenient procedure"
+  (make-run-request (wrap body ...) #f))
 
-(define-syntax-rule (run-wrap-at body ... when)
-  (run (wrap body ...) when))
+(define-syntax-rule (run-at body ... when)
+  "Run BODY at WHEN"
+  (make-run-request (wrap body ...) when))
+
+(define-syntax-rule (run-delay body ... delay-time)
+  (make-run-request (wrap body ...) (tdelta delay-time)))
+
+(define (delay run-request delay-time)
+  "Delay a RUN-REQUEST by DELAY-TIME"
+  (set-field run-request
+             (run-request-when)
+             (tdelta delay-time)))
 
 
 ;;; Execution of agenda, and current agenda

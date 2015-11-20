@@ -175,25 +175,25 @@
   (test-assert (procedure? wrapped))
   (test-equal (wrapped) 3))
 
-(let ((run-two-squared (run (lambda () (* 2 2)))))
+(let ((run-two-squared (run-it (lambda () (* 2 2)))))
   (test-assert (run-request? run-two-squared))
   (test-assert (procedure? (run-request-proc run-two-squared)))
   (test-equal ((run-request-proc run-two-squared)) 4)
   (test-eq (run-request-when run-two-squared) #f))
 
-(let ((run-two-squared (run (lambda () (* 2 2)) '(88 . 0))))
+(let ((run-two-squared (run-it (lambda () (* 2 2)) '(88 . 0))))
   (test-assert (run-request? run-two-squared))
   (test-assert (procedure? (run-request-proc run-two-squared)))
   (test-equal ((run-request-proc run-two-squared)) 4)
   (test-equal (run-request-when run-two-squared) '(88 . 0)))
 
-(let ((run-two-squared (run-wrap (* 2 2))))
+(let ((run-two-squared (run (* 2 2))))
   (test-assert (run-request? run-two-squared))
   (test-assert (procedure? (run-request-proc run-two-squared)))
   (test-equal ((run-request-proc run-two-squared)) 4)
   (test-eq (run-request-when run-two-squared) #f))
 
-(let ((run-two-squared (run-wrap-at (* 2 2) '(88 . 0))))
+(let ((run-two-squared (run-at (* 2 2) '(88 . 0))))
   (test-assert (run-request? run-two-squared))
   (test-assert (procedure? (run-request-proc run-two-squared)))
   (test-equal ((run-request-proc run-two-squared)) 4)
@@ -226,7 +226,7 @@
 
 (define (run-dummy)
   (speaker "I bet I can make you say you're a dummy!\n")
-  (run dummy-func))
+  (run-it dummy-func))
 
 (let ((q (make-q)))
   (set! speaker (speak-it))  ; reset the speaker
