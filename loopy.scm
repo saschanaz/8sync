@@ -87,6 +87,8 @@
                       (except-port-map (make-hash-table))
                       (schedule (make-schedule))
                       (time (gettimeofday)))
+  ;; TODO: document arguments
+  "Make a fresh agenda."
   (make-agenda-intern queue prompt
                       read-port-map write-port-map except-port-map
                       schedule time))
@@ -351,6 +353,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
 (define %current-agenda (make-parameter #f))
 
 (define (update-agenda-from-select! agenda)
+  "Potentially (select) on ports specified in agenda, adding items to queue"
   (define (hash-keys hash)
     (hash-map->list (lambda (k v) k) hash))
   (define (get-wait-time)
@@ -429,6 +432,8 @@ Will produce (0 . 0) instead of a negative number, if needed."
                        #:key stop-condition
                        (get-time gettimeofday)
                        (handle-ports update-agenda-from-select!))
+  ;; TODO: Document fields
+  "Start up the AGENDA"
   (let loop ((agenda agenda))
     (let ((agenda   
            ;; @@: Hm, maybe here would be a great place to handle
