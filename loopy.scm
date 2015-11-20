@@ -318,7 +318,7 @@
 (define %current-agenda (make-parameter #f))
 
 (define (update-agenda-from-select! agenda)
-  (define (hash-keys selector)
+  (define (hash-keys hash)
     (hash-map->list (lambda (k v) k) hash))
   (define (get-wait-time)
     ;; TODO: we need to figure this out based on whether there's anything
