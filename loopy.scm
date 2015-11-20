@@ -158,12 +158,12 @@ run (time-segment-right-format) first."
   (sec time-delta-sec)
   (usec time-delta-usec))
 
-(define* (make-time-delta sec #:optional usec)
+(define* (make-time-delta sec #:optional (usec 0))
   "Make a <time-delta> of SEC seconds and USEC microseconds.
 
 This is used primarily so the agenda can recognize RUN-REQUEST objects
 which are meant "
-  (make-time-delta-intern sec (or usec 0)))
+  (make-time-delta-intern sec usec))
 
 (define tdelta make-time-delta)
 
