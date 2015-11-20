@@ -389,22 +389,29 @@ Will produce (0 . 0) instead of a negative number, if needed."
    (make-future call-first on-success on-fail on-error)
    when))
 
-(define-syntax-rule (async body args ...)
+(define-syntax-rule (%sync body args ...)
+  "Run BODY asynchronously at a prompt, passing args to make-future.
+
+Pronounced `async' despite the spelling.
+
+8sync was chosen because (async) was already taken and could lead to
+errors, and this version of asynchronous code uses a prompt, so the `a'
+character becomes a `%' prompt :)"
   (abort-to-prompt (current-agenda-prompt)
                    (wrap body)
                    args ...))
 
-(define-syntax-rule (async-at body when args ...)
+(define-syntax-rule (%sync-at body when args ...)
   (abort-to-prompt (current-agenda-prompt)
                    (wrap body)
-                   (append (list #:when when)
-                           args ...)))
+                   #:when when
+                   args ...))
 
-(define-syntax-rule (async-delay body delay-time args ...)
+(define-syntax-rule (%sync-delay body delay-time args ...)
   (abort-to-prompt (current-agenda-prompt)
                    (wrap body)
-                   (append (list #:when (tdelta delay-time))
-                           args ...)))
+                   #:when (tdelta delay-time)
+                   args ...))
 
 
 ;;; Execution of agenda, and current agenda
