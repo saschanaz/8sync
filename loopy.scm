@@ -110,6 +110,11 @@
   (queue time-segment-queue))
 
 (define (time-segment-right-format time)
+  "Ensure TIME is in the right format.
+
+The right format means (second . microsecond).
+If an integer, will convert appropriately."
+  ;; TODO: add floating point / rational number support.
   (match time
     ;; time is already a cons of second and microsecnd
     (((? integer? s) . (? integer? u)) time)
@@ -118,9 +123,14 @@
     (_ (throw 'invalid-time "Invalid time" time))))
 
 (define* (make-time-segment time #:optional (queue (make-q)))
+  "Make a time segment of TIME and QUEUE
+
+No automatic conversion is done, so you might have to
+run (time-segment-right-format) first."
   (make-time-segment-intern time queue))
 
 (define (time< time1 time2)
+  "Check if TIME1 is less than TIME2"
   (cond ((< (car time1)
             (car time2))
          #t)
@@ -132,10 +142,12 @@
         (else #f)))
 
 (define (time= time1 time2)
+  "Check whether TIME1 and TIME2 are equivalent"
   (and (= (car time1) (car time2))
        (= (cdr time1) (cdr time2))))
 
 (define (time<= time1 time2)
+  "Check if TIME1 is less than or equal to TIME2"
   (or (time< time1 time2)
       (time= time1 time2)))
 
@@ -147,6 +159,10 @@
   (usec time-delta-usec))
 
 (define* (make-time-delta sec #:optional usec)
+  "Make a <time-delta> of SEC seconds and USEC microseconds.
+
+This is used primarily so the agenda can recognize RUN-REQUEST objects
+which are meant "
   (make-time-delta-intern sec (or usec 0)))
 
 (define tdelta make-time-delta)
@@ -343,6 +359,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
   (make-run-request (wrap body ...) when))
 
 (define-syntax-rule (run-delay body ... delay-time)
+  "Run BODY at DELAY-TIME time from now"
   (make-run-request (wrap body ...) (tdelta delay-time)))
 
 (define (delay run-request delay-time)
