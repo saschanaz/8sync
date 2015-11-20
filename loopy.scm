@@ -174,12 +174,12 @@ Will produce (0 . 0) instead of a negative number, if needed."
 (define (time-minus time1 time2)
   (time-carry-correct
    (cons (- (car time1) (car time2))
-         (- (car time2) (cdr time2)))))
+         (- (cdr time2) (cdr time2)))))
 
 (define (time-plus time1 time2)
   (time-carry-correct
    (cons (+ (car time1) (car time2))
-         (+ (car time2) (cdr time2)))))
+         (+ (cdr time2) (cdr time2)))))
 
 
 (define-record-type <schedule>
