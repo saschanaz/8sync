@@ -37,7 +37,7 @@
             make-run-request run-request?
             run-request-proc run-request-when
 
-            run-it wrap run run-at delay
+            run-it wrap run run-at run-delay
 
             %current-agenda
             start-agenda agenda-run-once))
@@ -95,6 +95,15 @@ Generally done automatically for the user through (make-agenda)."
   (make-agenda-intern queue prompt
                       read-port-map write-port-map except-port-map
                       schedule time))
+
+(define (current-agenda-prompt)
+  "Get the prompt for the current agenda; signal an error if there isn't one."
+  (let ((current-agenda (%current-agenda)))
+    (if (not current-agenda)
+        (throw
+         'no-current-agenda
+         "Can't get current agenda prompt if there's no current agenda!")
+        (agenda-prompt-tag current-agenda))))
 
 
 
@@ -331,6 +340,8 @@ Will produce (0 . 0) instead of a negative number, if needed."
   (lambda ()
     body ...))
 
+;; @@: Do we really want `body ...' here?
+;;   what about just `body'?
 (define-syntax-rule (run body ...)
   "Run everything in BODY but wrap in a convenient procedure"
   (make-run-request (wrap body ...) #f))
@@ -339,15 +350,61 @@ Will produce (0 . 0) instead of a negative number, if needed."
   "Run BODY at WHEN"
   (make-run-request (wrap body ...) when))
 
+;; @@: Is it okay to overload the term "delay" like this?
+;;   Would `run-in' be better?
 (define-syntax-rule (run-delay body ... delay-time)
   "Run BODY at DELAY-TIME time from now"
   (make-run-request (wrap body ...) (tdelta delay-time)))
 
-(define (delay run-request delay-time)
-  "Delay a RUN-REQUEST by DELAY-TIME"
-  (set-field run-request
-             (run-request-when)
-             (tdelta delay-time)))
+
+
+;;; Asynchronous escape to run things
+;;; =================================
+
+;; The future's in futures
+
+(define (make-future call-first on-success on-fail on-error)
+  ;; TODO: add error stuff here
+  (lambda ()
+    (let ((call-result (call-first)))
+      ;; queue up calling the 
+      (run (on-success call-result)))))
+
+(define (agenda-on-error agenda)
+  (const #f))
+
+(define (agenda-on-fail agenda)
+  (const #f))
+
+(define* (request-future call-first on-success
+                         #:key
+                         (agenda (%current-agenda))
+                         (on-fail (agenda-on-fail agenda))
+                         (on-error (agenda-on-error agenda))  
+                         (when #f))
+  ;; TODO: error handling
+  ;; do we need some distinction between expected, catchable errors,
+  ;; and unexpected, uncatchable ones?  Probably...?
+  (make-run-request
+   (make-future call-first on-success on-fail on-error)
+   when))
+
+(define-syntax-rule (async body args ...)
+  (abort-to-prompt (current-agenda-prompt)
+                   (wrap body)
+                   args ...))
+
+(define-syntax-rule (async-at body when args ...)
+  (abort-to-prompt (current-agenda-prompt)
+                   (wrap body)
+                   (append (list #:when when)
+                           args ...)))
+
+(define-syntax-rule (async-delay body delay-time args ...)
+  (abort-to-prompt (current-agenda-prompt)
+                   (wrap body)
+                   (append (list #:when (tdelta delay-time))
+                           args ...)))
 
 
 ;;; Execution of agenda, and current agenda
@@ -471,8 +528,9 @@ based on the results"
         (agenda-prompt-tag agenda)
       (lambda ()
         (proc))
-      ;; TODO
-      (lambda (k) k)))
+      (lambda* (resume-with please-run-this . args)
+        (apply request-future please-run-this resume-with
+               args))))
 
   (let ((queue (agenda-queue agenda))
         (next-queue (make-q)))
