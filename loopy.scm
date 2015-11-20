@@ -303,7 +303,9 @@
 
 (define %current-agenda (make-parameter #f))
 
-(define* (start-agenda agenda #:key stop-condition)
+(define* (start-agenda agenda
+                       #:key stop-condition
+                       (get-time gettimeofday))
   (let loop ((agenda agenda))
     (let ((agenda   
            ;; @@: Hm, maybe here would be a great place to handle
@@ -313,7 +315,7 @@
              (agenda-run-once agenda))))
       (if (and stop-condition (stop-condition agenda))
           'done
-          (let* ((new-time (gettimeofday))
+          (let* ((new-time (get-time))
                  (agenda
                   ;; Adjust the agenda's time just in time
                   ;; We do this here rather than in agenda-run-once to make
