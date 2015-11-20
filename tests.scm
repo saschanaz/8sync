@@ -14,22 +14,22 @@
 ;; Timer tests
 ;; ===========
 
-(test-assert (time-= '(1 . 1) '(1 . 1)))
-(test-assert (not (time-= '(1 . 1) '(1 . 0))))
-(test-assert (not (time-= '(0 . 1) '(1 . 1))))
+(test-assert (time= '(1 . 1) '(1 . 1)))
+(test-assert (not (time= '(1 . 1) '(1 . 0))))
+(test-assert (not (time= '(0 . 1) '(1 . 1))))
 
-(test-assert (time-< '(1 . 1) '(1 . 2)))
-(test-assert (time-< '(7 . 2) '(8 . 2)))
-(test-assert (not (time-< '(7 . 2) '(7 . 2))))
-(test-assert (not (time-< '(7 . 8) '(7 . 2))))
-(test-assert (not (time-< '(8 . 2) '(7 . 2))))
+(test-assert (time< '(1 . 1) '(1 . 2)))
+(test-assert (time< '(7 . 2) '(8 . 2)))
+(test-assert (not (time< '(7 . 2) '(7 . 2))))
+(test-assert (not (time< '(7 . 8) '(7 . 2))))
+(test-assert (not (time< '(8 . 2) '(7 . 2))))
 
 (let ((tdelta (make-time-delta 8)))
   (test-assert (time-delta? tdelta))
   (test-eqv (time-delta-sec tdelta) 8)
   (test-eqv (time-delta-usec tdelta) 0)
   (test-equal
-      (time-+ '(2 . 3) tdelta)
+      (time-delta+ '(2 . 3) tdelta)
     '(10 . 3)))
 
 (let ((tdelta (make-time-delta 10 1)))
@@ -37,7 +37,7 @@
   (test-eqv (time-delta-sec tdelta) 10)
   (test-eqv (time-delta-usec tdelta) 1)
   (test-equal
-      (time-+ '(2 . 3) tdelta)
+      (time-delta+ '(2 . 3) tdelta)
     '(12 . 4)))
 
 

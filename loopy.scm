@@ -17,7 +17,8 @@
             make-time-segment time-segment?
             time-segment-time time-segment-queue
 
-            time-< time-= time-<= time-+
+            time< time= time<= time-delta+
+            time-minus time-plus
 
             <time-delta>
             make-time-delta tdelta time-delta?
@@ -119,7 +120,7 @@
 (define* (make-time-segment time #:optional (queue (make-q)))
   (make-time-segment-intern time queue))
 
-(define (time-< time1 time2)
+(define (time< time1 time2)
   (cond ((< (car time1)
             (car time2))
          #t)
@@ -130,13 +131,13 @@
          #t)
         (else #f)))
 
-(define (time-= time1 time2)
+(define (time= time1 time2)
   (and (= (car time1) (car time2))
        (= (cdr time1) (cdr time2))))
 
-(define (time-<= time1 time2)
-  (or (time-< time1 time2)
-      (time-= time1 time2)))
+(define (time<= time1 time2)
+  (or (time< time1 time2)
+      (time= time1 time2)))
 
 
 (define-record-type <time-delta>
@@ -150,9 +151,35 @@
 
 (define tdelta make-time-delta)
 
-(define (time-+ time time-delta)
-  (cons (+ (car time) (time-delta-sec time-delta))
-        (+ (cdr time) (time-delta-usec time-delta))))
+(define (time-carry-correct time)
+  "Corrects/handles time microsecond carry.
+Will produce (0 . 0) instead of a negative number, if needed."
+  (cond ((>= (cdr time) 1000000)
+         (cons
+          (+ (car time) 1)
+          (- (cdr time) 1000000)))
+        ((< (cdr time) 0)
+         (if (= (car time) 0)
+             '(0 0)
+             (cons
+              (- (car time) 1)
+              (+ (cdr time) 1000000))))
+        (else time)))
+
+(define (time-delta+ time time-delta)
+  (time-carry-correct
+   (cons (+ (car time) (time-delta-sec time-delta))
+         (+ (cdr time) (time-delta-usec time-delta)))))
+
+(define (time-minus time1 time2)
+  (time-carry-correct
+   (cons (- (car time1) (car time2))
+         (- (car time2) (cdr time2)))))
+
+(define (time-plus time1 time2)
+  (time-carry-correct
+   (cons (+ (car time1) (car time2))
+         (+ (car time2) (cdr time2)))))
 
 
 (define-record-type <schedule>
@@ -183,10 +210,10 @@
         new-segment))
     (define (loop segments)
       (define (segment-equals-time? segment)
-        (time-= time (time-segment-time segment)))
+        (time= time (time-segment-time segment)))
 
       (define (segment-more-than-time? segment)
-        (time-< time (time-segment-time segment)))
+        (time< time (time-segment-time segment)))
 
       ;; We could switch this out to be more mutate'y
       ;; and avoid the O(n) of space... is that over-optimizing?
@@ -218,9 +245,9 @@
   "Does a multiple value return of time segments before/at and after TIME"
   (let ((time (time-segment-right-format time)))
     (define (segment-is-now? segment)
-      (time-= (time-segment-time segment) time))
+      (time= (time-segment-time segment) time))
     (define (segment-is-before-now? segment)
-      (time-< (time-segment-time segment) time))
+      (time< (time-segment-time segment) time))
 
     (let loop ((segments-before '())
                (segments-left (schedule-segments schedule)))
@@ -326,26 +353,24 @@
     (let ((soonest-time (schedule-soonest-time (agenda-schedule agenda))))
       (cond 
        ((not (q-empty? (agenda-queue agenda)))
-        (values 0 0))
+        (cons 0 0))
        (soonest-time    ; ie, the agenda is non-empty
         (let* ((current-time (agenda-time agenda)))
-          (if (time-<= soonest-time current-time)
+          (if (time<= (pk 'soonest-time soonest-time) (pk 'current-time current-time))
               ;; Well there's something due so let's select
               ;; (this avoids a (possible?) race condition chance)
-              (values 0 0)
-              (values
-               (- (car soonest-time) (car current-time))
-               (- (cdr soonest-time) (cdr current-time))))))
+              (cons 0 0)
+              (pk 'time-minus (time-minus soonest-time current-time)))))
        (else
-        (values #f #f)))))
+        (cons #f #f)))))
   (define (do-select)
     ;; TODO: support usecond wait time too
-    (receive (sec usec)
-        (get-wait-time)
-      (select (hash-keys (agenda-read-port-map agenda))
-              (hash-keys (agenda-write-port-map agenda))
-              (hash-keys (agenda-except-port-map agenda))
-              sec usec)))
+    (match (get-wait-time)
+      ((sec . usec)
+       (select (hash-keys (agenda-read-port-map agenda))
+               (hash-keys (agenda-write-port-map agenda))
+               (hash-keys (agenda-except-port-map agenda))
+               sec usec))))
   (define (get-procs-to-run)
     (define (ports->procs ports port-map)
       (lambda (initial-procs)
@@ -444,8 +469,8 @@ based on the results"
                 (let ((request-time (run-request-when run-request)))
                   (match request-time
                     ((? time-delta? time-delta)
-                     (let ((time (time-+ (agenda-time agenda)
-                                         time-delta)))
+                     (let ((time (time-delta+ (agenda-time agenda)
+                                              time-delta)))
                        (schedule-at! time (run-request-proc run-request))))
                     ((? integer? sec)
                      (let ((time (cons sec 0)))
