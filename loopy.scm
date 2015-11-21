@@ -623,8 +623,6 @@ based on the results"
             (_ #f)))
         ;; @@: We might support delay-wrapped procedures here
         (match proc-result
-          ;; TODO: replace procedure with something that indicates
-          ;;   intent to run.  Use a (run foo) procedure
           ((results ...)
            (for-each handle-individual results))
           (one-result (handle-individual one-result)))))
