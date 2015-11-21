@@ -327,7 +327,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;; Request to run stuff
 ;;; ====================
 
-(define-immutable-record-type <run-request>
+(define-record-type <run-request>
   (make-run-request proc when)
   run-request?
   (proc run-request-proc)
@@ -357,6 +357,25 @@ Will produce (0 . 0) instead of a negative number, if needed."
 (define-syntax-rule (run-delay body ... delay-time)
   "Run BODY at DELAY-TIME time from now"
   (make-run-request (wrap body ...) (tdelta delay-time)))
+
+
+;; A request to set up a port with at least one of read, write, except
+;; handling processes
+
+(define-record-type <port-request>
+  (make-port-request-intern port read write except)
+  port-request?
+  (port port-request-port)
+  (read port-request-read)
+  (write port-request-write)
+  (except port-request-except))
+
+(define* (make-port-request port #:key read write except)
+  (if (not (or read write except))
+      (throw 'no-port-handler-given "No port handler given.\n"))
+  (make-port-request-intern port read write except))
+
+(define port-request make-port-request)
 
 
 
@@ -512,6 +531,17 @@ name!  (There are 8sync aliases if you prefer that name.)"
       (update-agenda)
       agenda))
 
+(define (agenda-handle-port-request! agenda port-request)
+  "Update an agenda for a port-request"
+  (define (handle-selector request-selector port-map-selector)
+    (if (request-selector port-request)
+        (hash-set! (port-map-selector agenda)
+                   (port-request-port port-request)
+                   (request-selector port-request))))
+  (handle-selector port-request-read agenda-read-port-map)
+  (handle-selector port-request-write agenda-write-port-map)
+  (handle-selector port-request-except agenda-except-port-map))
+
 
 (define* (start-agenda agenda
                        #:key stop-condition
@@ -579,19 +609,21 @@ based on the results"
                      (schedule-at! request-time (run-request-proc run-request)))
                     (#f
                      (enq! next-queue (run-request-proc run-request))))))))
+        (define (handle-individual result)
+          (match result
+            ((? run-request? new-proc)
+             (enqueue new-proc))
+            ((? port-request? port-request)
+             (agenda-handle-port-request! agenda port-request))
+            ;; do nothing
+            (_ #f)))
         ;; @@: We might support delay-wrapped procedures here
         (match proc-result
           ;; TODO: replace procedure with something that indicates
           ;;   intent to run.  Use a (run foo) procedure
-          ((? run-request? new-proc)
-           (enqueue new-proc))
-          (((? run-request? new-procs) ...)
-           (for-each
-            (lambda (new-proc)
-              (enqueue new-proc))
-            new-procs))
-          ;; do nothing
-          (_ #f))))
+          ((results ...)
+           (for-each handle-individual results))
+          (one-result (handle-individual one-result)))))
     ;; TODO: Alternately, we could return the next-queue
     ;;   along with changes to be added to the schedule here?
     ;; Return new agenda, with next queue set
