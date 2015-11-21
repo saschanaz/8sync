@@ -1,4 +1,4 @@
-(define-module (loopy agenda)
+(define-module (eightsync agenda)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
@@ -32,6 +32,8 @@
 
             schedule-segments-split schedule-extract-until!
             add-segments-contents-to-queue!
+
+            %sync 8sync %sync-at 8sync-at %sync-delay 8sync-delay
 
             <run-request>
             make-run-request run-request?
@@ -394,9 +396,12 @@ Will produce (0 . 0) instead of a negative number, if needed."
 
 Pronounced `async' despite the spelling.
 
-8sync was chosen because (async) was already taken and could lead to
+%sync was chosen because (async) was already taken and could lead to
 errors, and this version of asynchronous code uses a prompt, so the `a'
-character becomes a `%' prompt :)"
+character becomes a `%' prompt! :)
+
+The % and 8 characters kind of look similar... hence this library's
+name!  (There are 8sync aliases if you prefer that name.)"
   (abort-to-prompt (current-agenda-prompt)
                    (wrap body)
                    args ...))
@@ -412,6 +417,19 @@ character becomes a `%' prompt :)"
                    (wrap body)
                    #:when (tdelta delay-time)
                    args ...))
+
+(define-syntax-rule (8sync args ...)
+  "Alias for %sync"
+  (%sync args ...))
+
+(define-syntax-rule (8sync-at args ...)
+  "Alias for %sync-at"
+  (%sync-at args ...))
+
+(define-syntax-rule (8sync-delay args ...)
+  "Alias for %sync-delay"
+  (8sync-delay args ...))
+
 
 
 ;;; Execution of agenda, and current agenda
