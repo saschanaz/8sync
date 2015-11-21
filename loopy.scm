@@ -416,14 +416,15 @@ Will produce (0 . 0) instead of a negative number, if needed."
 (define-syntax-rule (%sync body args ...)
   "Run BODY asynchronously at a prompt, passing args to make-future.
 
-Pronounced `async' despite the spelling.
+Pronounced `eight-sync' despite the spelling.
 
 %sync was chosen because (async) was already taken and could lead to
 errors, and this version of asynchronous code uses a prompt, so the `a'
 character becomes a `%' prompt! :)
 
 The % and 8 characters kind of look similar... hence this library's
-name!  (There are 8sync aliases if you prefer that name.)"
+name!  (That, and the pun 'eight-synchronous' programming.)
+There are 8sync aliases if you prefer that name."
   (abort-to-prompt (current-agenda-prompt)
                    (wrap body)
                    args ...))
