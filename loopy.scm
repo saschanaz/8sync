@@ -39,6 +39,11 @@
             make-run-request run-request?
             run-request-proc run-request-when
 
+            <port-request>
+            make-port-request port-request?
+            port-request-port
+            port-request-read port-request-write port-request-except
+
             run-it wrap run run-at run-delay
 
             %current-agenda
@@ -374,8 +379,6 @@ Will produce (0 . 0) instead of a negative number, if needed."
   (if (not (or read write except))
       (throw 'no-port-handler-given "No port handler given.\n"))
   (make-port-request-intern port read write except))
-
-(define port-request make-port-request)
 
 
 
