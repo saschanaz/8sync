@@ -6,7 +6,7 @@
   #:use-module (srfi srfi-64)
   #:use-module (ice-9 q)
   #:use-module (ice-9 receive)
-  #:use-module (loopy agenda))
+  #:use-module (eightsync agenda))
 
 (test-begin "tests")
 
