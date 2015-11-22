@@ -246,6 +246,29 @@
   (test-equal (speaker)
     '("I bet I can make you say you're a dummy!\n")))
 
+;; delimited continuation tests
+
+(define (return-monkey)
+  (speaker "(Hint, it's a monkey...)\n")
+  'monkey)
+
+(define (talk-about-the-zoo)
+  (speaker "Today I went to the zoo and I saw...\n")
+  (speaker
+   (string-concatenate
+    `("A " ,(symbol->string (%sync (%run (return-monkey)))) "!\n"))))
+
+(let ((q (make-q)))
+  (set! speaker (speak-it))
+  (enq! q talk-about-the-zoo)
+  ;; (enq! q talk-about-the-zoo-but-wait)
+  (start-agenda (make-agenda #:queue q)
+                #:stop-condition (true-after-n-times 10))
+  (test-equal (speaker)
+              '("Today I went to the zoo and I saw...\n"
+                "(Hint, it's a monkey...)\n"
+                "A monkey!\n")))
+
 ;; End tests
 
 (test-end "tests")
