@@ -45,7 +45,7 @@ moddir=$(prefix)/share/guile/site/2.0
 godir=$(libdir)/guile/2.0/ccache
 
 SOURCES =  \
-	8sync/agenda.scm
+	eightsync/agenda.scm
 
 
 TESTS =							\
