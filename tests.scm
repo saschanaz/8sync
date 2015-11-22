@@ -238,6 +238,7 @@
                        ;; compare records like this
                        (tdelta 8 0))
 
+;; TODO: test %port-request
 ;; TODO: test %sync and friends!
 
 
