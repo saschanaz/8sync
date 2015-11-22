@@ -150,6 +150,14 @@ Generally done automatically for the user through (make-agenda)."
   (time time-segment-time)
   (queue time-segment-queue))
 
+(define (time-from-float-or-fraction time)
+  "Produce a (sec . usec) pair from TIME, a float or fraction"
+  (let* ((mixed-whole (floor time))
+         (mixed-rest (- time mixed-whole))  ; float or fraction component
+         (sec mixed-whole)
+         (usec (floor (* 1000000 mixed-rest))))
+    (cons (inexact->exact sec) (inexact->exact usec))))
+
 (define (time-segment-right-format time)
   "Ensure TIME is in the right format.
 
@@ -161,6 +169,8 @@ If an integer, will convert appropriately."
     (((? integer? s) . (? integer? u)) time)
     ;; time was just an integer (just the second)
     ((? integer? _) (cons time 0))
+    ((or (? rational? _) (? inexact? _))
+     (time-from-float-or-fraction time))
     (_ (throw 'invalid-time "Invalid time" time))))
 
 (define* (make-time-segment time #:optional (queue (make-q)))
@@ -199,12 +209,14 @@ run (time-segment-right-format) first."
   (sec time-delta-sec)
   (usec time-delta-usec))
 
-(define* (make-time-delta sec #:optional (usec 0))
+(define* (make-time-delta time)
   "Make a <time-delta> of SEC seconds and USEC microseconds.
 
 This is used primarily so the agenda can recognize RUN-REQUEST objects
-which are meant "
-  (make-time-delta-intern sec usec))
+which are meant to delay computation"
+  (match (time-segment-right-format time)
+    ((sec . usec)
+     (make-time-delta-intern sec usec))))
 
 (define tdelta make-time-delta)
 
