@@ -643,8 +643,8 @@ return the wrong thing via (8sync) and trip themselves up."
 based on the results"
   (define (call-proc proc)
     (call-with-prompt
-        (agenda-prompt-tag agenda)
-        proc setup-async-request))
+     (agenda-prompt-tag agenda)
+     proc setup-async-request))
 
   (let ((queue (agenda-queue agenda))
         (next-queue (make-q)))
