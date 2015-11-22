@@ -150,6 +150,9 @@ Generally done automatically for the user through (make-agenda)."
   (time time-segment-time)
   (queue time-segment-queue))
 
+;; @@: This seems to be the same as srfi-18's seconds->time procedure?
+;;   Maybe double check and switch to that?  (Thanks amz3!)
+
 (define (time-from-float-or-fraction time)
   "Produce a (sec . usec) pair from TIME, a float or fraction"
   (let* ((mixed-whole (floor time))
