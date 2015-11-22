@@ -33,7 +33,7 @@
             schedule-segments-split schedule-extract-until!
             add-segments-contents-to-queue!
 
-            %sync 8sync %sync-at 8sync-at %sync-delay 8sync-delay
+            %sync 8sync
 
             <run-request>
             make-run-request run-request?
@@ -48,7 +48,7 @@
 
             %port-request %run %run-at %run-delay
             8port-request 8run 8run-at 8run-delay
-
+            
             %current-agenda
             start-agenda agenda-run-once))
 
@@ -418,7 +418,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
    (make-future call-first on-success on-fail on-error)
    when))
 
-(define-syntax-rule (%sync body args ...)
+(define-syntax-rule (%sync async-request)
   "Run BODY asynchronously at a prompt, passing args to make-future.
 
 Pronounced `eight-sync' despite the spelling.
@@ -431,32 +431,11 @@ The % and 8 characters kind of look similar... hence this library's
 name!  (That, and the pun 'eight-synchronous' programming.)
 There are 8sync aliases if you prefer that name."
   (abort-to-prompt (current-agenda-prompt)
-                   (wrap body)
-                   args ...))
-
-(define-syntax-rule (%sync-at body when args ...)
-  (abort-to-prompt (current-agenda-prompt)
-                   (wrap body)
-                   #:when when
-                   args ...))
-
-(define-syntax-rule (%sync-delay body delay-time args ...)
-  (abort-to-prompt (current-agenda-prompt)
-                   (wrap body)
-                   #:when (tdelta delay-time)
-                   args ...))
+                   async-request))
 
 (define-syntax-rule (8sync args ...)
   "Alias for %sync"
   (%sync args ...))
-
-(define-syntax-rule (8sync-at args ...)
-  "Alias for %sync-at"
-  (%sync-at args ...))
-
-(define-syntax-rule (8sync-delay args ...)
-  "Alias for %sync-delay"
-  (8sync-delay args ...))
 
 ;; Async port request and run-request meta-requests
 (define (make-async-request proc)
@@ -617,8 +596,7 @@ return the wrong thing via (8sync) and trip themselves up."
            ;; @@: Hm, maybe here would be a great place to handle
            ;;   select'ing on ports.
            ;;   We could compose over agenda-run-once and agenda-read-ports
-           (parameterize ((%current-agenda agenda))
-             (agenda-run-once agenda))))
+           (agenda-run-once agenda)))
       (if (and stop-condition (stop-condition agenda))
           'done
           (let* ((agenda
@@ -644,7 +622,11 @@ based on the results"
   (define (call-proc proc)
     (call-with-prompt
      (agenda-prompt-tag agenda)
-     proc setup-async-request))
+     (lambda ()
+       (parameterize ((%current-agenda agenda))
+         (proc)))
+     (lambda (kont async-request)
+       (setup-async-request kont async-request))))
 
   (let ((queue (agenda-queue agenda))
         (next-queue (make-q)))
