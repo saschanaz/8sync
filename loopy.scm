@@ -466,7 +466,7 @@ The purpose of this is to make sure that users don't accidentally
 return the wrong thing via (8sync) and trip themselves up."
   (cons '*async-request* proc))
 
-(define (apply-async-request resume-kont async-request)
+(define (setup-async-request resume-kont async-request)
   "Complete an async request for agenda-run-once's continuation handling"
   (match async-request
     (('*async-request* . async-setup-proc)
@@ -644,10 +644,7 @@ based on the results"
   (define (call-proc proc)
     (call-with-prompt
         (agenda-prompt-tag agenda)
-      (lambda ()
-        (proc))
-      (lambda (resume-with request)
-        (apply-async-request resume-with request))))
+        proc setup-async-request))
 
   (let ((queue (agenda-queue agenda))
         (next-queue (make-q)))
