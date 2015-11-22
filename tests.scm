@@ -238,6 +238,8 @@
                        ;; compare records like this
                        (tdelta 8 0))
 
+;; TODO: test %sync and friends!
+
 
 ;;; Agenda tests
 ;;; ------------
