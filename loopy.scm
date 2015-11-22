@@ -40,11 +40,14 @@
             run-request-proc run-request-when
 
             <port-request>
-            make-port-request port-request?
+            make-port-request port-request port-request?
             port-request-port
             port-request-read port-request-write port-request-except
 
             run-it wrap run run-at run-delay
+
+            %port-request %run %run-at %run-delay
+            8port-request 8run 8run-at 8run-delay
 
             %current-agenda
             start-agenda agenda-run-once))
@@ -380,6 +383,8 @@ Will produce (0 . 0) instead of a negative number, if needed."
       (throw 'no-port-handler-given "No port handler given.\n"))
   (make-port-request-intern port read write except))
 
+(define port-request make-port-request)
+
 
 
 ;;; Asynchronous escape to run things
@@ -452,6 +457,60 @@ There are 8sync aliases if you prefer that name."
 (define-syntax-rule (8sync-delay args ...)
   "Alias for %sync-delay"
   (8sync-delay args ...))
+
+;; Async port request and run-request meta-requests
+(define (make-async-request proc)
+  "Wrap PROC in an async-request
+
+The purpose of this is to make sure that users don't accidentally
+return the wrong thing via (8sync) and trip themselves up."
+  (cons '*async-request* proc))
+
+(define (apply-async-request resume-kont async-request)
+  "Complete an async request for agenda-run-once's continuation handling"
+  (match async-request
+    (('*async-request* . async-setup-proc)
+     (async-setup-proc resume-kont))
+    ;; TODO: deliver more helpful errors depending on what the user
+    ;;   returned
+    (_ (throw 'invalid-async-request
+              "Invalid request passed back via an (%sync) procedure."
+              async-request))))
+
+(define-syntax-rule (%run body ...)
+  (%run-at body ... #f))
+
+(define-syntax-rule (%run-at body ... when)
+  (make-async-request
+   (lambda (kont)
+     (make-run-request
+      (wrap
+       (kont
+        (begin body ...)))
+      when))))
+
+(define-syntax-rule (%run-delay body ... delay-time)
+  (%run-at body ... (tdelta delay-time)))
+
+(define-syntax-rule (%port-request add-this-port port-request-args ...)
+  (make-async-request
+   (lambda (kont)
+     (list (make-port-request port-request-args ...)
+           (make-run-request kont)))))
+
+;; TODO
+(define-syntax-rule (%run-with-return return body ...)
+  (make-async-request
+   (lambda (kont)
+     (let ((return kont))
+       (lambda ()
+         body ...)))))
+
+;; Aliases
+(define-syntax-rule (8run args ...) (%run args ...))
+(define-syntax-rule (8run-at args ...) (%run-at args ...))
+(define-syntax-rule (8run-delay args ...) (%run-delay args ...))
+(define-syntax-rule (8port-request args ...) (%port-request args ...))
 
 
 
@@ -587,9 +646,8 @@ based on the results"
         (agenda-prompt-tag agenda)
       (lambda ()
         (proc))
-      (lambda* (resume-with please-run-this . args)
-        (apply request-future please-run-this resume-with
-               args))))
+      (lambda (resume-with request)
+        (apply-async-request resume-with request))))
 
   (let ((queue (agenda-queue agenda))
         (next-queue (make-q)))
