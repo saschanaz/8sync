@@ -13,3 +13,5 @@ Makefile.in
 /aclocal.m4
 /pre-inst-env
 /missing
+test-driver
+tests/*.trs
