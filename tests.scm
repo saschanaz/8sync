@@ -11,6 +11,17 @@
 (test-begin "tests")
 
 
+
+;;; Helpers
+;;; =======
+
+(define (speak-it)
+  (let ((messages '()))
+    (lambda* (#:optional message)
+      (if message (set! messages (append messages (list message))))
+      messages)))
+
+
 ;; Timer tests
 ;; ===========
 
@@ -200,16 +211,38 @@
   (test-equal (run-request-when run-two-squared) '(88 . 0)))
 
 
+;;; %run, %sync and friends tests
+;;; -----------------------------
+
+(define (test-%run-and-friends async-request expected-when)
+  (let* ((fake-kont (speak-it))
+         (run-request ((@@ (eightsync agenda) setup-async-request)
+                       fake-kont async-request)))
+    (test-equal (car async-request) '*async-request*)
+    (test-equal (run-request-when run-request) expected-when)
+    ;; we're using speaker as a fake continuation ;p
+    ((run-request-proc run-request))
+    (test-equal (fake-kont)
+                '("applesauce"))))
+
+(test-%run-and-friends (%run (string-concatenate '("apple" "sauce")))
+                       #f)
+
+(test-%run-and-friends (%run-at (string-concatenate '("apple" "sauce"))
+                                '(8 . 0))
+                       '(8 . 0))
+
+(test-%run-and-friends (%run-delay (string-concatenate '("apple" "sauce"))
+                                   8)
+                       ;; whoa, I'm surprised equal? can
+                       ;; compare records like this
+                       (tdelta 8 0))
+
+
 ;;; Agenda tests
 ;;; ------------
 
 ;; helpers
-
-(define (speak-it)
-  (let ((messages '()))
-    (lambda* (#:optional message)
-      (if message (set! messages (append messages (list message))))
-      messages)))
 
 (define (true-after-n-times n)
   (let ((count 0))
