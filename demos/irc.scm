@@ -95,11 +95,16 @@
 
 (define (main args)
   (let* ((options (getopt-long args option-spec))
-         (server (option-ref options 'server #f))
+         (hostname (option-ref options 'server #f))
          (port (or (option-ref options 'port #f)
                    default-irc-port))
          (username (option-ref options 'username #f))
          (listen (option-ref options 'listen #f)))
-    (display `((server ,server) (port ,port) (username ,username)
+    (display `((server ,hostname) (port ,port) (username ,username)
                (listen ,listen)))
-    (newline)))
+    (newline)
+    (queue-and-start-irc-agenda!
+     (make-agenda)
+     (irc-socket-setup hostname port)
+     #:inet-port port
+     #:handler (make-simple-irc-handler handle-line))))
