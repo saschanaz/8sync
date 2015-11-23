@@ -162,13 +162,15 @@
                (string-join (cons first-word rest-message) " ")
                #f)))))
 
-(define (default-handle-privmsg my-name speaker
-                                channel-name message is-action)
+(define (echo-back-message my-name speaker
+                           channel-name message is-action)
   (if is-action
       (format #t "~a emoted ~s in channel ~a\n"
               speaker message channel-name)
       (format #t "~a said ~s in channel ~a\n"
               speaker message channel-name)))
+
+(define default-handle-privmsg echo-back-message)
 
 (define* (make-handle-line #:key
                            (handle-privmsg default-handle-privmsg))
