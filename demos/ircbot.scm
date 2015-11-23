@@ -19,15 +19,33 @@
 ;; Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 ;; 02110-1301 USA
 
-(use-modules (eightsync systems irc))
+(use-modules (eightsync systems irc)
+             (eightsync agenda)
+             (ice-9 match))
 
 (define (handle-message socket my-name speaker
-                        channel-name message is-action)
-  (if is-action
-      (format #t "~a emoted ~s in channel ~a\n"
-              speaker message channel-name)
-      (format #t "~a said ~s in channel ~a\n"
-              speaker message channel-name)))
+                        channel message is-action)
+  (define (looks-like-me? str)
+    (or (equal? str my-name)
+        (equal? str (string-concatenate (list my-name ":")))))
+  (match (string-split message #\space)
+    (((? looks-like-me? _) action action-args ...)
+     (match action
+       ("botsnack"
+        (irc-format socket "PRIVMSG ~a :Yippie! *does a dance!*" channel))
+       ;; Add yours here
+       (_
+        (irc-format socket "PRIVMSG ~a :*stupid puppy look*" channel))))
+    (_ 
+     (cond 
+      (is-action
+       (format #t "~a emoted ~s in channel ~a\n"
+               speaker message channel))
+      (else
+       (format #t "~a said ~s in channel ~a\n"
+               speaker message channel))))))
 
 (define main
-  (make-irc-bot-cli))
+  (make-irc-bot-cli (make-handle-line
+                     #:handle-privmsg (wrap-apply handle-message))))
+
