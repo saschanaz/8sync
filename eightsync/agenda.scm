@@ -561,7 +561,7 @@ return the wrong thing via (8sync) and trip themselves up."
                    (hash-keys (agenda-except-port-map agenda))
                    sec usec))
          (lambda (key . rest-args)
-           (match (pk 'rest-args rest-args)
+           (match rest-args
              ((_ _ _ (EINTR))
               '(() () ()))
              (_ (error "Unhandled error in select!" key rest-args))))))))
