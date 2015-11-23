@@ -22,6 +22,7 @@
 (use-modules (eightsync repl)
              (eightsync agenda)
              (ice-9 getopt-long)
+             (ice-9 format)
              (ice-9 q)
              (ice-9 match))
 
@@ -42,6 +43,40 @@
 (define (install-socket socket handler)
   (display "Installing socket...\n")   ; debugging :)
   (make-port-request socket #:read handler))
+
+(define irc-eol "\r\n")
+
+(define (irc-line line)
+  (string-concatenate (list line irc-eol)))
+
+(define-syntax-rule (irc-format dest format-string rest ...)
+  (let ((line (string-concatenate
+               (list (format #f format-string rest ...)
+                     irc-eol))))
+    (match dest
+      (#f line)
+      (#t (display line))
+      (else
+       (display line dest)))))
+
+(define* (irc-display line #:optional dest)
+  (if dest
+      (display (irc-line line) dest)
+      (display (irc-line dest))))
+
+(define* (handle-login socket username
+                       #:optional
+                       (hostname "*")
+                       (servername "*")
+                       (realname username)
+                       (channels '()))
+  (irc-format socket "USER ~a ~a ~a :~a"
+              username hostname servername realname)
+  (irc-format socket "NICK ~a" username)
+  (for-each
+   (lambda (channel)
+     (irc-format socket "JOIN ~a" channel))
+   channels))
 
 (define (handle-line socket line)
   (display line)
@@ -67,12 +102,16 @@
     irc-handler))
 
 (define* (queue-and-start-irc-agenda! agenda socket #:key
+                                      (username "syncbot")
                                       (inet-port default-irc-port)
-                                      (handler (make-simple-irc-handler handle-line)))
+                                      (handler (make-simple-irc-handler handle-line))
+                                      (channels '()))
   (dynamic-wind
     (lambda () #f)
     (lambda ()
       (enq! (agenda-queue agenda) (wrap (install-socket socket handler)))
+      (enq! (agenda-queue agenda) (wrap (handle-login socket username
+                                                      #:channels channels)))
       (start-agenda agenda))
     (lambda ()
       (display "Cleaning up...\n")
@@ -107,4 +146,5 @@
      (make-agenda)
      (irc-socket-setup hostname port)
      #:inet-port port
+     #:username username
      #:handler (make-simple-irc-handler handle-line))))
