@@ -78,6 +78,47 @@
      (irc-format socket "JOIN ~a" channel))
    channels))
 
+(define (startswith-colon? str)
+  (and (> (string-length str) 0)
+       (eq? (string-ref str 0)
+            #\:)))
+
+(define (parse-line line)
+  (define (parse-params pre-params)
+    ;; This is stupid and imperative but I can't wrap my brain around
+    ;; the right way to do it in a functional way :\
+    (let ((param-list '())
+          (currently-building '()))
+      (for-each
+       (lambda (param-item)
+         (cond
+          ((startswith-colon? param-item)
+           (if (not (eq? currently-building '()))
+               (set! param-list
+                     (cons
+                      (reverse currently-building)
+                      param-list)))
+           (set! currently-building (list param-item)))
+          (else
+           (set! currently-building (cons param-item currently-building)))))
+       pre-params)
+      ;; We're still building something, so tack that on there
+      (if (not (eq? currently-building '()))
+          (set! param-list
+                (cons (reverse currently-building) param-list)))
+      ;; return the reverse of the param list
+      (reverse param-list)))
+
+  (match (string-split line #\space)
+    (((? startswith-colon? prefix)
+      command
+      pre-params ...)
+     (list prefix command
+           (parse-params2 pre-params)))
+    ((command pre-params ...)
+     (list #f command (parse-params2 pre-params)))))
+
+
 (define (handle-line socket line my-username)
   (match (string-split line #\space)
     (("PING" rest ...)
