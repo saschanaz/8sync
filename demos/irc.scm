@@ -140,12 +140,15 @@
                    default-irc-port))
          (username (option-ref options 'username #f))
          (listen (option-ref options 'listen #f))
-         (channels (option-ref options 'channels "")))
+         (channels (option-ref options 'channels ""))
+         (agenda (make-agenda)))
     (display `((server ,hostname) (port ,port) (username ,username)
                (listen ,listen) (channels-split ,(string-split channels #\space))))
     (newline)
+    (if listen
+        (spawn-and-queue-repl-server! agenda))
     (queue-and-start-irc-agenda!
-     (make-agenda)
+     agenda
      (irc-socket-setup hostname port)
      #:inet-port port
      #:username username
