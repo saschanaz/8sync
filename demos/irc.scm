@@ -78,11 +78,16 @@
      (irc-format socket "JOIN ~a" channel))
    channels))
 
-(define (handle-line socket line)
-  (display line)
-  (newline))
+(define (handle-line socket line my-username)
+  (match (string-split line #\space)
+    (("PING" rest ...)
+     (irc-display "PONG" socket)
+     (display "PONG'ed back ;)\n"))
+    (_
+     (display line)
+     (newline))))
 
-(define (make-simple-irc-handler handle-line)
+(define (make-simple-irc-handler handle-line username)
   (let ((buffer '()))
     (define (reset-buffer)
       (set! buffer '()))
@@ -95,7 +100,8 @@
           ((#\newline #\return (? char? line-chars) ...)
            (%sync (%run (handle-line
                          socket
-                         (list->string (reverse line-chars)))))
+                         (list->string (reverse line-chars))
+                         username)))
            ;; reset buffer
            (set! buffer '()))
           (_ #f))))
@@ -104,7 +110,10 @@
 (define* (queue-and-start-irc-agenda! agenda socket #:key
                                       (username "syncbot")
                                       (inet-port default-irc-port)
-                                      (handler (make-simple-irc-handler handle-line))
+                                      (handler (make-simple-irc-handler
+                                                (lambda args
+                                                  (apply handle-line args))
+                                                username))
                                       (channels '()))
   (dynamic-wind
     (lambda () #f)
@@ -152,5 +161,4 @@
      (irc-socket-setup hostname port)
      #:inet-port port
      #:username username
-     #:handler (make-simple-irc-handler handle-line)
      #:channels (string-split channels #\space))))
