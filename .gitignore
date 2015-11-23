@@ -15,3 +15,4 @@ Makefile.in
 /missing
 test-driver
 tests/*.trs
+install-sh
