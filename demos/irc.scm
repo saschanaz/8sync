@@ -21,6 +21,7 @@
 
 (use-modules (eightsync repl)
              (eightsync agenda)
+             (srfi srfi-9)
              (ice-9 getopt-long)
              (ice-9 format)
              (ice-9 q)
@@ -83,6 +84,14 @@
        (eq? (string-ref str 0)
             #\:)))
 
+(define-record-type <irc-line>
+  (make-irc-line prefix command params)
+  irc-line?
+  (prefix irc-line-prefix)
+  (command irc-line-command)
+  (params irc-line-params))
+
+
 (define (parse-line line)
   (define (parse-params pre-params)
     ;; This is stupid and imperative but I can't wrap my brain around
@@ -113,20 +122,27 @@
     (((? startswith-colon? prefix)
       command
       pre-params ...)
-     (list prefix command
-           (parse-params2 pre-params)))
+     (make-irc-line prefix command
+                    (parse-params pre-params)))
     ((command pre-params ...)
-     (list #f command (parse-params2 pre-params)))))
+     (make-irc-line #f command
+                    (parse-params pre-params)))))
 
 
 (define (handle-line socket line my-username)
-  (match (string-split line #\space)
-    (("PING" rest ...)
-     (irc-display "PONG" socket)
-     (display "PONG'ed back ;)\n"))
-    (_
-     (display line)
-     (newline))))
+  (let ((parsed-line (parse-line line)))
+    (match (irc-line-command parsed-line)
+      ("PING"
+       (irc-display "PONG" socket))
+      ("PRIVMSG"
+       (display "hey we got a PRIVMSG up in here!\n")
+       (display parsed-line)
+       (newline)
+       (display line)
+       (newline))
+      (_
+       (display line)
+       (newline)))))
 
 (define (make-simple-irc-handler handle-line username)
   (let ((buffer '()))
