@@ -68,6 +68,11 @@
       (time-delta+ '(2 . 3) tdelta)
     '(12 . 4)))
 
+(test-equal (time-minus '(100 . 100) '(50 . 66))
+            '(50 . 34))
+(test-equal (time-minus '(2 . 0) '(0 . 1))
+            '(1 . 999999))
+
 
 
 ;;; Schedule tests
