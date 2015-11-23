@@ -24,6 +24,7 @@
              (srfi srfi-9)
              (ice-9 getopt-long)
              (ice-9 format)
+             (ice-9 receive)
              (ice-9 q)
              (ice-9 match))
 
@@ -128,6 +129,38 @@
      (make-irc-line #f command
                     (parse-params pre-params)))))
 
+(define (strip-colon-if-necessary string)
+  (if (and (> (string-length string) 0)
+           (string-ref string 0))
+      (substring/copy string 1)
+      string))
+
+;; @@: Not sure if this works in all cases, like what about in a non-privmsg one?
+(define (irc-line-username irc-line)
+  (let* ((prefix-name (strip-colon-if-necessary (irc-line-prefix irc-line)))
+         (exclaim-index (string-index prefix-name #\!)))
+    (if exclaim-index
+        (substring/copy prefix-name 0 exclaim-index)
+        prefix-name)))
+
+(define (condense-privmsg-line line)
+  "Condense message line and do multiple value return of
+  (channel message is-action)"
+  (define (strip-last-char string)
+    (substring/copy string 0 (- (string-length string) 1)))
+  (let* ((channel-name (caar line))
+         (rest-params (apply append (cdr line))))
+    (match rest-params
+      (((or "\x01ACTION" ":\x01ACTION") middle-words ... (= strip-last-char last-word))
+       (values channel-name
+               (string-join
+                (append middle-words (list last-word))
+                " ")
+               #t))
+      (((= strip-colon-if-necessary first-word) rest-message ...)
+       (values channel-name
+               (string-join (cons first-word rest-message) " ")
+               #f)))))
 
 (define (handle-line socket line my-username)
   (let ((parsed-line (parse-line line)))
@@ -135,11 +168,14 @@
       ("PING"
        (irc-display "PONG" socket))
       ("PRIVMSG"
-       (display "hey we got a PRIVMSG up in here!\n")
-       (display parsed-line)
-       (newline)
-       (display line)
-       (newline))
+       (receive (channel-name message is-action)
+           (condense-privmsg-line (irc-line-params parsed-line))
+         (let ((username (irc-line-username parsed-line)))
+           (if is-action
+               (format #t "~a emoted ~s in channel ~a\n"
+                       username message channel-name)
+               (format #t "~a said ~s in channel ~a\n"
+                       username message channel-name)))))
       (_
        (display line)
        (newline)))))
