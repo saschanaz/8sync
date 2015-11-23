@@ -61,7 +61,7 @@
             port-request-port
             port-request-read port-request-write port-request-except
 
-            run-it wrap run run-at run-delay
+            run-it wrap wrap-apply run run-at run-delay
 
             %port-request %run %run-at %run-delay
             8port-request 8run 8run-at 8run-delay
@@ -381,6 +381,12 @@ Will produce (0 . 0) instead of a negative number, if needed."
   "Wrap contents in a procedure"
   (lambda ()
     body ...))
+
+(define-syntax-rule (wrap-apply body)
+  "Wrap possibly multi-value function in a procedure, applies all arguments"
+  (lambda args
+    (apply body args)))
+
 
 ;; @@: Do we really want `body ...' here?
 ;;   what about just `body'?
