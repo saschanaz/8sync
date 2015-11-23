@@ -248,13 +248,13 @@ Will produce (0 . 0) instead of a negative number, if needed."
   "Subtract TIME2 from TIME1"
   (time-carry-correct
    (cons (- (car time1) (car time2))
-         (- (cdr time2) (cdr time2)))))
+         (- (cdr time1) (cdr time2)))))
 
 (define (time-plus time1 time2)
   "Add TIME1 and TIME2"
   (time-carry-correct
    (cons (+ (car time1) (car time2))
-         (+ (cdr time2) (cdr time2)))))
+         (+ (cdr time1) (cdr time2)))))
 
 
 (define-record-type <schedule>
