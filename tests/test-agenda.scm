@@ -73,6 +73,11 @@
 (test-equal (time-minus '(2 . 0) '(0 . 1))
             '(1 . 999999))
 
+(test-equal (time-plus '(50 . 34) '(50 . 66))
+            '(100 . 100))
+(test-equal (time-plus '(1 . 999999) '(1 . 2))
+            '(3 . 1))
+
 
 
 ;;; Schedule tests
