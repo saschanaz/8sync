@@ -162,23 +162,29 @@
                (string-join (cons first-word rest-message) " ")
                #f)))))
 
-(define (handle-line socket line my-username)
-  (let ((parsed-line (parse-line line)))
-    (match (irc-line-command parsed-line)
-      ("PING"
-       (irc-display "PONG" socket))
-      ("PRIVMSG"
-       (receive (channel-name message is-action)
-           (condense-privmsg-line (irc-line-params parsed-line))
-         (let ((username (irc-line-username parsed-line)))
-           (if is-action
-               (format #t "~a emoted ~s in channel ~a\n"
-                       username message channel-name)
-               (format #t "~a said ~s in channel ~a\n"
-                       username message channel-name)))))
-      (_
-       (display line)
-       (newline)))))
+(define (default-handle-privmsg irc-line username channel-name message is-action)
+  (if is-action
+      (format #t "~a emoted ~s in channel ~a\n"
+              username message channel-name)
+      (format #t "~a said ~s in channel ~a\n"
+              username message channel-name)))
+
+(define* (make-handle-line #:key
+                           (handle-privmsg default-handle-privmsg))
+  (define (handle-line socket line my-username)
+    (let ((parsed-line (parse-line line)))
+      (match (irc-line-command parsed-line)
+        ("PING"
+         (irc-display "PONG" socket))
+        ("PRIVMSG"
+         (receive (channel-name message is-action)
+             (condense-privmsg-line (irc-line-params parsed-line))
+           (let ((username (irc-line-username parsed-line)))
+             (handle-privmsg parsed-line username channel-name message is-action))))
+        (_
+         (display line)
+         (newline)))))
+  handle-line)
 
 (define (make-simple-irc-handler handle-line username)
   (let ((buffer '()))
@@ -205,7 +211,7 @@
                                       (inet-port default-irc-port)
                                       (handler (make-simple-irc-handler
                                                 (lambda args
-                                                  (apply handle-line args))
+                                                  (apply (make-handle-line) args))
                                                 username))
                                       (channels '()))
   (dynamic-wind
