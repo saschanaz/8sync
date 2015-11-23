@@ -36,8 +36,8 @@
        ;; Add yours here
        (_
         (irc-format socket "PRIVMSG ~a :*stupid puppy look*" channel))))
-    (_ 
-     (cond 
+    (_
+     (cond
       (is-action
        (format #t "~a emoted ~s in channel ~a\n"
                speaker message channel))
