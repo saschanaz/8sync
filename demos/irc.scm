@@ -162,12 +162,13 @@
                (string-join (cons first-word rest-message) " ")
                #f)))))
 
-(define (default-handle-privmsg irc-line username channel-name message is-action)
+(define (default-handle-privmsg my-name speaker
+                                channel-name message is-action)
   (if is-action
       (format #t "~a emoted ~s in channel ~a\n"
-              username message channel-name)
+              speaker message channel-name)
       (format #t "~a said ~s in channel ~a\n"
-              username message channel-name)))
+              speaker message channel-name)))
 
 (define* (make-handle-line #:key
                            (handle-privmsg default-handle-privmsg))
@@ -180,7 +181,7 @@
          (receive (channel-name message is-action)
              (condense-privmsg-line (irc-line-params parsed-line))
            (let ((username (irc-line-username parsed-line)))
-             (handle-privmsg parsed-line username channel-name message is-action))))
+             (handle-privmsg my-username username channel-name message is-action))))
         (_
          (display line)
          (newline)))))
