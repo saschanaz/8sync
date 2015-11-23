@@ -65,7 +65,7 @@
       (display (irc-line dest))))
 
 (define* (handle-login socket username
-                       #:optional
+                       #:key
                        (hostname "*")
                        (servername "*")
                        (realname username)
@@ -130,6 +130,7 @@
            ,(lambda (s)
               (if (string->number s) #t #f))))
     (username (single-char #\u) (required? #t) (value #t))
+    (channels (value #t))
     (listen)))
 
 (define (main args)
@@ -138,13 +139,15 @@
          (port (or (option-ref options 'port #f)
                    default-irc-port))
          (username (option-ref options 'username #f))
-         (listen (option-ref options 'listen #f)))
+         (listen (option-ref options 'listen #f))
+         (channels (option-ref options 'channels "")))
     (display `((server ,hostname) (port ,port) (username ,username)
-               (listen ,listen)))
+               (listen ,listen) (channels-split ,(string-split channels #\space))))
     (newline)
     (queue-and-start-irc-agenda!
      (make-agenda)
      (irc-socket-setup hostname port)
      #:inet-port port
      #:username username
-     #:handler (make-simple-irc-handler handle-line))))
+     #:handler (make-simple-irc-handler handle-line)
+     #:channels (string-split channels #\space))))
