@@ -60,7 +60,7 @@
       (time-delta+ '(2 . 3) tdelta)
     '(10 . 3)))
 
-(let ((tdelta (make-time-delta 10 1)))
+(let ((tdelta (make-time-delta '(10 . 1))))
   (test-assert (time-delta? tdelta))
   (test-eqv (time-delta-sec tdelta) 10)
   (test-eqv (time-delta-usec tdelta) 1)
