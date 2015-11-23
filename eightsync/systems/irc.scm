@@ -234,19 +234,22 @@
           (_ #f))))
     irc-handler))
 
+(define default-line-handler (make-handle-line))
 
 (define* (queue-and-start-irc-agenda! agenda socket #:key
                                       (username "syncbot")
                                       (inet-port default-irc-port)
-                                      (handler (make-basic-irc-handler
-                                                (lambda args
-                                                  (apply (make-handle-line) args))
-                                                username))
+                                      (line-handler default-line-handler)
                                       (channels '()))
   (dynamic-wind
     (lambda () #f)
     (lambda ()
-      (enq! (agenda-queue agenda) (wrap (install-socket socket handler)))
+      (enq! (agenda-queue agenda)
+            (wrap (install-socket
+                   socket
+                   (make-basic-irc-handler
+                    line-handler
+                    username))))
       (enq! (agenda-queue agenda) (wrap (handle-login socket username
                                                       #:channels channels)))
       (start-agenda agenda))
@@ -270,7 +273,7 @@
     (channels (value #t))
     (listen)))
 
-(define* (make-irc-bot-cli)
+(define* (make-irc-bot-cli #:optional (line-handler default-line-handler))
   (define (main args)
     (let* ((options (getopt-long args option-spec))
            (hostname (option-ref options 'server #f))
@@ -290,7 +293,8 @@
        (irc-socket-setup hostname port)
        #:inet-port port
        #:username username
-       #:channels (string-split channels #\space))))
+       #:channels (string-split channels #\space)
+       #:line-handler line-handler)))
   main)
 
 (define main (make-irc-bot-cli))
