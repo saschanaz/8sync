@@ -26,7 +26,7 @@
   (define (run-self)
     (poll-coop-repl-server coop-server)
     ;; queue ourselves again
-    (run-delay (run-self) (/ 1 60)))
+    (run-delay (run-self) (/ 1 30)))
   run-self)
 
 (define* (spawn-and-queue-repl-server! agenda #:optional port)
