@@ -19,14 +19,39 @@
 ;; Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 ;; 02110-1301 USA
 
-(use-modules (eightsync repl)
-             (eightsync agenda)
-             (srfi srfi-9)
-             (ice-9 getopt-long)
-             (ice-9 format)
-             (ice-9 receive)
-             (ice-9 q)
-             (ice-9 match))
+(define-module (eightsync systems irc)
+  #:use-module (eightsync repl)
+  #:use-module (eightsync agenda)
+  #:use-module (srfi srfi-9)
+  #:use-module (ice-9 getopt-long)
+  #:use-module (ice-9 format)
+  #:use-module (ice-9 receive)
+  #:use-module (ice-9 q)
+  #:use-module (ice-9 match)
+  #:export (;; The only things you definitely need if writing a bot
+            make-irc-bot-cli            
+            irc-format irc-display
+            
+            ;; Useful things if you're making something more complicated
+            irc-line
+            irc-eol
+
+            default-irc-port
+
+            startswith-colon?
+
+            <irc-line>
+            make-irc-line irc-line?
+            irc-line-prefix irc-line-command irc-line-params
+
+            parse-line
+            irc-line-username
+
+            condense-privmsg-line
+            echo-back-message
+
+            make-handle-line make-basic-irc-handler
+            queue-and-start-irc-agenda!))
 
 
 ;;; Network stuff
@@ -189,7 +214,7 @@
          (newline)))))
   handle-line)
 
-(define (make-simple-irc-handler handle-line username)
+(define (make-basic-irc-handler handle-line username)
   (let ((buffer '()))
     (define (reset-buffer)
       (set! buffer '()))
@@ -209,10 +234,11 @@
           (_ #f))))
     irc-handler))
 
+
 (define* (queue-and-start-irc-agenda! agenda socket #:key
                                       (username "syncbot")
                                       (inet-port default-irc-port)
-                                      (handler (make-simple-irc-handler
+                                      (handler (make-basic-irc-handler
                                                 (lambda args
                                                   (apply (make-handle-line) args))
                                                 username))
@@ -244,23 +270,28 @@
     (channels (value #t))
     (listen)))
 
-(define (main args)
-  (let* ((options (getopt-long args option-spec))
-         (hostname (option-ref options 'server #f))
-         (port (or (option-ref options 'port #f)
-                   default-irc-port))
-         (username (option-ref options 'username #f))
-         (listen (option-ref options 'listen #f))
-         (channels (option-ref options 'channels ""))
-         (agenda (make-agenda)))
-    (display `((server ,hostname) (port ,port) (username ,username)
-               (listen ,listen) (channels-split ,(string-split channels #\space))))
-    (newline)
-    (if listen
-        (spawn-and-queue-repl-server! agenda))
-    (queue-and-start-irc-agenda!
-     agenda
-     (irc-socket-setup hostname port)
-     #:inet-port port
-     #:username username
-     #:channels (string-split channels #\space))))
+(define* (make-irc-bot-cli)
+  (define (main args)
+    (let* ((options (getopt-long args option-spec))
+           (hostname (option-ref options 'server #f))
+           (port (or (option-ref options 'port #f)
+                     default-irc-port))
+           (username (option-ref options 'username #f))
+           (listen (option-ref options 'listen #f))
+           (channels (option-ref options 'channels ""))
+           (agenda (make-agenda)))
+      (display `((server ,hostname) (port ,port) (username ,username)
+                 (listen ,listen) (channels-split ,(string-split channels #\space))))
+      (newline)
+      (if listen
+          (spawn-and-queue-repl-server! agenda))
+      (queue-and-start-irc-agenda!
+       agenda
+       (irc-socket-setup hostname port)
+       #:inet-port port
+       #:username username
+       #:channels (string-split channels #\space))))
+  main)
+
+(define main (make-irc-bot-cli))
+
