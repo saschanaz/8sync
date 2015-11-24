@@ -226,7 +226,7 @@
         (set! buffer (cons (read-char socket) buffer))
         (match buffer
           ((#\newline #\return (? char? line-chars) ...)
-           (%sync (%run (handle-line
+           (%8sync (%run (handle-line
                          socket
                          (list->string (reverse line-chars))
                          username)))

@@ -50,7 +50,7 @@
             schedule-segments-split schedule-extract-until!
             add-segments-contents-to-queue!
 
-            %sync 8sync
+            %8sync
 
             <run-request>
             make-run-request run-request?
@@ -456,31 +456,19 @@ Will produce (0 . 0) instead of a negative number, if needed."
    (make-future call-first on-success on-fail on-error)
    when))
 
-(define-syntax-rule (%sync async-request)
+(define-syntax-rule (%8sync async-request)
   "Run BODY asynchronously at a prompt, passing args to make-future.
 
-Pronounced `eight-sync' despite the spelling.
-
-%sync was chosen because (async) was already taken and could lead to
-errors, and this version of asynchronous code uses a prompt, so the `a'
-character becomes a `%' prompt! :)
-
-The % and 8 characters kind of look similar... hence this library's
-name!  (That, and the pun 'eight-synchronous' programming.)
-There are 8sync aliases if you prefer that name."
+Runs things asynchronously (8synchronously?)"
   (abort-to-prompt (current-agenda-prompt)
                    async-request))
-
-(define-syntax-rule (8sync args ...)
-  "Alias for %sync"
-  (%sync args ...))
 
 ;; Async port request and run-request meta-requests
 (define (make-async-request proc)
   "Wrap PROC in an async-request
 
 The purpose of this is to make sure that users don't accidentally
-return the wrong thing via (8sync) and trip themselves up."
+return the wrong thing via (%8sync) and trip themselves up."
   (cons '*async-request* proc))
 
 (define (setup-async-request resume-kont async-request)
@@ -491,7 +479,7 @@ return the wrong thing via (8sync) and trip themselves up."
     ;; TODO: deliver more helpful errors depending on what the user
     ;;   returned
     (_ (throw 'invalid-async-request
-              "Invalid request passed back via an (%sync) procedure."
+              "Invalid request passed back via an (%8sync) procedure."
               async-request))))
 
 (define-syntax-rule (%run body ...)
