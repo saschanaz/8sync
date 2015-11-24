@@ -30,7 +30,7 @@
   #:use-module (ice-9 match)
   #:export (;; The only things you definitely need if writing a bot
             make-irc-bot-cli            
-            irc-format irc-display
+            irc-format irc-display irc-send-message irc-send-formatted
             
             ;; Useful things if you're making something more complicated
             irc-line
@@ -90,6 +90,14 @@
   (if dest
       (display (irc-line line) dest)
       (display (irc-line dest))))
+
+(define (irc-send-message socket channel message)
+  (irc-format socket "PRIVMSG ~a :~a" channel message))
+
+(define-syntax-rule (irc-send-formatted socket channel format-string
+                                        args ...)
+  (irc-format socket "PRIVMSG ~a :~a" channel
+              (format #f format-string args ...)))
 
 (define* (handle-login socket username
                        #:key
@@ -226,12 +234,15 @@
         (set! buffer (cons (read-char socket) buffer))
         (match buffer
           ((#\newline #\return (? char? line-chars) ...)
-           (%8sync (%run (handle-line
-                         socket
-                         (list->string (reverse line-chars))
-                         username)))
-           ;; reset buffer
-           (set! buffer '()))
+           (let ((ready-line (list->string (reverse line-chars))))
+             ;; reset buffer
+             (set! buffer '())
+             ;; run it
+             ;; @@: does this need to be %8sync?
+             (%8sync (%run (handle-line
+                            socket
+                            ready-line
+                            username)))))
           (_ #f))))
     irc-handler))
 
