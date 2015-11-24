@@ -6,7 +6,7 @@ for [GNU Guile](https://www.gnu.org/software/guile/).
 
 Some features:
  - An asynchronous event loop!  Non-blocking on ports and file access.
- - Easy to use!  The =%sync= / =8sync= operator lets you write
+ - Easy to use!  The =%8sync= operator lets you write
    asynchronous code that looks simple while avoiding callback hell.
    This happens through the magic of
    [delimited continuations](https://www.gnu.org/software/guile/manual/html_node/Prompts.html).
