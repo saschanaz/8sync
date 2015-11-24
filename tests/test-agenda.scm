@@ -263,7 +263,7 @@
                                    8)
                        ;; whoa, I'm surprised equal? can
                        ;; compare records like this
-                       (tdelta 8 0))
+                       (tdelta 8))
 
 ;; TODO: test %port-request
 ;; TODO: test %sync and friends!
