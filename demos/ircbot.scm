@@ -33,6 +33,9 @@
      (match action
        ("botsnack"
         (irc-format socket "PRIVMSG ~a :Yippie! *does a dance!*" channel))
+       ((or "hello" "hello!" "hello." "greetings" "greetings." "greetings!"
+            "hei" "hei." "hei!")
+        (irc-format socket "PRIVMSG ~a :Oh hi ~a!" channel speaker))
        ;; Add yours here
        (_
         (irc-format socket "PRIVMSG ~a :*stupid puppy look*" channel))))
