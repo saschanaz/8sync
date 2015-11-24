@@ -238,7 +238,7 @@
   (test-equal (run-request-when run-two-squared) '(88 . 0)))
 
 
-;;; %run, %sync and friends tests
+;;; %run, %8sync and friends tests
 ;;; -----------------------------
 
 (define (test-%run-and-friends async-request expected-when)
@@ -266,7 +266,7 @@
                        (tdelta 8))
 
 ;; TODO: test %port-request
-;; TODO: test %sync and friends!
+;; TODO: test %8sync and friends!
 
 
 ;;; Agenda tests
@@ -319,7 +319,7 @@
   (speaker "Today I went to the zoo and I saw...\n")
   (speaker
    (string-concatenate
-    `("A " ,(symbol->string (%sync (%run (return-monkey)))) "!\n"))))
+    `("A " ,(symbol->string (%8sync (%run (return-monkey)))) "!\n"))))
 
 (let ((q (make-q)))
   (set! speaker (speak-it))
