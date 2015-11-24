@@ -66,6 +66,8 @@
             %port-request %run %run-at %run-delay
             8port-request 8run 8run-at 8run-delay
             
+            print-error-and-continue
+
             %current-agenda
             start-agenda agenda-run-once))
 
@@ -93,7 +95,7 @@
 (define-immutable-record-type <agenda>
   (make-agenda-intern queue prompt-tag
                       read-port-map write-port-map except-port-map
-                      schedule time)
+                      schedule time catch-handler pre-unwind-handler)
   agenda?
   (queue agenda-queue)
   (prompt-tag agenda-prompt-tag)
@@ -101,7 +103,9 @@
   (write-port-map agenda-write-port-map)
   (except-port-map agenda-except-port-map)
   (schedule agenda-schedule)
-  (time agenda-time))
+  (time agenda-time)
+  (catch-handler agenda-catch-handler)
+  (pre-unwind-handler agenda-pre-unwind-handler))
 
 (define (make-async-prompt-tag)
   "Make an async prompt tag for an agenda.
@@ -116,12 +120,15 @@ Generally done automatically for the user through (make-agenda)."
                       (write-port-map (make-hash-table))
                       (except-port-map (make-hash-table))
                       (schedule (make-schedule))
-                      (time (gettimeofday)))
+                      (time (gettimeofday))
+                      (catch-handler #f)
+                      (pre-unwind-handler #f))
   ;; TODO: document arguments
   "Make a fresh agenda."
   (make-agenda-intern queue prompt
                       read-port-map write-port-map except-port-map
-                      schedule time))
+                      schedule time
+                      catch-handler pre-unwind-handler))
 
 (define (current-agenda-prompt)
   "Get the prompt for the current agenda; signal an error if there isn't one."
@@ -649,6 +656,25 @@ return the wrong thing via (%8sync) and trip themselves up."
              (agenda-queue agenda))
             (loop agenda))))))
 
+(define (print-error-and-continue . args)
+  "Frequently used as pre-unwind-handler for agenda"
+  (format (current-error-port) "\n*** Caught exception with arguments: ~s ***\n"
+          args)
+  (display-backtrace (make-stack #t 1 0)
+                     (current-error-port))
+  (newline (current-error-port)))
+
+(define-syntax-rule (maybe-catch-all (catch-handler pre-unwind-handler)
+                                     body ...)
+  (if (or catch-handler pre-unwind-handler)
+      (catch
+        #t
+        (lambda ()
+          body ...)
+        (or catch-handler (lambda _ #f))
+        (or pre-unwind-handler (lambda _ #f)))
+      (begin body ...)))
+
 (define (agenda-run-once agenda)
   "Run once through the agenda, and produce a new agenda
 based on the results"
@@ -657,7 +683,10 @@ based on the results"
      (agenda-prompt-tag agenda)
      (lambda ()
        (parameterize ((%current-agenda agenda))
-         (proc)))
+         (maybe-catch-all
+          ((agenda-catch-handler agenda)
+           (agenda-pre-unwind-handler agenda))
+          (proc))))
      (lambda (kont async-request)
        (setup-async-request kont async-request))))
 

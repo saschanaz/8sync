@@ -274,7 +274,9 @@
     (channels (value #t))
     (listen)))
 
-(define* (make-irc-bot-cli #:optional (line-handler default-line-handler))
+(define* (make-irc-bot-cli #:optional
+                           (line-handler default-line-handler)
+                           (print-and-continue-on-error #t))
   (define (main args)
     (let* ((options (getopt-long args option-spec))
            (hostname (option-ref options 'server #f))
@@ -283,7 +285,9 @@
            (username (option-ref options 'username #f))
            (listen (option-ref options 'listen #f))
            (channels (option-ref options 'channels ""))
-           (agenda (make-agenda)))
+           (agenda (if print-and-continue-on-error
+                       (make-agenda #:pre-unwind-handler print-error-and-continue)
+                       (make-agenda))))
       (display `((server ,hostname) (port ,port) (username ,username)
                  (listen ,listen) (channels-split ,(string-split channels #\space))))
       (newline)
@@ -299,4 +303,3 @@
   main)
 
 (define main (make-irc-bot-cli))
-
