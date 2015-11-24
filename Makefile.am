@@ -46,6 +46,7 @@ godir=$(libdir)/guile/2.0/ccache
 
 SOURCES =  \
 	eightsync/agenda.scm \
+	eightsync/repl.scm \
 	eightsync/systems/irc.scm
 
 
