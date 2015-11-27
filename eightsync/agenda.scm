@@ -466,16 +466,42 @@ return the wrong thing via (%8sync) and trip themselves up."
               "Invalid request passed back via an (%8sync) procedure."
               async-request))))
 
+(define-record-type <wrapped-exception>
+  (make-wrapped-exception key args stack)
+  wrapped-exception?
+  (key wrapped-exception-key)
+  (args wrapped-exception-args)
+  (stack wrapped-exception-stack))
+
 (define-syntax-rule (%run body ...)
   (%run-at body ... #f))
 
 (define-syntax-rule (%run-at body ... when)
+  ;; Send an asynchronous request to apply a continuation to the
+  ;; following function, then handle that as a request to the agenda
   (make-async-request
    (lambda (kont)
+     ;; We're making a run request
      (make-run-request
+      ;; Wrapping the following execution to run...
       (wrap
+       ;; Once we get the result from the inner part, we'll resume
+       ;; this continuation, but first
+       ;; @@: Is this running immediately, or queueing the result
+       ;;   after evaluation for the next agenda tick?  It looks
+       ;;   like evaluating immediately.  Is that what we want?
        (kont
-        (begin body ...)))
+        ;; Any unhandled errors are caught
+        (catch #t
+          ;; Run the actual code the user requested
+          (lambda ()
+            body ...)
+          ;; If something bad happened and we didn't catch it,
+          ;; we'll wrap it up in such a way that the continuation
+          ;; can address it
+          (lambda (key . args)
+            (make-wrapped-exception key args
+                                    (make-stack #t 1 0))))))
       when))))
 
 (define-syntax-rule (%run-delay body ... delay-time)
