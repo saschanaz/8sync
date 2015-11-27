@@ -207,8 +207,8 @@
 
 ;; ... whew!
 
-;; Run/wrap request stuff
-;; ----------------------
+;;; Run/wrap request stuff
+;;; ======================
 
 (let ((wrapped (wrap (+ 1 2))))
   (test-assert (procedure? wrapped))
@@ -240,7 +240,7 @@
 
 
 ;;; %run, %8sync and friends tests
-;;; -----------------------------
+;;; ==============================
 
 (define (test-%run-and-friends async-request expected-when)
   (let* ((fake-kont (speak-it))
@@ -271,7 +271,7 @@
 
 
 ;;; Agenda tests
-;;; ------------
+;;; ============
 
 ;; helpers
 
@@ -332,6 +332,41 @@
               '("Today I went to the zoo and I saw...\n"
                 "(Hint, it's a monkey...)\n"
                 "A monkey!\n")))
+
+
+;; Error handling tests
+;; --------------------
+
+(define (remote-func-breaks)
+  (speaker "Here we go...\n")
+  (+ 1 2 (/ 1 0))
+  (speaker "SHOULD NOT HAPPEN\n"))
+
+(define (local-func-gets-break)
+  (speaker "Time for exception fun!\n")
+  (let ((caught-exception #f))
+    (catch '%8sync-caught-error
+      (lambda ()
+        (%8sync (%run (remote-func-breaks))))
+      (lambda (_ orig-key orig-args orig-stack)
+        (set! caught-exception #t)
+        (speaker "in here now!\n")
+        (test-equal orig-key 'numerical-overflow)
+        (test-equal orig-args '("/" "Numerical overflow" #f #f))
+        (test-assert (stack? orig-stack)))))
+  (test-assert caught-exception)
+  (speaker "Well that was fun :)\n"))
+
+(let ((q (make-q)))
+  (set! speaker (speak-it))
+  (enq! q local-func-gets-break)
+  (start-agenda (make-agenda #:queue q)
+                #:stop-condition (true-after-n-times 10))
+  (test-assert (speaker)
+               '("Time for exception fun!\n"
+                 "Here we go...\n"
+                 "in here now!\n"
+                 "Well that was fun :)\n")))
 
 ;; End tests
 
