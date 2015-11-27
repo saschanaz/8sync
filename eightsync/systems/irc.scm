@@ -238,7 +238,6 @@
              ;; reset buffer
              (set! buffer '())
              ;; run it
-             ;; @@: does this need to be %8sync?
              (%8sync (%run (handle-line
                             socket
                             ready-line
