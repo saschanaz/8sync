@@ -342,20 +342,34 @@
   (+ 1 2 (/ 1 0))
   (speaker "SHOULD NOT HAPPEN\n"))
 
-(define (local-func-gets-break)
+(define (indirection-remote-func-breaks)
+  (speaker "bebop\n")
+  (%8sync (%run (remote-func-breaks)))
+  (speaker "bidop\n"))
+
+(define* (local-func-gets-break #:key with-indirection)
   (speaker "Time for exception fun!\n")
   (let ((caught-exception #f))
     (catch '%8sync-caught-error
       (lambda ()
-        (%8sync (%run (remote-func-breaks))))
-      (lambda (_ orig-key orig-args orig-stack)
+        (%8sync (%run (if with-indirection
+                          (indirection-remote-func-breaks)
+                          (remote-func-breaks)))))
+      (lambda (_ orig-key orig-args orig-stacks)
         (set! caught-exception #t)
         (speaker "in here now!\n")
         (test-equal orig-key 'numerical-overflow)
         (test-equal orig-args '("/" "Numerical overflow" #f #f))
-        (test-assert (stack? orig-stack)))))
-  (test-assert caught-exception)
+        (test-assert (list? orig-stacks))
+        (test-equal (length orig-stacks)
+                    (if with-indirection 2 1))
+        (for-each
+         (lambda (x)
+           (test-assert (stack? x)))
+         orig-stacks)))
+    (test-assert caught-exception))
   (speaker "Well that was fun :)\n"))
+
 
 (let ((q (make-q)))
   (set! speaker (speak-it))
@@ -364,6 +378,18 @@
                 #:stop-condition (true-after-n-times 10))
   (test-assert (speaker)
                '("Time for exception fun!\n"
+                 "Here we go...\n"
+                 "in here now!\n"
+                 "Well that was fun :)\n")))
+
+(let ((q (make-q)))
+  (set! speaker (speak-it))
+  (enq! q (wrap (local-func-gets-break #:with-indirection #t)))
+  (start-agenda (make-agenda #:queue q)
+                #:stop-condition (true-after-n-times 10))
+  (test-assert (speaker)
+               '("Time for exception fun!\n"
+                 "bebop\n"
                  "Here we go...\n"
                  "in here now!\n"
                  "Well that was fun :)\n")))

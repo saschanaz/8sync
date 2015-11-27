@@ -468,11 +468,11 @@ return the wrong thing via (%8sync) and trip themselves up."
               async-request))))
 
 (define-record-type <wrapped-exception>
-  (make-wrapped-exception key args stack)
+  (make-wrapped-exception key args stacks)
   wrapped-exception?
   (key wrapped-exception-key)
   (args wrapped-exception-args)
-  (stack wrapped-exception-stack))
+  (stacks wrapped-exception-stacks))
 
 (define-syntax-rule (propagate-%async-exceptions body)
   (let ((body-result body))
@@ -480,7 +480,7 @@ return the wrong thing via (%8sync) and trip themselves up."
         (throw '%8sync-caught-error
                (wrapped-exception-key body-result)
                (wrapped-exception-args body-result)
-               (wrapped-exception-stack body-result))
+               (wrapped-exception-stacks body-result))
         body-result)))
 
 (define-syntax-rule (%run body ...)
@@ -512,8 +512,16 @@ return the wrong thing via (%8sync) and trip themselves up."
             ;; can address it
             ;; @@: For this stack to work doesn't it have to be
             (lambda (key . args)
-              (make-wrapped-exception key args
-                                      exception-stack))
+              (cond
+               ((eq? key '%8sync-caught-error)
+                (match args
+                  ((orig-key orig-args orig-stacks)
+                   (make-wrapped-exception
+                    orig-key orig-args
+                    (cons exception-stack orig-stacks)))))
+               (else
+                (make-wrapped-exception key args
+                                        (list exception-stack)))))
             (lambda _
               (set! exception-stack (make-stack #t 1 0)))))))
       when))))
