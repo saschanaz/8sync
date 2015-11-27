@@ -64,7 +64,6 @@
             run-it wrap wrap-apply run run-at run-delay
 
             %port-request %run %run-at %run-delay
-            8port-request 8run 8run-at 8run-delay
             
             print-error-and-continue
 
@@ -519,12 +518,6 @@ return the wrong thing via (%8sync) and trip themselves up."
      (let ((return kont))
        (lambda ()
          body ...)))))
-
-;; Aliases
-(define-syntax-rule (8run args ...) (%run args ...))
-(define-syntax-rule (8run-at args ...) (%run-at args ...))
-(define-syntax-rule (8run-delay args ...) (%run-delay args ...))
-(define-syntax-rule (8port-request args ...) (%port-request args ...))
 
 
 
