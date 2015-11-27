@@ -476,7 +476,6 @@ return the wrong thing via (%8sync) and trip themselves up."
 
 (define-syntax-rule (propagate-%async-exceptions body)
   (let ((body-result body))
-    (display "hi!\n")
     (if (wrapped-exception? body-result)
         (throw '%8sync-caught-error
                (wrapped-exception-key body-result)
