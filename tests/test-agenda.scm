@@ -25,7 +25,7 @@
   #:use-module (ice-9 receive)
   #:use-module (eightsync agenda))
 
-(test-begin "tests-agenda")
+(test-begin "test-agenda")
 
 
 
@@ -334,6 +334,6 @@
 
 ;; End tests
 
-(test-end "tests-agenda")
+(test-end "test-agenda")
 ;; (test-exit)
 
