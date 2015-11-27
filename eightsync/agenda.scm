@@ -444,8 +444,9 @@ Will produce (0 . 0) instead of a negative number, if needed."
   "Run BODY asynchronously at a prompt, passing args to make-future.
 
 Runs things asynchronously (8synchronously?)"
-  (abort-to-prompt (current-agenda-prompt)
-                   async-request))
+  (propagate-%async-exceptions
+   (abort-to-prompt (current-agenda-prompt)
+                    async-request)))
 
 ;; Async port request and run-request meta-requests
 (define (make-async-request proc)
@@ -473,6 +474,16 @@ return the wrong thing via (%8sync) and trip themselves up."
   (args wrapped-exception-args)
   (stack wrapped-exception-stack))
 
+(define-syntax-rule (propagate-%async-exceptions body)
+  (let ((body-result body))
+    (display "hi!\n")
+    (if (wrapped-exception? body-result)
+        (throw '%8sync-caught-error
+               (wrapped-exception-key body-result)
+               (wrapped-exception-args body-result)
+               (wrapped-exception-stack body-result))
+        body-result)))
+
 (define-syntax-rule (%run body ...)
   (%run-at body ... #f))
 
@@ -492,16 +503,20 @@ return the wrong thing via (%8sync) and trip themselves up."
        ;;   like evaluating immediately.  Is that what we want?
        (kont
         ;; Any unhandled errors are caught
-        (catch #t
-          ;; Run the actual code the user requested
-          (lambda ()
-            body ...)
-          ;; If something bad happened and we didn't catch it,
-          ;; we'll wrap it up in such a way that the continuation
-          ;; can address it
-          (lambda (key . args)
-            (make-wrapped-exception key args
-                                    (make-stack #t 1 0))))))
+        (let ((exception-stack #f))
+          (catch #t
+            ;; Run the actual code the user requested
+            (lambda ()
+              body ...)
+            ;; If something bad happened and we didn't catch it,
+            ;; we'll wrap it up in such a way that the continuation
+            ;; can address it
+            ;; @@: For this stack to work doesn't it have to be
+            (lambda (key . args)
+              (make-wrapped-exception key args
+                                      exception-stack))
+            (lambda _
+              (set! exception-stack (make-stack #t 1 0)))))))
       when))))
 
 (define-syntax-rule (%run-delay body ... delay-time)
