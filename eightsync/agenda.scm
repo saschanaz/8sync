@@ -436,6 +436,8 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;; =================================
 
 ;; The future's in futures
+;; @@: ... kinda conflicts with ice-9 futures.  Should we rename
+;;   to "futurists"? :)
 
 (define (make-future call-first on-success on-fail on-error)
   ;; TODO: add error stuff here
