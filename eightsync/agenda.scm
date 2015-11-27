@@ -434,35 +434,11 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;; Asynchronous escape to run things
 ;;; =================================
 
-;; The future's in futures
-;; @@: ... kinda conflicts with ice-9 futures.  Should we rename
-;;   to "futurists"? :)
-
-(define (make-future call-first on-success on-fail on-error)
-  ;; TODO: add error stuff here
-  (lambda ()
-    (let ((call-result (call-first)))
-      ;; queue up calling the 
-      (run (on-success call-result)))))
-
 (define (agenda-on-error agenda)
   (const #f))
 
 (define (agenda-on-fail agenda)
   (const #f))
-
-(define* (request-future call-first on-success
-                         #:key
-                         (agenda (%current-agenda))
-                         (on-fail (agenda-on-fail agenda))
-                         (on-error (agenda-on-error agenda))  
-                         (when #f))
-  ;; TODO: error handling
-  ;; do we need some distinction between expected, catchable errors,
-  ;; and unexpected, uncatchable ones?  Probably...?
-  (make-run-request
-   (make-future call-first on-success on-fail on-error)
-   when))
 
 (define-syntax-rule (%8sync async-request)
   "Run BODY asynchronously at a prompt, passing args to make-future.
