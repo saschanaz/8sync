@@ -350,23 +350,22 @@
 (define* (local-func-gets-break #:key with-indirection)
   (speaker "Time for exception fun!\n")
   (let ((caught-exception #f))
-    (catch '%8sync-caught-error
-      (lambda ()
-        (%8sync (%run (if with-indirection
-                          (indirection-remote-func-breaks)
-                          (remote-func-breaks)))))
-      (lambda (_ orig-key orig-args orig-stacks)
-        (set! caught-exception #t)
-        (speaker "in here now!\n")
-        (test-equal orig-key 'numerical-overflow)
-        (test-equal orig-args '("/" "Numerical overflow" #f #f))
-        (test-assert (list? orig-stacks))
-        (test-equal (length orig-stacks)
-                    (if with-indirection 2 1))
-        (for-each
-         (lambda (x)
-           (test-assert (stack? x)))
-         orig-stacks)))
+    (catch-8sync
+     (%8sync (%run (if with-indirection
+                       (indirection-remote-func-breaks)
+                       (remote-func-breaks))))
+      ('numerical-overflow
+       (lambda (orig-stacks . orig-args)
+         (set! caught-exception #t)
+         (speaker "in here now!\n")
+         (test-equal orig-args '("/" "Numerical overflow" #f #f))
+         (test-assert (list? orig-stacks))
+         (test-equal (length orig-stacks)
+                     (if with-indirection 2 1))
+         (for-each
+          (lambda (x)
+            (test-assert (stack? x)))
+          orig-stacks))))
     (test-assert caught-exception))
   (speaker "Well that was fun :)\n"))
 
