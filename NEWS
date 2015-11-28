@@ -16,3 +16,4 @@ The following features are present already in this very first release:
 
  - An asynchronous event loop
  - Delimited continuation support via the (%8sync) command
+ - IRC bot demo
