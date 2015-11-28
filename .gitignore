@@ -15,6 +15,7 @@ Makefile.in
 test-driver
 tests/*.trs
 install-sh
+*.tar.gz
 
 /build-aux/compile
 /build-aux/config.guess
