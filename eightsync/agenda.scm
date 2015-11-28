@@ -442,12 +442,6 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;; Asynchronous escape to run things
 ;;; =================================
 
-(define (agenda-on-error agenda)
-  (const #f))
-
-(define (agenda-on-fail agenda)
-  (const #f))
-
 (define-syntax-rule (%8sync async-request)
   "Run BODY asynchronously at a prompt, passing args to make-future.
 
