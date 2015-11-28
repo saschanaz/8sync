@@ -394,9 +394,34 @@
                  "in here now!\n"
                  "Well that was fun :)\n")))
 
+;; Make sure catching tools work
+
+(let ((speaker (speak-it))
+      (catch-result #f))
+  (catch-8sync
+   (begin
+     (speaker "hello")
+     (throw '%8sync-caught-error
+            'my-orig-key '(apple orange banana) '(*fake-stack* *fake-stack* *fake-stack*))
+     (speaker "no goodbyes"))
+   ('some-key
+    (lambda (stacks . rest)
+      (speaker "should not happen")))
+   ('my-orig-key
+    (lambda (stacks fruit1 fruit2 fruit3)
+      (set! catch-result
+            `((fruit1 ,fruit1)
+              (fruit2 ,fruit2)
+              (fruit3 ,fruit3))))))
+  (test-equal (speaker) '("hello"))
+  (test-equal catch-result '((fruit1 apple)
+                             (fruit2 orange)
+                             (fruit3 banana))))
+
 ;; End tests
 
 (test-end "test-agenda")
 
+;; @@: A better way to handle this at the repl?
 (test-exit)
 

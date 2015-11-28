@@ -65,6 +65,8 @@
 
             %port-request %run %run-at %run-delay
             
+            catch-8sync catch-%8sync
+
             print-error-and-continue
 
             %current-agenda
@@ -542,6 +544,22 @@ return the wrong thing via (%8sync) and trip themselves up."
      (let ((return kont))
        (lambda ()
          body ...)))))
+
+(define-syntax-rule (catch-8sync exp (handler-key handler) ...)
+  (catch '%8sync-caught-error
+    (lambda ()
+      exp)
+    (lambda (_ orig-key orig-args orig-stacks)
+      (cond
+       ((or (eq? handler-key #t)
+            (eq? orig-key handler-key))
+        (apply handler orig-stacks orig-args)) ...
+       (else (raise '%8sync-caught-error
+                    orig-key orig-args orig-stacks))))))
+
+;; Alias...?
+(define-syntax-rule (catch-%8sync rest ...)
+  (catch-8sync rest ...))
 
 
 
