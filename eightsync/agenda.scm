@@ -67,6 +67,12 @@
             
             catch-8sync catch-%8sync
 
+            ;; used for introspecting the error, but a method for making
+            ;; is not exposed
+            wrapped-exception?
+            wrapped-exception-key wrapped-exception-args
+            wrapped-exception-stacks
+
             print-error-and-continue
 
             %current-agenda
