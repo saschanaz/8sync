@@ -19,11 +19,12 @@
 -s
 !#
 
-(define-module (tests test-core)
+(define-module (tests test-agenda)
   #:use-module (srfi srfi-64)
   #:use-module (ice-9 q)
   #:use-module (ice-9 receive)
-  #:use-module (eightsync agenda))
+  #:use-module (eightsync agenda)
+  #:use-module (tests utils))
 
 (test-begin "test-agenda")
 
@@ -335,5 +336,6 @@
 ;; End tests
 
 (test-end "test-agenda")
-;; (test-exit)
+
+(test-exit)
 

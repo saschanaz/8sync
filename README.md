@@ -40,3 +40,5 @@ Software Foundation, with exceptions below:
    linked, but I can't be sure.  If you really care, consider this
    whole project GPL v3 or later optionally... anyway a
    COPYING-gplv3.txt is included for these reasons.
+ - Likewise, there's a single utility in tests/utils.scm from David
+   Thompson that's under GPLv3 or later.  See above.

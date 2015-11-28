@@ -67,5 +67,5 @@ CLEANFILES = 						\
 EXTRA_DIST = 						\
 	$(SOURCES)					\
 	$(TESTS)					\
-	pre-inst-env.in
-#	tests/utils.scm
+	pre-inst-env.in					\
+	tests/utils.scm
