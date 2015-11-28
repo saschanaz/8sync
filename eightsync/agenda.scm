@@ -30,6 +30,8 @@
             
             make-async-prompt-tag
 
+            list->q make-q*
+
             <time-segment>
             make-time-segment time-segment?
             time-segment-time time-segment-queue
@@ -146,6 +148,19 @@ Generally done automatically for the user through (make-agenda)."
          "Can't get current agenda prompt if there's no current agenda!")
         (agenda-prompt-tag current-agenda))))
 
+;; helper for making queues for an agenda
+(define (list->q lst)
+  "Makes a queue composed of LST items"
+  (let ((q (make-q)))
+    (for-each
+     (lambda (x)
+       (enq! q x))
+     lst)
+    q))
+
+(define (make-q* . args)
+  "Makes a queue and populates it with this invocation's ARGS"
+  (list->q args))
 
 
 ;;; Schedule

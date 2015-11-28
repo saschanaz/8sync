@@ -40,8 +40,25 @@
       messages)))
 
 
-;; Timer tests
-;; ===========
+;;; queue helpers
+;;; =============
+
+(define test-q (list->q '(1 2 3)))
+(test-equal (deq! test-q) 1)
+(test-equal (deq! test-q) 2)
+(test-equal (deq! test-q) 3)
+(test-assert (q-empty? test-q))
+
+(define test-q (make-q* 'apple 'banana 'carrot))
+(test-equal (deq! test-q) 'apple)
+(test-equal (deq! test-q) 'banana)
+(test-equal (deq! test-q) 'carrot)
+(test-assert (q-empty? test-q))
+
+
+
+;;; Timer tests
+;;; ===========
 
 (test-assert (time= '(1 . 1) '(1 . 1)))
 (test-assert (not (time= '(1 . 1) '(1 . 0))))
