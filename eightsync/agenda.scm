@@ -512,7 +512,6 @@ return the wrong thing via (%8sync) and trip themselves up."
             ;; If something bad happened and we didn't catch it,
             ;; we'll wrap it up in such a way that the continuation
             ;; can address it
-            ;; @@: For this stack to work doesn't it have to be
             (lambda (key . args)
               (cond
                ((eq? key '8sync-caught-error)
