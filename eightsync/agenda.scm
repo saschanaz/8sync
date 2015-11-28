@@ -698,10 +698,11 @@ return the wrong thing via (%8sync) and trip themselves up."
              (agenda-queue agenda))
             (loop agenda))))))
 
-(define (print-error-and-continue . args)
+(define (print-error-and-continue key . args)
   "Frequently used as pre-unwind-handler for agenda"
-  (format (current-error-port) "\n*** Caught exception with arguments: ~s ***\n"
-          args)
+  (format (current-error-port)
+          "\n*** Caught exception with key '~s and arguments: ~s ***\n"
+          key args)
   (display-backtrace (make-stack #t 1 0)
                      (current-error-port))
   (newline (current-error-port)))
