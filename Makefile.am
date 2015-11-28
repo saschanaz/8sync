@@ -69,3 +69,14 @@ EXTRA_DIST = 						\
 	$(TESTS)					\
 	pre-inst-env.in					\
 	tests/utils.scm
+
+dist-hook: gen-ChangeLog
+# gen-AUTHORS might be useful to borrow from Guix
+
+gen-ChangeLog:
+	if test -d .git; then				\
+	  $(top_srcdir)/build-aux/gitlog-to-changelog --since 2015-11-28	\
+	    > $(distdir)/cl-t;				\
+	  rm -f $(distdir)/ChangeLog;			\
+	  mv $(distdir)/cl-t $(distdir)/ChangeLog;	\
+	fi
