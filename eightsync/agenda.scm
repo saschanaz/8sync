@@ -700,12 +700,27 @@ return the wrong thing via (%8sync) and trip themselves up."
 
 (define (print-error-and-continue key . args)
   "Frequently used as pre-unwind-handler for agenda"
-  (format (current-error-port)
-          "\n*** Caught exception with key '~s and arguments: ~s ***\n"
-          key args)
-  (display-backtrace (make-stack #t 1 0)
-                     (current-error-port))
-  (newline (current-error-port)))
+  (cond
+   ((eq? key '8sync-caught-error)
+    (match args
+      ((orig-key orig-args stacks)
+       (display "\n*** Caught async exception. ***\n")
+       (format (current-error-port)
+               "* Original key '~s and arguments: ~s *\n"
+               orig-key orig-args)
+       (display "* Caught stacks below (ending with original) *\n\n")
+       (for-each
+        (lambda (s)
+          (display-backtrace s (current-error-port))
+          (newline (current-error-port)))
+        stacks))))
+   (else
+    (format (current-error-port)
+            "\n*** Caught exception with key '~s and arguments: ~s ***\n"
+            key args)
+    (display-backtrace (make-stack #t 1 0)
+                       (current-error-port))
+    (newline (current-error-port)))))
 
 (define-syntax-rule (maybe-catch-all (catch-handler pre-unwind-handler)
                                      body ...)
