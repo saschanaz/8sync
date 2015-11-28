@@ -479,7 +479,7 @@ return the wrong thing via (%8sync) and trip themselves up."
 (define-syntax-rule (propagate-%async-exceptions body)
   (let ((body-result body))
     (if (wrapped-exception? body-result)
-        (throw '%8sync-caught-error
+        (throw '8sync-caught-error
                (wrapped-exception-key body-result)
                (wrapped-exception-args body-result)
                (wrapped-exception-stacks body-result))
@@ -515,7 +515,7 @@ return the wrong thing via (%8sync) and trip themselves up."
             ;; @@: For this stack to work doesn't it have to be
             (lambda (key . args)
               (cond
-               ((eq? key '%8sync-caught-error)
+               ((eq? key '8sync-caught-error)
                 (match args
                   ((orig-key orig-args orig-stacks)
                    (make-wrapped-exception
@@ -546,7 +546,7 @@ return the wrong thing via (%8sync) and trip themselves up."
          body ...)))))
 
 (define-syntax-rule (catch-8sync exp (handler-key handler) ...)
-  (catch '%8sync-caught-error
+  (catch '8sync-caught-error
     (lambda ()
       exp)
     (lambda (_ orig-key orig-args orig-stacks)
@@ -554,7 +554,7 @@ return the wrong thing via (%8sync) and trip themselves up."
        ((or (eq? handler-key #t)
             (eq? orig-key handler-key))
         (apply handler orig-stacks orig-args)) ...
-       (else (raise '%8sync-caught-error
+       (else (raise '8sync-caught-error
                     orig-key orig-args orig-stacks))))))
 
 ;; Alias...?

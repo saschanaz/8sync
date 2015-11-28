@@ -400,7 +400,7 @@
   (catch-8sync
    (begin
      (speaker "hello")
-     (throw '%8sync-caught-error
+     (throw '8sync-caught-error
             'my-orig-key '(apple orange banana) '(*fake-stack* *fake-stack* *fake-stack*))
      (speaker "no goodbyes"))
    ('some-key
