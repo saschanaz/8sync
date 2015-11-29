@@ -66,7 +66,8 @@
 
             run-it wrap wrap-apply run run-at run-delay
 
-            %port-request %run %run-at %run-delay
+            %run %run-at %run-delay %port-request 
+            %8sync-run %8sync-run-at %8sync-run-delay %8sync-port
             
             catch-8sync catch-%8sync
 
@@ -551,6 +552,24 @@ return the wrong thing via (%8sync) and trip themselves up."
    (lambda (kont)
      (list (make-port-request port-request-args ...)
            (make-run-request kont)))))
+
+;; Sugar
+(define-syntax-rule (%8sync-run rest ...)
+  "Sugar for (%8sync (%run ...))"
+  (%8sync (%run rest ...)))
+
+(define-syntax-rule (%8sync-run-at rest ...)
+  "Sugar for (%8sync (%run-at ...))"
+  (%8sync (%run-at rest ...)))
+
+(define-syntax-rule (%8sync-run-delay rest ...)
+  "Sugar for (%8sync (%run-delay ...))"
+  (%8sync (%run-delay rest ...)))
+
+(define-syntax-rule (%8sync-port rest ...)
+  "Sugar for (%8sync (%port-request ...))"
+  (%8sync (%port-request rest ...)))
+
 
 ;; TODO: Write (%run-immediately)
 
