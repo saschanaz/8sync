@@ -67,15 +67,17 @@ Foundation Web site at @url{http://www.gnu.org/licenses/lgpl.html}.
 with most other asynchronous programming environments, you know that it
 generally isn't.  Usually asynchronous programming involves entering
 some sort of ``callback hell''.  Some nicer environments like Asyncio
-for Python provide coroutines, but even these require a lot of work to
-carefully line up.
+for Python provide generator-based coroutines, but even these require a
+lot of work to carefully line up.
 
 Coding in 8sync, on the other hand, looks almost entirely like coding
 anywhere else.  This is because 8sync makes great use of a cool feature
-in Guile called ``delimited continuations''.  Because of this, you can
-invoke your asynchronous code with a small wrapper around it, and that
-code will pop off to complete whatever other task it needs to do, and
-resume your function when it's ready passing back the appropriate value.
+in Guile called ``delimited continuations'' to power natural-feeling
+coroutines.  Because of this, you can invoke your asynchronous code with
+a small wrapper around it, and that code will pop off to complete
+whatever other task it needs to do, and resume your function when it's
+ready passing back the appropriate value.  (No need to manually chain
+the coroutines together, and no callback hell at all!)
 
 Now that's pretty cool!
 
@@ -88,9 +90,9 @@ Now that's pretty cool!
 @item
 @uref{https://docs.python.org/3.5/library/asyncio.html, asyncio}
 for Python provides a nice asynchronous programming environment, and
-makes great use of coroutines.  It's a bit more difficult to work with
-than 8sync (or so thinks the author) because you have to ``line up''
-coroutines.
+makes great use of generator-style coroutines.  It's a bit more
+difficult to work with than 8sync (or so thinks the author) because you
+have to ``line up'' the coroutines.
 
 @item
 @uref{http://dthompson.us/pages/software/sly.html, Sly}
