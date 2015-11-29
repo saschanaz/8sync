@@ -552,6 +552,8 @@ return the wrong thing via (%8sync) and trip themselves up."
      (list (make-port-request port-request-args ...)
            (make-run-request kont)))))
 
+;; TODO: Write (%run-immediately)
+
 ;; TODO
 (define-syntax-rule (%run-with-return return body ...)
   (make-async-request
