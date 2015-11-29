@@ -68,6 +68,11 @@ Foundation Web site at @url{http://www.gnu.org/licenses/lgpl.html}.
 @node Copying This Manual
 @appendix Copying This Manual
 
+This manual is licensed under the GNU Free Documentation License, with
+no invariant sections.  At your option, it is also available under the
+GNU Lesser General Public License, as published by the Free Software
+Foundation, version 3 or any later version.
+
 @menu
 * GNU Free Documentation License::  License for copying this manual.
 @end menu
