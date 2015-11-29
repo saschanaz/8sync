@@ -67,8 +67,10 @@ CLEANFILES = 						\
 EXTRA_DIST = 						\
 	$(SOURCES)					\
 	$(TESTS)					\
+	$(NOCOMP_SOURCES)				\
 	pre-inst-env.in					\
 	tests/utils.scm
+
 
 dist-hook: gen-ChangeLog
 # gen-AUTHORS might be useful to borrow from Guix
@@ -80,3 +82,7 @@ gen-ChangeLog:
 	  rm -f $(distdir)/ChangeLog;			\
 	  mv $(distdir)/cl-t $(distdir)/ChangeLog;	\
 	fi
+
+SUBDIRS =					\
+	doc
+#	demos
