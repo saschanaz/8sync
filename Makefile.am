@@ -69,7 +69,9 @@ EXTRA_DIST = 						\
 	$(TESTS)					\
 	$(NOCOMP_SOURCES)				\
 	pre-inst-env.in					\
-	tests/utils.scm
+	tests/utils.scm					\
+	demos/run-demo.sh				\
+	demos/ircbot.scm
 
 
 ## Make changelog on demand
