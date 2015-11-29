@@ -4,7 +4,7 @@
 @settitle 8sync
 @c %**end of header
 @copying
-Copyright @copyright{} 2015  Christopher Allan Webber @email{cwebber@dustycloud.org}
+Copyright @copyright{} 2015  Christopher Allan Webber @email{cwebber@@dustycloud.org}
 @end copying
 
 @quotation
@@ -36,8 +36,6 @@ Foundation Web site at @url{http://www.gnu.org/licenses/lgpl.html}.
 @vskip 0pt plus 1filll
 @insertcopying
 @end titlepage
-
-@end ifnottex
 
 @c Output the table of the contents at the beginning.
 @contents

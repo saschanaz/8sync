@@ -72,6 +72,8 @@ EXTRA_DIST = 						\
 	tests/utils.scm
 
 
+## Make changelog on demand
+
 dist-hook: gen-ChangeLog
 # gen-AUTHORS might be useful to borrow from Guix
 
@@ -83,6 +85,11 @@ gen-ChangeLog:
 	  mv $(distdir)/cl-t $(distdir)/ChangeLog;	\
 	fi
 
-SUBDIRS =					\
-	doc
-#	demos
+## Texinfo stuff
+
+info_TEXINFOS = doc/8sync.texi
+
+8sync_TEXINFOS =				\
+  doc/fdl.texi
+
+dvi-local: # Skip dvi docs

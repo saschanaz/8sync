@@ -2,9 +2,11 @@
 .#*
 *.go
 *.log
+*.info
 autom4te.cache/
 Makefile
 Makefile.in
+texinfo.tex
 /configure
 /env
 /config.status
