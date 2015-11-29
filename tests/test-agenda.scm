@@ -393,23 +393,23 @@
   (enq! q local-func-gets-break)
   (start-agenda (make-agenda #:queue q)
                 #:stop-condition (true-after-n-times 10))
-  (test-assert (speaker)
-               '("Time for exception fun!\n"
-                 "Here we go...\n"
-                 "in here now!\n"
-                 "Well that was fun :)\n")))
+  (test-equal (speaker)
+              '("Time for exception fun!\n"
+                "Here we go...\n"
+                "in here now!\n"
+                "Well that was fun :)\n")))
 
 (let ((q (make-q)))
   (set! speaker (speak-it))
   (enq! q (wrap (local-func-gets-break #:with-indirection #t)))
   (start-agenda (make-agenda #:queue q)
                 #:stop-condition (true-after-n-times 10))
-  (test-assert (speaker)
-               '("Time for exception fun!\n"
-                 "bebop\n"
-                 "Here we go...\n"
-                 "in here now!\n"
-                 "Well that was fun :)\n")))
+  (test-equal (speaker)
+              '("Time for exception fun!\n"
+                "bebop\n"
+                "Here we go...\n"
+                "in here now!\n"
+                "Well that was fun :)\n")))
 
 ;; Make sure catching tools work
 
