@@ -20,8 +20,8 @@
 ;;; You should have received a copy of the GNU Lesser General Public
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
-(use-modules (eightsync systems irc)
-             (eightsync agenda)
+(use-modules (8sync systems irc)
+             (8sync agenda)
              (ice-9 match))
 
 (define (handle-message socket my-name speaker

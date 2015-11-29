@@ -24,7 +24,7 @@
   #:use-module (srfi srfi-64)
   #:use-module (ice-9 q)
   #:use-module (ice-9 receive)
-  #:use-module (eightsync agenda)
+  #:use-module (8sync agenda)
   #:use-module (tests utils))
 
 (test-begin "test-agenda")
@@ -262,7 +262,7 @@
 
 (define (test-%run-and-friends async-request expected-when)
   (let* ((fake-kont (speak-it))
-         (run-request ((@@ (eightsync agenda) setup-async-request)
+         (run-request ((@@ (8sync agenda) setup-async-request)
                        fake-kont async-request)))
     (test-equal (car async-request) '*async-request*)
     (test-equal (run-request-when run-request) expected-when)

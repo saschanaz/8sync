@@ -16,7 +16,7 @@
 ;;; You should have received a copy of the GNU Lesser General Public
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
-(define-module (eightsync agenda)
+(define-module (8sync agenda)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)

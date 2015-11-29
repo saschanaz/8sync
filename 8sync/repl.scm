@@ -16,9 +16,9 @@
 ;;; You should have received a copy of the GNU Lesser General Public
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
-(define-module (eightsync repl)
+(define-module (8sync repl)
   #:use-module (ice-9 q)
-  #:use-module (eightsync agenda)
+  #:use-module (8sync agenda)
   #:use-module (system repl coop-server)
   #:export (make-coop-server-handler
             spawn-and-queue-repl-server!))

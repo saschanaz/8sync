@@ -20,9 +20,9 @@
 ;;; You should have received a copy of the GNU Lesser General Public
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
-(define-module (eightsync systems irc)
-  #:use-module (eightsync repl)
-  #:use-module (eightsync agenda)
+(define-module (8sync systems irc)
+  #:use-module (8sync repl)
+  #:use-module (8sync agenda)
   #:use-module (srfi srfi-9)
   #:use-module (ice-9 getopt-long)
   #:use-module (ice-9 format)
