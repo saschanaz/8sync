@@ -369,9 +369,9 @@
   (speaker "Time for exception fun!\n")
   (let ((caught-exception #f))
     (catch-8sync
-     (%8sync (%run (if with-indirection
-                       (indirection-remote-func-breaks)
-                       (remote-func-breaks))))
+     (%8sync-run (if with-indirection
+                         (indirection-remote-func-breaks)
+                         (remote-func-breaks)))
       ('numerical-overflow
        (lambda (orig-stacks . orig-args)
          (set! caught-exception #t)
