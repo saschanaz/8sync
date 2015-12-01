@@ -239,10 +239,10 @@
              ;; reset buffer
              (set! buffer '())
              ;; run it
-             (%8sync (%run (handle-line
-                            socket
-                            ready-line
-                            username)))))
+             (%8sync-run (handle-line
+                          socket
+                          ready-line
+                          username))))
           (_ #f))))
     irc-handler))
 
