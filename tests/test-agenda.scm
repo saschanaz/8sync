@@ -310,20 +310,18 @@
   (speaker "I bet I can make you say you're a dummy!\n")
   (run-it dummy-func))
 
-(let ((q (make-q)))
+(begin
   (set! speaker (speak-it))  ; reset the speaker
-  (enq! q run-dummy)
-  (start-agenda (make-agenda #:queue q)
+  (start-agenda (make-agenda #:queue (make-q* run-dummy))
                 #:stop-condition (true-after-n-times 2))
   (test-equal (speaker)
     '("I bet I can make you say you're a dummy!\n"
       "I'm a dummy\n")))
 
 ;; should only do the first one after one round though
-(let ((q (make-q)))
+(begin
   (set! speaker (speak-it))  ; reset the speaker
-  (enq! q run-dummy)
-  (start-agenda (make-agenda #:queue q)
+  (start-agenda (make-agenda #:queue (make-q* run-dummy))
                 #:stop-condition (true-after-n-times 1))
   (test-equal (speaker)
     '("I bet I can make you say you're a dummy!\n")))
@@ -340,11 +338,10 @@
    (string-concatenate
     `("A " ,(symbol->string (%8sync (%run (return-monkey)))) "!\n"))))
 
-(let ((q (make-q)))
+(begin
   (set! speaker (speak-it))
-  (enq! q talk-about-the-zoo)
   ;; (enq! q talk-about-the-zoo-but-wait)
-  (start-agenda (make-agenda #:queue q)
+  (start-agenda (make-agenda #:queue (make-q* talk-about-the-zoo))
                 #:stop-condition (true-after-n-times 10))
   (test-equal (speaker)
               '("Today I went to the zoo and I saw...\n"
@@ -388,10 +385,9 @@
   (speaker "Well that was fun :)\n"))
 
 
-(let ((q (make-q)))
+(begin
   (set! speaker (speak-it))
-  (enq! q local-func-gets-break)
-  (start-agenda (make-agenda #:queue q)
+  (start-agenda (make-agenda #:queue (make-q* local-func-gets-break))
                 #:stop-condition (true-after-n-times 10))
   (test-equal (speaker)
               '("Time for exception fun!\n"
@@ -399,10 +395,11 @@
                 "in here now!\n"
                 "Well that was fun :)\n")))
 
-(let ((q (make-q)))
+(begin
   (set! speaker (speak-it))
-  (enq! q (wrap (local-func-gets-break #:with-indirection #t)))
-  (start-agenda (make-agenda #:queue q)
+  (start-agenda (make-agenda
+                 #:queue (make-q* (wrap (local-func-gets-break
+                                         #:with-indirection #t))))
                 #:stop-condition (true-after-n-times 10))
   (test-equal (speaker)
               '("Time for exception fun!\n"
