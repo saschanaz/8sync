@@ -454,6 +454,13 @@ Will produce (0 . 0) instead of a negative number, if needed."
 
 (define port-request make-port-request)
 
+(define-record-type <port-remove-request>
+  (make-port-remove-request port)
+  port-remove-request?
+  (port port-remove-request-port))
+
+(define port-remove-request make-port-remove-request)
+
 
 
 ;;; Asynchronous escape to run things
@@ -547,11 +554,18 @@ return the wrong thing via (%8sync) and trip themselves up."
 (define-syntax-rule (%run-delay body ... delay-time)
   (%run-at body ... (tdelta delay-time)))
 
-(define-syntax-rule (%port-request add-this-port port-request-args ...)
+(define-syntax-rule (%port-request port port-request-args ...)
   (make-async-request
    (lambda (kont)
-     (list (make-port-request port-request-args ...)
+     (list (make-port-request port port-request-args ...)
            (make-run-request kont)))))
+
+(define-syntax-rule (%port-remove-request port)
+  (make-async-request
+   (lambda (kont)
+     (list (make-port-remove-request port)
+           (make-run-request kont)))))
+
 
 ;; Sugar
 (define-syntax-rule (%8sync-run rest ...)
@@ -690,12 +704,21 @@ return the wrong thing via (%8sync) and trip themselves up."
   "Update an agenda for a port-request"
   (define (handle-selector request-selector port-map-selector)
     (if (request-selector port-request)
+        ;; @@: Should we remove if #f?
         (hash-set! (port-map-selector agenda)
                    (port-request-port port-request)
                    (request-selector port-request))))
   (handle-selector port-request-read agenda-read-port-map)
   (handle-selector port-request-write agenda-write-port-map)
   (handle-selector port-request-except agenda-except-port-map))
+
+
+(define (agenda-handle-port-remove-request! agenda port-remove-request)
+  "Update an agenda for a port-remove-request"
+  (let ((port (port-remove-request-port port-remove-request)))
+    (hash-remove! (agenda-read-port-map agenda) port)
+    (hash-remove! (agenda-write-port-map agenda) port)
+    (hash-remove! (agenda-except-port-map agenda) port)))
 
 
 (define* (start-agenda agenda
@@ -802,11 +825,14 @@ based on the results"
                     (#f
                      (enq! next-queue (run-request-proc run-request))))))))
         (define (handle-individual result)
+          ;; @@: Could maybe optimize by switching to an explicit cond...
           (match result
             ((? run-request? new-proc)
              (enqueue new-proc))
             ((? port-request? port-request)
              (agenda-handle-port-request! agenda port-request))
+            ((? port-remove-request? port-remove-request)
+             (agenda-handle-port-remove-request! agenda port-remove-request))
             ;; do nothing
             (_ #f)))
         ;; @@: We might support delay-wrapped procedures here
