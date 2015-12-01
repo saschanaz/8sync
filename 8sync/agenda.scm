@@ -64,6 +64,10 @@
             port-request-port
             port-request-read port-request-write port-request-except
 
+            <port-remove-request>
+            make-port-remove-request port-remove-request port-remove-request?
+            port-remove-request-port
+
             run-it wrap wrap-apply run run-at run-delay
 
             %run %run-at %run-delay %port-request 
@@ -78,6 +82,8 @@
             wrapped-exception-stacks
 
             print-error-and-continue
+
+            stop-on-nothing-to-do
 
             %current-agenda
             start-agenda agenda-run-once))
@@ -619,7 +625,9 @@ return the wrong thing via (%8sync) and trip themselves up."
 (define %current-agenda (make-parameter #f))
 
 (define (update-agenda-from-select! agenda)
-  "Potentially (select) on ports specified in agenda, adding items to queue"
+  "Potentially (select) on ports specified in agenda, adding items to queue.
+
+Also handles sleeping when all we have to do is wait on the schedule."
   (define (hash-keys hash)
     (hash-map->list (lambda (k v) k) hash))
   (define (get-wait-time)
@@ -696,7 +704,9 @@ return the wrong thing via (%8sync) and trip themselves up."
         (has-items? agenda-write-port-map)
         (has-items? agenda-except-port-map)))
 
-  (if (ports-to-select?)
+  (if (or (ports-to-select?)
+          ;; select doubles as sleep...
+          (not (schedule-empty? (agenda-schedule agenda)))) 
       (update-agenda)
       agenda))
 
@@ -721,8 +731,19 @@ return the wrong thing via (%8sync) and trip themselves up."
     (hash-remove! (agenda-except-port-map agenda) port)))
 
 
+(define (stop-on-nothing-to-do agenda)
+  (and (q-empty? (agenda-queue agenda))
+       (schedule-empty? (agenda-schedule agenda))
+       (= 0 (hash-count (const #t) (agenda-read-port-map agenda)))
+       (= 0 (hash-count (const #t) (agenda-write-port-map agenda)))
+       (= 0 (hash-count (const #t) (agenda-except-port-map agenda)))))
+
+
 (define* (start-agenda agenda
-                       #:key stop-condition
+                       #:key
+                       ;; @@: Should we make stop-on-nothing-to-do
+                       ;;   the default stop-condition?
+                       stop-condition
                        (get-time gettimeofday)
                        (handle-ports update-agenda-from-select!))
   ;; TODO: Document fields
@@ -751,6 +772,7 @@ return the wrong thing via (%8sync) and trip themselves up."
              (schedule-extract-until! (agenda-schedule agenda) (agenda-time agenda))
              (agenda-queue agenda))
             (loop agenda))))))
+
 
 (define (print-error-and-continue key . args)
   "Frequently used as pre-unwind-handler for agenda"
