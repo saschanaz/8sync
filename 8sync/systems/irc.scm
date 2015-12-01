@@ -229,7 +229,9 @@
     (define (reset-buffer)
       (set! buffer '()))
     (define (should-read-char socket)
-      (and (char-ready? socket) (not (eof-object? (peek-char socket)))))
+      (and (not (port-closed? socket))
+           (char-ready? socket)
+           (not (eof-object? (peek-char socket)))))
     (define (irc-handler socket)
       (while (should-read-char socket)
         (set! buffer (cons (read-char socket) buffer))
@@ -243,7 +245,17 @@
                           socket
                           ready-line
                           username))))
-          (_ #f))))
+          (_ #f)))
+      ;; I need to shut things down on EOF object
+      (cond
+       ((port-closed? socket)
+        (display "port closed time\n")
+        (port-remove-request socket))
+       ((and (char-ready? socket)
+             (eof-object? (peek-char socket)))
+        (display "port eof time\n")
+        (close socket)
+        (port-remove-request socket))))
     irc-handler))
 
 (define default-line-handler (make-handle-line))
