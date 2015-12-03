@@ -4,6 +4,10 @@ PKG_CHECK_MODULES([GUILE], [guile-2.0])
 
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
+m4_ifdef([GUILE_PROGS],
+         [],
+         [AC_ERROR(could not locate guile aclocal macros)])
+
 GUILE_PROGS
 
 AC_CONFIG_FILES([Makefile])
