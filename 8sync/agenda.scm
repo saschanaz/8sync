@@ -565,13 +565,13 @@ return the wrong thing via (%8sync) and trip themselves up."
   (make-async-request
    (lambda (kont)
      (list (make-port-request port port-request-args ...)
-           (make-run-request kont #f)))))
+           (make-run-request (wrap kont) #f)))))
 
 (define-syntax-rule (%port-remove-request port)
   (make-async-request
    (lambda (kont)
      (list (make-port-remove-request port)
-           (make-run-request kont #f)))))
+           (make-run-request (wrap kont) #f)))))
 
 
 ;; Sugar
