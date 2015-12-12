@@ -23,6 +23,7 @@
 (define-module (tests test-agenda)
   #:use-module (srfi srfi-64)
   #:use-module (ice-9 q)
+  #:use-module (ice-9 match)
   #:use-module (ice-9 receive)
   #:use-module (8sync agenda)
   #:use-module (tests utils))
@@ -260,26 +261,45 @@
 ;;; %run, %8sync and friends tests
 ;;; ==============================
 
-(define (test-%run-and-friends async-request expected-when)
-  (let* ((fake-kont (speak-it))
-         (run-request ((@@ (8sync agenda) setup-async-request)
-                       fake-kont async-request)))
-    (test-equal (car async-request) '*async-request*)
-    (test-equal (run-request-when run-request) expected-when)
-    ;; we're using speaker as a fake continuation ;p
-    ((run-request-proc run-request))
-    (test-equal (fake-kont)
-                '("applesauce"))))
+(define-syntax-rule (run-in-fake-agenda
+                     code-to-run)
+  (let ((agenda (make-agenda)))
+    (parameterize ((%current-agenda agenda))
+      (call-with-prompt
+       (agenda-prompt-tag agenda)
+       (lambda ()
+         (list '*normal-result* code-to-run))
+       (lambda (kont async-request)
+         (list '*caught-kont*
+               kont async-request
+               ((@@ (8sync agenda) setup-async-request)
+                kont async-request)))))))
 
-(test-%run-and-friends (%run (string-concatenate '("apple" "sauce")))
+(define (test-%run-and-friends run-result expected-when)
+  (match run-result
+    (('*caught-kont* kont async-request setup-request)
+     (let* ((fake-kont (speak-it))
+            (run-request ((@@ (8sync agenda) setup-async-request)
+                          fake-kont async-request)))
+       (test-equal (car async-request) '*async-request*)
+       (test-equal (run-request-when run-request) expected-when)
+       ;; we're using speaker as a fake continuation ;p
+       ((run-request-proc run-request))
+       (test-equal (fake-kont)
+                   '("applesauce"))))))
+
+(test-%run-and-friends (run-in-fake-agenda
+                        (%8sync (string-concatenate '("apple" "sauce"))))
                        #f)
 
-(test-%run-and-friends (%run-at (string-concatenate '("apple" "sauce"))
-                                '(8 . 0))
+(test-%run-and-friends (run-in-fake-agenda
+                        (%8sync (string-concatenate '("apple" "sauce"))
+                                '(8 . 0)))
                        '(8 . 0))
 
-(test-%run-and-friends (%run-delay (string-concatenate '("apple" "sauce"))
-                                   8)
+(test-%run-and-friends (run-in-fake-agenda
+                        (%8sync-delay (string-concatenate '("apple" "sauce"))
+                                      8))
                        ;; whoa, I'm surprised equal? can
                        ;; compare records like this
                        (tdelta 8))
@@ -336,7 +356,7 @@
   (speaker "Today I went to the zoo and I saw...\n")
   (speaker
    (string-concatenate
-    `("A " ,(symbol->string (%8sync (%run (return-monkey)))) "!\n"))))
+    `("A " ,(symbol->string (%8sync (return-monkey))) "!\n"))))
 
 (begin
   (set! speaker (speak-it))
@@ -359,7 +379,7 @@
 
 (define (indirection-remote-func-breaks)
   (speaker "bebop\n")
-  (%8sync (%run (remote-func-breaks)))
+  (%8sync (remote-func-breaks))
   (speaker "bidop\n"))
 
 (define* (local-func-gets-break #:key with-indirection)

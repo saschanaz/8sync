@@ -53,8 +53,6 @@
             schedule-segments-split schedule-extract-until!
             add-segments-contents-to-queue!
 
-            %8sync
-
             <run-request>
             make-run-request run-request?
             run-request-proc run-request-when
@@ -70,7 +68,7 @@
 
             run-it wrap wrap-apply run run-at run-delay
 
-            %run %run-at %run-delay %port-request %port-remove-request
+            %8sync %8sync-delay
             %8sync-run %8sync-run-at %8sync-run-delay
             %8sync-port %8sync-port-remove
             
@@ -473,13 +471,9 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;; Asynchronous escape to run things
 ;;; =================================
 
-(define-syntax-rule (%8sync async-request)
-  "Run BODY asynchronously at a prompt, passing args to make-future.
-
-Runs things asynchronously (8synchronously?)"
-  (propagate-%async-exceptions
-   (abort-to-prompt (current-agenda-prompt)
-                    async-request)))
+(define-syntax-rule (%8sync-abort-to-prompt async-request)
+  (abort-to-prompt (current-agenda-prompt)
+                   async-request))
 
 ;; Async port request and run-request meta-requests
 (define (make-async-request proc)
@@ -516,95 +510,91 @@ return the wrong thing via (%8sync) and trip themselves up."
                (wrapped-exception-stacks body-result))
         body-result)))
 
-(define-syntax-rule (%run body ...)
-  (%run-at body ... #f))
+(define-syntax %8sync
+  (syntax-rules ()
+    "Run BODY asynchronously (8synchronously?) at a prompt, then return.
 
-(define-syntax-rule (%run-at body ... when)
-  ;; Send an asynchronous request to apply a continuation to the
-  ;; following function, then handle that as a request to the agenda
-  (make-async-request
-   (lambda (kont)
-     ;; We're making a run request
-     (make-run-request
-      ;; Wrapping the following execution to run...
-      (wrap
-       ;; Once we get the result from the inner part, we'll resume
-       ;; this continuation, but first
-       ;; @@: Is this running immediately, or queueing the result
-       ;;   after evaluation for the next agenda tick?  It looks
-       ;;   like evaluating immediately.  Is that what we want?
-       (kont
-        ;; Any unhandled errors are caught
-        (let ((exception-stack #f))
-          (catch #t
-            ;; Run the actual code the user requested
-            (lambda ()
-              body ...)
-            ;; If something bad happened and we didn't catch it,
-            ;; we'll wrap it up in such a way that the continuation
-            ;; can address it
-            (lambda (key . args)
-              (cond
-               ((eq? key '8sync-caught-error)
-                (match args
-                  ((orig-key orig-args orig-stacks)
-                   (make-wrapped-exception
-                    orig-key orig-args
-                    (cons exception-stack orig-stacks)))))
-               (else
-                (make-wrapped-exception key args
-                                        (list exception-stack)))))
-            (lambda _
-              (set! exception-stack (make-stack #t 1 0)))))))
-      when))))
+Possibly specify WHEN as the second argument."
+    ((%8sync body)
+     (%8sync-run body))
+    ((%8sync body when)
+     (%8sync-run-at body when))))
 
-(define-syntax-rule (%run-delay body ... delay-time)
-  (%run-at body ... (tdelta delay-time)))
+(define-syntax-rule (%8sync-run body ...)
+  (%8sync-run-at body ... #f))
 
-(define-syntax-rule (%port-request port port-request-args ...)
-  (make-async-request
-   (lambda (kont)
-     (list (make-port-request port port-request-args ...)
-           (make-run-request (wrap kont) #f)))))
+(define-syntax-rule (%8sync-run-at body ... when)
+  (propagate-%async-exceptions
+   (%8sync-abort-to-prompt
+    ;; Send an asynchronous request to apply a continuation to the
+    ;; following function, then handle that as a request to the agenda
+    (make-async-request
+     (lambda (kont)
+       ;; We're making a run request
+       (make-run-request
+        ;; Wrapping the following execution to run...
+        (wrap
+         ;; Once we get the result from the inner part, we'll resume
+         ;; this continuation, but first
+         ;; @@: Is this running immediately, or queueing the result
+         ;;   after evaluation for the next agenda tick?  It looks
+         ;;   like evaluating immediately.  Is that what we want?
+         (kont
+          ;; Any unhandled errors are caught
+          (let ((exception-stack #f))
+            (catch #t
+              ;; Run the actual code the user requested
+              (lambda ()
+                body ...)
+              ;; If something bad happened and we didn't catch it,
+              ;; we'll wrap it up in such a way that the continuation
+              ;; can address it
+              (lambda (key . args)
+                (cond
+                 ((eq? key '8sync-caught-error)
+                  (match args
+                    ((orig-key orig-args orig-stacks)
+                     (make-wrapped-exception
+                      orig-key orig-args
+                      (cons exception-stack orig-stacks)))))
+                 (else
+                  (make-wrapped-exception key args
+                                          (list exception-stack)))))
+              (lambda _
+                (set! exception-stack (make-stack #t 1 0)))))))
+        when))))))
 
-(define-syntax-rule (%port-remove-request port)
-  (make-async-request
-   (lambda (kont)
-     (list (make-port-remove-request port)
-           (make-run-request (wrap kont) #f)))))
+(define-syntax-rule (%8sync-run-delay body ... delay-time)
+  (%8sync-run-at body ... (tdelta delay-time)))
 
+(define-syntax-rule (%8sync-delay args ...)
+  (%8sync-run-delay args ...))
 
-;; Sugar
-(define-syntax-rule (%8sync-run rest ...)
-  "Sugar for (%8sync (%run ...))"
-  (%8sync (%run rest ...)))
+(define-syntax-rule (%8sync-port port port-request-args ...)
+  (%8sync-abort-to-prompt
+   (make-async-request
+    (lambda (kont)
+      (list (make-port-request port port-request-args ...)
+            (make-run-request kont #f))))))
 
-(define-syntax-rule (%8sync-run-at rest ...)
-  "Sugar for (%8sync (%run-at ...))"
-  (%8sync (%run-at rest ...)))
-
-(define-syntax-rule (%8sync-run-delay rest ...)
-  "Sugar for (%8sync (%run-delay ...))"
-  (%8sync (%run-delay rest ...)))
-
-(define-syntax-rule (%8sync-port rest ...)
-  "Sugar for (%8sync (%port-request ...))"
-  (%8sync (%port-request rest ...)))
-
-(define-syntax-rule (%8sync-port-remove rest ...)
-  "Sugar for (%8sync (%port-remove-request ...))"
-  (%8sync (%port-remove-request rest ...)))
+(define-syntax-rule (%8sync-port-remove port)
+  (%8sync-abort-to-prompt
+   (make-async-request
+    (lambda (kont)
+      (list (make-port-remove-request port)
+            (make-run-request kont #f))))))
 
 
 ;; TODO: Write (%run-immediately)
 
-;; TODO
-(define-syntax-rule (%run-with-return return body ...)
-  (make-async-request
-   (lambda (kont)
-     (let ((return kont))
-       (lambda ()
-         body ...)))))
+(define-syntax-rule (%8sync-immediate body)
+  "Run body asynchronously but ignore its result...
+forge ahead in our current function!"
+  (%8sync-abort-to-prompt
+   (make-async-request
+    (lambda (kont)
+      (list (make-run-request kont #f)
+            (make-run-request body #f))))))
 
 (define-syntax-rule (catch-8sync exp (handler-key handler) ...)
   (catch '8sync-caught-error

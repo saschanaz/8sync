@@ -241,10 +241,10 @@
              ;; reset buffer
              (set! buffer '())
              ;; run it
-             (%8sync-run (handle-line
-                          socket
-                          ready-line
-                          username))))
+             (%8sync (handle-line
+                      socket
+                      ready-line
+                      username))))
           (_ #f)))
       ;; I need to shut things down on EOF object
       (cond
