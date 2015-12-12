@@ -47,7 +47,8 @@ godir=$(libdir)/guile/2.0/ccache
 SOURCES =  \
 	8sync/agenda.scm \
 	8sync/repl.scm \
-	8sync/systems/irc.scm
+	8sync/systems/irc.scm \
+	8sync/systems/web.scm
 
 
 TESTS =							\
@@ -71,7 +72,8 @@ EXTRA_DIST = 						\
 	pre-inst-env.in					\
 	tests/utils.scm					\
 	demos/run-demo.sh				\
-	demos/ircbot.scm
+	demos/ircbot.scm				\
+	demos/hello-web.scm
 
 
 ## Make changelog on demand
