@@ -575,14 +575,20 @@ Possibly specify WHEN as the second argument."
    (make-async-request
     (lambda (kont)
       (list (make-port-request port port-request-args ...)
-            (make-run-request kont #f))))))
+            (make-run-request
+             ;; What's with returning #f to kont?
+             ;; Otherwise we sometimes get errors like
+             ;; "Zero values returned to single-valued continuation""
+             (wrap (kont #f)) #f))))))
 
 (define-syntax-rule (%8sync-port-remove port)
   (%8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
       (list (make-port-remove-request port)
-            (make-run-request kont #f))))))
+            (make-run-request
+             ;; See comment in %8sync-port
+             (wrap (kont #f)) #f))))))
 
 
 ;; TODO: Write (%run-immediately)
@@ -593,7 +599,9 @@ forge ahead in our current function!"
   (%8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
-      (list (make-run-request kont #f)
+      (list (make-run-request
+             ;; See comment in %8sync-port
+             (wrap (kont #f)) #f)
             (make-run-request body #f))))))
 
 (define-syntax-rule (catch-8sync exp (handler-key handler) ...)
