@@ -141,6 +141,8 @@ A little over a month after that, hacking on 8sync began!
 The short version of this is that if you distribute a modifications to
   8sync, whether alone or in some larger combination, must release the
   corresponding source code.
+A program which uses this library, if distributed without source code,
+  must also allow relinking with a modified version of this library.
 In general, it is best to contribute them back to 8sync under the same terms;
   we'd appreciate any enhancements or fixes to be contributed upstream to
   8sync itself.
