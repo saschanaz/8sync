@@ -150,7 +150,7 @@ In general, it is best to contribute them back to 8sync under the same terms;
   for the precise terms.)
 
 This usage of the LGPL helps us ensure that 8sync and derivatives of
-8sync as a library will remain free.
+  8sync as a library will remain free.
 Though it is not a requirement, we request you use 8sync to build free
   software rather than use it to contribute to the growing world of
   proprietary software.
