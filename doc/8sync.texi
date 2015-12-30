@@ -155,11 +155,24 @@ Though it is not a requirement, we request you use 8sync to build free
   software rather than use it to contribute to the growing world of
   proprietary software.
 
-The choice of the LGPL for 8sync was a strategic one, though in general,
-  we encourage stronger copyleft.
+The choice of the LGPL for 8sync was a strategic one.
+This is not a general recommendation to use the LGPL instead of the GPL
+  for all libraries.
+In general, we encourage stronger copyleft.
 (For more thinking on this position, see
   @uref{https://www.gnu.org/licenses/why-not-lgpl.html,
         Why you shouldn't use the Lesser GPL for your next library}.)
+
+Although 8sync provides some unique features, its main functionality is as
+  an asynchronous event loop, and there are many other asynchronous event
+  loop systems out there such as Node.js for Javascript and Asyncio for
+  Python (there are others as well).
+It is popular in some of these communities to hold anti-copyleft positions,
+  which is unfortunate, and many community members seem to be adopting
+  these positions because other developers they look up to are holding
+  them.
+If you have come from one of these communities and are exploring 8sync, we
+  hope reading this will help you reconsider your position.
 
 In particular, if you are building a library or application that uses
   8sync in some useful way, consider releasing your program under the GNU
