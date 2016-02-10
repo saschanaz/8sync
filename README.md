@@ -4,6 +4,9 @@
 GNU 8sync (pronounced "eight-sync") is an asynchronous programming
 library for [GNU Guile](https://www.gnu.org/software/guile/).
 
+Be warned: it is early days for the 8sync project.  New contributors
+and users are more than welcome, but beware API instability.
+
 Some features:
  - An asynchronous event loop!  Non-blocking on ports and file access.
  - Easy to use!  The =%8sync= operator lets you write
