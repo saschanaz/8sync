@@ -56,6 +56,7 @@ Foundation Web site at @url{http://www.gnu.org/licenses/lgpl.html}.
 @menu
 * Introduction::
 * Acknowledgements::
+* 8sync's license and general comments on copyleft::
 * Copying This Manual::
 * Index::
 @end menu
