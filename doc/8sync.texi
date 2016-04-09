@@ -57,9 +57,15 @@ Foundation Web site at @url{http://www.gnu.org/licenses/lgpl.html}.
 * Introduction::
 * Acknowledgements::
 * 8sync's license and general comments on copyleft::
+* Installation::
+* Getting started::
+* API Reference::
+* Contributing::
 * Copying This Manual::
 * Index::
 @end menu
+
+
 
 @node Introduction
 @chapter Introduction
@@ -84,6 +90,8 @@ Because of this, you can invoke your asynchronous code with a small wrapper
   all!)
 
 Now that's pretty cool!
+
+
 
 @node Acknowledgements
 @chapter Acknowledgements
@@ -133,6 +141,7 @@ The motivation to build 8sync came out of
 
 A little over a month after that, hacking on 8sync began!
 
+
 
 @node 8sync's license and general comments on copyleft
 @chapter 8sync's license and general comments on copyleft
@@ -190,6 +199,30 @@ So to answer the question, ``Can I build a proprietary program on top of
     And help us turn the tide towards greater software freedom...
       consider a strong copyleft license!''
 
+
+
+@node Installation
+@chapter Installation
+
+General GNU configure / make / make install instructions go here!
+:)
+
+
+
+@node Getting started
+@chapter Getting started
+
+
+
+@node API Reference
+@chapter API Reference
+
+
+
+@node Contributing
+@chapter Contributing
+
+
 
 @node Copying This Manual
 @appendix Copying This Manual
@@ -198,6 +231,8 @@ This manual is licensed under the GNU Free Documentation License, with
 no invariant sections.  At your option, it is also available under the
 GNU Lesser General Public License, as published by the Free Software
 Foundation, version 3 or any later version.
+
+
 
 @menu
 * GNU Free Documentation License::  License for copying this manual.
