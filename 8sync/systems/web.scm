@@ -161,8 +161,8 @@ don't totally failboat"
           (agenda (make-agenda
                    #:queue q
                    #:pre-unwind-handler print-error-and-continue)))
-     ;; (if coop-repl
-     ;;     (spawn-and-queue-repl-server! agenda))
+     (if coop-repl
+         (spawn-and-queue-repl-server! agenda))
      (start-agenda agenda))))
 
 (define* (make-web-demo-cli #:key
