@@ -69,6 +69,7 @@ EXTRA_DIST = 						\
 	$(SOURCES)					\
 	$(TESTS)					\
 	$(NOCOMP_SOURCES)				\
+	COPYING-gplv3.txt				\
 	pre-inst-env.in					\
 	tests/utils.scm					\
 	demos/run-demo.sh				\
