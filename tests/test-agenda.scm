@@ -258,7 +258,7 @@
   (test-equal (run-request-when run-two-squared) '(88 . 0)))
 
 
-;;; %run, %8sync and friends tests
+;;; %run, 8sync and friends tests
 ;;; ==============================
 
 (define-syntax-rule (run-in-fake-agenda
@@ -289,23 +289,23 @@
                    '("applesauce"))))))
 
 (test-%run-and-friends (run-in-fake-agenda
-                        (%8sync (string-concatenate '("apple" "sauce"))))
+                        (8sync (string-concatenate '("apple" "sauce"))))
                        #f)
 
 (test-%run-and-friends (run-in-fake-agenda
-                        (%8sync (string-concatenate '("apple" "sauce"))
+                        (8sync (string-concatenate '("apple" "sauce"))
                                 '(8 . 0)))
                        '(8 . 0))
 
 (test-%run-and-friends (run-in-fake-agenda
-                        (%8sync-delay (string-concatenate '("apple" "sauce"))
+                        (8sync-delay (string-concatenate '("apple" "sauce"))
                                       8))
                        ;; whoa, I'm surprised equal? can
                        ;; compare records like this
                        (tdelta 8))
 
 ;; TODO: test %port-request
-;; TODO: test %8sync and friends!
+;; TODO: test 8sync and friends!
 
 
 ;;; Agenda tests
@@ -356,7 +356,7 @@
   (speaker "Today I went to the zoo and I saw...\n")
   (speaker
    (string-concatenate
-    `("A " ,(symbol->string (%8sync (return-monkey))) "!\n"))))
+    `("A " ,(symbol->string (8sync (return-monkey))) "!\n"))))
 
 (begin
   (set! speaker (speak-it))
@@ -379,14 +379,14 @@
 
 (define (indirection-remote-func-breaks)
   (speaker "bebop\n")
-  (%8sync (remote-func-breaks))
+  (8sync (remote-func-breaks))
   (speaker "bidop\n"))
 
 (define* (local-func-gets-break #:key with-indirection)
   (speaker "Time for exception fun!\n")
   (let ((caught-exception #f))
     (catch-8sync
-     (%8sync-run (if with-indirection
+     (8sync-run (if with-indirection
                          (indirection-remote-func-breaks)
                          (remote-func-breaks)))
       ('numerical-overflow

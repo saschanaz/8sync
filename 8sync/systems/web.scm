@@ -92,7 +92,7 @@ don't totally failboat"
         ((client-conn . socket-address)
          (define (close-and-dequeue)
            (close client-conn)
-           (%8sync-port-remove client-conn))
+           (8sync-port-remove client-conn))
 
          (catch
            #t
@@ -103,7 +103,7 @@ don't totally failboat"
                    (lambda ()
                      (call-with-values
                          (lambda ()
-                           ;; @@: Is it useful to wrap this in %8sync-run?
+                           ;; @@: Is it useful to wrap this in 8sync-run?
                            ;;  It's more indirection but might give breathing
                            ;;  room to other requests...
                            (handler request request-body))

@@ -68,11 +68,11 @@
 
             run-it wrap wrap-apply run run-at run-delay
 
-            %8sync %8sync-delay
-            %8sync-run %8sync-run-at %8sync-run-delay
-            %8sync-port %8sync-port-remove
+            8sync 8sync-delay
+            8sync-run 8sync-run-at 8sync-run-delay
+            8sync-port 8sync-port-remove
             
-            catch-8sync catch-%8sync
+            catch-8sync
 
             ;; used for introspecting the error, but a method for making
             ;; is not exposed
@@ -471,7 +471,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;; Asynchronous escape to run things
 ;;; =================================
 
-(define-syntax-rule (%8sync-abort-to-prompt async-request)
+(define-syntax-rule (8sync-abort-to-prompt async-request)
   (abort-to-prompt (current-agenda-prompt)
                    async-request))
 
@@ -480,7 +480,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
   "Wrap PROC in an async-request
 
 The purpose of this is to make sure that users don't accidentally
-return the wrong thing via (%8sync) and trip themselves up."
+return the wrong thing via (8sync) and trip themselves up."
   (cons '*async-request* proc))
 
 (define (setup-async-request resume-kont async-request)
@@ -491,7 +491,7 @@ return the wrong thing via (%8sync) and trip themselves up."
     ;; TODO: deliver more helpful errors depending on what the user
     ;;   returned
     (_ (throw 'invalid-async-request
-              "Invalid request passed back via an (%8sync) procedure."
+              "Invalid request passed back via an (8sync) procedure."
               async-request))))
 
 (define-record-type <wrapped-exception>
@@ -510,22 +510,22 @@ return the wrong thing via (%8sync) and trip themselves up."
                (wrapped-exception-stacks body-result))
         body-result)))
 
-(define-syntax %8sync
+(define-syntax 8sync
   (syntax-rules ()
     "Run BODY asynchronously (8synchronously?) at a prompt, then return.
 
 Possibly specify WHEN as the second argument."
-    ((%8sync body)
-     (%8sync-run body))
-    ((%8sync body when)
-     (%8sync-run-at body when))))
+    ((8sync body)
+     (8sync-run body))
+    ((8sync body when)
+     (8sync-run-at body when))))
 
-(define-syntax-rule (%8sync-run body ...)
-  (%8sync-run-at body ... #f))
+(define-syntax-rule (8sync-run body ...)
+  (8sync-run-at body ... #f))
 
-(define-syntax-rule (%8sync-run-at body ... when)
+(define-syntax-rule (8sync-run-at body ... when)
   (propagate-%async-exceptions
-   (%8sync-abort-to-prompt
+   (8sync-abort-to-prompt
     ;; Send an asynchronous request to apply a continuation to the
     ;; following function, then handle that as a request to the agenda
     (make-async-request
@@ -564,14 +564,14 @@ Possibly specify WHEN as the second argument."
                 (set! exception-stack (make-stack #t 1 0)))))))
         when))))))
 
-(define-syntax-rule (%8sync-run-delay body ... delay-time)
-  (%8sync-run-at body ... (tdelta delay-time)))
+(define-syntax-rule (8sync-run-delay body ... delay-time)
+  (8sync-run-at body ... (tdelta delay-time)))
 
-(define-syntax-rule (%8sync-delay args ...)
-  (%8sync-run-delay args ...))
+(define-syntax-rule (8sync-delay args ...)
+  (8sync-run-delay args ...))
 
-(define-syntax-rule (%8sync-port port port-request-args ...)
-  (%8sync-abort-to-prompt
+(define-syntax-rule (8sync-port port port-request-args ...)
+  (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
       (list (make-port-request port port-request-args ...)
@@ -581,26 +581,26 @@ Possibly specify WHEN as the second argument."
              ;; "Zero values returned to single-valued continuation""
              (wrap (kont #f)) #f))))))
 
-(define-syntax-rule (%8sync-port-remove port)
-  (%8sync-abort-to-prompt
+(define-syntax-rule (8sync-port-remove port)
+  (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
       (list (make-port-remove-request port)
             (make-run-request
-             ;; See comment in %8sync-port
+             ;; See comment in 8sync-port
              (wrap (kont #f)) #f))))))
 
 
 ;; TODO: Write (%run-immediately)
 
-(define-syntax-rule (%8sync-immediate body)
+(define-syntax-rule (8sync-immediate body)
   "Run body asynchronously but ignore its result...
 forge ahead in our current function!"
-  (%8sync-abort-to-prompt
+  (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
       (list (make-run-request
-             ;; See comment in %8sync-port
+             ;; See comment in 8sync-port
              (wrap (kont #f)) #f)
             (make-run-request body #f))))))
 
@@ -615,10 +615,6 @@ forge ahead in our current function!"
         (apply handler orig-stacks orig-args)) ...
        (else (raise '8sync-caught-error
                     orig-key orig-args orig-stacks))))))
-
-;; Alias...?
-(define-syntax-rule (catch-%8sync rest ...)
-  (catch-8sync rest ...))
 
 
 

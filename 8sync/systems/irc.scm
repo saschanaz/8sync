@@ -241,7 +241,7 @@
              ;; reset buffer
              (set! buffer '())
              ;; run it
-             (%8sync (handle-line
+             (8sync (handle-line
                       socket
                       ready-line
                       username))))
