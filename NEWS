@@ -15,5 +15,5 @@ This is the first release of 8sync.  Welcome to 8sync!
 The following features are present already in this very first release:
 
  - An asynchronous event loop
- - Delimited continuation support via the (%8sync) command
+ - Delimited continuation support via the (8sync) command
  - IRC bot demo
