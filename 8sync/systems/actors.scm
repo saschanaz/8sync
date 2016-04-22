@@ -573,10 +573,11 @@ an integer."
    (message-action message)
    (message-body message)
    (message-in-reply-to message)
+   (message-wants-reply message)
    (message-replied message)
    (message-deferred-reply message)))
 
-(define (write-message message port)
+(define* (write-message message #:optional (port (current-output-port)))
   "Write out a message to a port for easy reading later.
 
 Note that if a sub-value can't be easily written to something
@@ -593,9 +594,28 @@ to improve that.  You'll need a better serializer for that.."
     (action ,(message-action message))
     (body ,(message-body message))
     (in-reply-to ,(message-in-reply-to message))
+    (wants-reply ,(message-wants-reply message))
     (replied ,(message-replied message))
     (deferred-reply ,(message-deferred-reply message))))
 
 (define (pprint-message message)
   "Pretty print a message."
   (pretty-print (serialize-message-pretty message)))
+
+(define* (read-message #:optional (port (current-input-port)))
+  "Read a message serialized via serialize-message from PORT"
+  (match (read port)
+    ((id to from action body in-reply-to wants-reply replied deferred-reply)
+     (make-message-intern
+      id to from action body
+      in-reply-to wants-reply replied deferred-reply))
+    (anything-else
+     (throw 'message-read-bad-structure
+            "Could not read message from structure"
+            anything-else))))
+
+(define (read-message-from-string message-str)
+  "Read message from MESSAGE-STR"
+  (with-input-from-string message-str
+    (lambda ()
+      (read-message (current-input-port)))))
