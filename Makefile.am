@@ -52,7 +52,8 @@ SOURCES =  \
 
 
 TESTS =							\
-	tests/test-agenda.scm
+	tests/test-agenda.scm				\
+	tests/test-actors.scm
 
 TEST_EXTENSIONS = .scm
 
