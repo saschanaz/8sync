@@ -24,6 +24,7 @@
   #:use-module (srfi srfi-9 gnu)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 pretty-print)
   #:use-module (8sync agenda)
   #:use-module (8sync repl)
   #:export (;; utilities... ought to go in their own module
@@ -129,10 +130,11 @@
   (actor-id address-actor-id)
   (hive-id address-hive-id))
 
-;; (set-record-type-printer!
-;;  <address>
-;;  (lambda (record port)
-;;    (format port "<<address> ~s>" (address->string record))))
+(set-record-type-printer!
+ <address>
+ (lambda (record port)
+   (format port "<address: ~s@~s>"
+           (address-actor-id record) (address-hive-id record))))
 
 (define (address->string address)
   (string-append (address-actor-id address) "@"
@@ -540,3 +542,37 @@ an integer."
 (define (hive-bootstrap-message hive to-id action . message-body-args)
   (wrap
    (apply send-message hive to-id action message-body-args)))
+
+
+
+;;; Convenience procedures
+;;; ======================
+
+(define (serialize-message message)
+  "Serialize a message for read/write"
+  (list
+   (message-id message)
+   (address->string (message-to message))
+   (address->string (message-from message))
+   (message-action message)
+   (message-body message)
+   (message-in-reply-to message)
+   (message-replied message)
+   (message-deferred-reply message)))
+
+(define (write-message message port)
+  (write (serialize-message message) port))
+
+(define (serialize-message-pretty message)
+  `(*message*
+    (id ,(message-id message))
+    (to ,(message-to message))
+    (from ,(message-from message))
+    (action ,(message-action message))
+    (body ,(message-body message))
+    (in-reply-to ,(message-in-reply-to message))
+    (replied ,(message-replied message))
+    (deferred-reply ,(message-deferred-reply message))))
+
+(define (pprint-message message)
+  (pretty-print (serialize-message-pretty message)))
