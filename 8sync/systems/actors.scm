@@ -581,8 +581,8 @@ an integer."
   "Serialize a message for read/write"
   (list
    (message-id message)
-   (address->string (message-to message))
-   (address->string (message-from message))
+   (message-to message)
+   (message-from message)
    (message-action message)
    (message-body message)
    (message-in-reply-to message)
