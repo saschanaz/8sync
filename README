@@ -37,7 +37,7 @@ License
 -------
 
 Everything in here is LGPL v3 or later, as published by the Free
-Software Foundation, with exceptions below:
+Software Foundation (see COPYING), with exceptions below:
 
  - Some autotools related files are under the GPL v3 or later in the
    toplevel directory (their headers will say).  I guess if you
