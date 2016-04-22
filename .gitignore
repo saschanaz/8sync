@@ -18,6 +18,9 @@ test-driver
 tests/*.trs
 install-sh
 *.tar.gz
+*.sig
+*.directive
+*.asc
 
 /build-aux/compile
 /build-aux/config.guess
