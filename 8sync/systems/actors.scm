@@ -70,7 +70,11 @@
             reply-message reply-message-wait
 
             ez-run-hive
-            hive-bootstrap-message))
+            hive-bootstrap-message
+
+            serialize-message write-message
+            serialize-message-pretty pprint-mesage
+            read-message read-message-from-string))
 
 ;; For ids
 (define %random-state
