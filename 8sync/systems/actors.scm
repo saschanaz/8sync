@@ -423,7 +423,7 @@ Instead, actors should call create-actor."
   ;; Requiring mutation on message objects is clearly not great,
   ;; but it may be worth it...?  Investigate!
   (replied message-replied set-message-replied!)
-  (deferred-reply deferred-reply set-message-deferred-reply!))
+  (deferred-reply message-deferred-reply set-message-deferred-reply!))
 
 
 (define* (make-message id to from action body
