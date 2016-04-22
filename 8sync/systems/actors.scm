@@ -561,9 +561,15 @@ an integer."
    (message-deferred-reply message)))
 
 (define (write-message message port)
+  "Write out a message to a port for easy reading later.
+
+Note that if a sub-value can't be easily written to something
+Guile's `read' procedure knows how to read, this doesn't do anything
+to improve that.  You'll need a better serializer for that.."
   (write (serialize-message message) port))
 
 (define (serialize-message-pretty message)
+  "Serialize a message in a way that's easy for humans to read."
   `(*message*
     (id ,(message-id message))
     (to ,(message-to message))
@@ -575,4 +581,5 @@ an integer."
     (deferred-reply ,(message-deferred-reply message))))
 
 (define (pprint-message message)
+  "Pretty print a message."
   (pretty-print (serialize-message-pretty message)))
