@@ -476,7 +476,7 @@ If key not found and DFLT not provided, throw an error."
   (let ((result (assoc key (message-body message))))
     (if result (cdr result)
         (if (eq? dflt %nothing-provided)
-            (throw 'message-body-lacks-key
+            (throw 'message-missing-key
                    "Message body does not contain key and no default provided"
                    #:key key
                    #:message message)
