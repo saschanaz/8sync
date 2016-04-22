@@ -38,7 +38,9 @@
             actor-hive
             actor-message-handler
 
-            <address>
+            ;;; Commenting out the <address> type for now;
+            ;;; it may be back when we have better serializers
+            ;; <address>
             make-address address?
             address-actor-id address-hive-id
 
@@ -108,7 +110,7 @@
 ;;; =========================
 
 (define-class <actor> ()
-  ;; An <address> object
+  ;; An address object
   (id #:init-thunk (require-slot "id")
       #:init-keyword #:id
       #:getter actor-id)
@@ -124,17 +126,31 @@
 (define-method (actor-message-handler (actor <actor>))
   (slot-ref actor 'message-handler))
 
-(define-record-type <address>
-  (make-address actor-id hive-id)  ; @@: Do we want the trailing -id?
-  address?
-  (actor-id address-actor-id)
-  (hive-id address-hive-id))
+;;; So these are the nicer representations of addresses.
+;;; However, they don't serialize so easily with scheme read/write, so we're
+;;; using the simpler cons cell version below for now.
 
-(set-record-type-printer!
- <address>
- (lambda (record port)
-   (format port "<address: ~s@~s>"
-           (address-actor-id record) (address-hive-id record))))
+;; (define-record-type <address>
+;;   (make-address actor-id hive-id)  ; @@: Do we want the trailing -id?
+;;   address?
+;;   (actor-id address-actor-id)
+;;   (hive-id address-hive-id))
+;;
+;; (set-record-type-printer!
+;;  <address>
+;;  (lambda (record port)
+;;    (format port "<address: ~s@~s>"
+;;            (address-actor-id record) (address-hive-id record))))
+;;
+
+(define (make-address actor-id hive-id)
+  (cons actor-id hive-id))
+
+(define (address-actor-id address)
+  (car address))
+
+(define (address-hive-id address)
+  (cdr address))
 
 (define (address->string address)
   (string-append (address-actor-id address) "@"
