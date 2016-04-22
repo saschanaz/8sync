@@ -574,8 +574,8 @@ an integer."
 
 
 
-;;; Convenience procedures
-;;; ======================
+;;; Basic readers / writers
+;;; =======================
 
 (define (serialize-message message)
   "Serialize a message for read/write"
