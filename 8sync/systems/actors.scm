@@ -73,7 +73,7 @@
             hive-bootstrap-message
 
             serialize-message write-message
-            serialize-message-pretty pprint-mesage
+            serialize-message-pretty pprint-message
             read-message read-message-from-string))
 
 ;; For ids
