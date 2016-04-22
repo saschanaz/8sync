@@ -461,13 +461,22 @@ Instead, actors should call create-actor."
 ;;   change), and using existing tooling (though adding new tooling
 ;;   would be negligible in implementation effort.)
 
-(define* (message-ref message key #:optional dflt)
+;; This cons cell is immutable and unique (for eq? tests)
+(define %nothing-provided (cons 'nothing 'provided))
+
+(define* (message-ref message key #:optional (dflt %nothing-provided))
   "Extract KEY from body of MESSAGE.
 
-Optionally set default with [DFLT]"
+Optionally set default with [DFLT]
+If key not found and DFLT not provided, throw an error."
   (let ((result (assoc key (message-body message))))
     (if result (cdr result)
-        dflt)))
+        (if (eq? dflt %nothing-provided)
+            (throw 'message-body-lacks-key
+                   "Message body does not contain key and no default provided"
+                   #:key key
+                   #:message message)
+            dflt))))
 
 
 (define (kwarg-list-to-alist args)
