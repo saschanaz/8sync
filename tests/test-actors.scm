@@ -20,8 +20,13 @@
     'banana)
 
   ;; A key we don't have
-  (test-equal (message-ref monkey-message 'coo-coo)
-    #f)
+  (let ((caught-error #f))
+    (catch 'message-missing-key
+      (lambda ()
+        (message-ref monkey-message 'coo-coo))
+      (lambda (. args)
+        (set! caught-error #t)))
+    (test-assert caught-error))
 
   ;; A key we don't have, with a default set
   (test-equal (message-ref monkey-message 'coo-coo 'danger-danger)
