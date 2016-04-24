@@ -138,7 +138,7 @@ Generally done automatically for the user through (make-agenda)."
                       (schedule (make-schedule))
                       (time (gettimeofday))
                       (catch-handler #f)
-                      (pre-unwind-handler #f))
+                      (pre-unwind-handler print-error-and-continue))
   ;; TODO: document arguments
   "Make a fresh agenda."
   (make-agenda-intern queue prompt
@@ -742,7 +742,7 @@ Also handles sleeping when all we have to do is wait on the schedule."
                        #:key
                        ;; @@: Should we make stop-on-nothing-to-do
                        ;;   the default stop-condition?
-                       stop-condition
+                       (stop-condition stop-on-nothing-to-do)
                        (get-time gettimeofday)
                        (handle-ports update-agenda-from-select!))
   ;; TODO: Document fields
