@@ -16,10 +16,6 @@
 ;;; Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 ;;; 02110-1301 USA
 
-#!/usr/bin/guile \
--s
-!#
-
 (define-module (tests test-agenda)
   #:use-module (srfi srfi-64)
   #:use-module (ice-9 q)
