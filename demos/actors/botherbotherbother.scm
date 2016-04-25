@@ -1,3 +1,7 @@
+#!/usr/bin/guile \
+-e main -s
+!#
+
 ;;; 8sync --- Asynchronous programming for Guile
 ;;; Copyright (C) 2016 Christopher Allan Webber <cwebber@dustycloud.org>
 ;;;
@@ -108,7 +112,7 @@
 
 (define num-students 10)
 
-(define (main)
+(define (main . args)
   (define agenda (make-agenda))
   (define hive (make-hive))
   (define professor (hive-create-actor hive <professor>))
