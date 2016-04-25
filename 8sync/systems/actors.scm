@@ -349,7 +349,7 @@ more compact following syntax:
      (simple-dispatcher
       (list (%expand-action-item action-item) ...)))))
 
-(define-syntax-rule (define-simple-actor class (actions ...))
+(define-syntax-rule (define-simple-actor class actions ...)
   (define-class class (<actor>)
     (message-handler
      #:init-value (make-action-dispatch actions ...)

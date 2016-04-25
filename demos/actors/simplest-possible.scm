@@ -17,25 +17,25 @@
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
 (use-modules (8sync systems actors)
-             (ice-9 match)
              (oop goops))
 
 (define-simple-actor <emo>
-  ((greet-proog
-    (lambda (actor message)
-      (display "Heya Proog!\n")
-      (send-message
-       actor (message-ref message 'target)
-       'greet-emo)))))
+  (greet-proog
+   (lambda (actor message)
+     (display "Heya Proog!\n")
+     (send-message
+      actor (message-ref message 'target)
+      'greet-emo))))
 
 (define-simple-actor <proog>
-  ((greet-emo
-    (lambda (actor message)
-      (display "Hi, Emo!\n")))))
+  (greet-emo
+   (lambda (actor message)
+     (display "Hi, Emo!\n"))))
 
 (define hive (make-hive))
 (define our-emo (hive-create-actor hive <emo>))
 (define our-proog (hive-create-actor hive <proog>))
-(ez-run-hive hive
-             (list (hive-bootstrap-message hive our-emo 'greet-proog
-                                           #:target our-proog)))
+(define (run-demo)
+  (ez-run-hive hive
+               (list (hive-bootstrap-message hive our-emo 'greet-proog
+                                             #:target our-proog))))
