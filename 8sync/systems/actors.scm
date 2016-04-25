@@ -462,10 +462,9 @@ more compact following syntax:
                  (message-handler actor message)))
             ;; Possibly autoreply
             (if (message-needs-reply message)
-                (begin
-                  ;; @@: Should we give *autoreply* as the action instead of *reply*?
-                  (reply-message actor message
-                                 #:*auto-reply* #t)))
+                ;; @@: Should we give *autoreply* as the action instead of *reply*?
+                (reply-message actor message
+                               #:*auto-reply* #t))
             ;; Returning result allows actors to possibly make a run-request
             ;; at the end of handling a message.
             ;; ... We do want that, right?
