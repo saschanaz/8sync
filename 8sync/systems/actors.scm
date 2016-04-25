@@ -110,6 +110,132 @@
 
 
 
+;;; Messages
+;;; ========
+
+
+(define-record-type <message>
+  (make-message-intern id to from action
+                       body in-reply-to wants-reply   ; do we need hive-proxy?
+                       ;; Are these still needed?
+                       replied deferred-reply)
+  message?
+  (id message-id)
+  (to message-to)
+  (from message-from)
+  (action message-action)
+  (body message-body)
+  (in-reply-to message-in-reply-to)
+  (wants-reply message-wants-reply)
+
+  ;; See XUDD source for these.  Not use yet, maybe eventually will be?
+  ;; XUDD uses them for autoreply.
+  ;; Requiring mutation on message objects is clearly not great,
+  ;; but it may be worth it...?  Investigate!
+  (replied message-replied set-message-replied!)
+  (deferred-reply message-deferred-reply set-message-deferred-reply!))
+
+
+(define* (make-message id to from action body
+                       #:key in-reply-to wants-reply
+                       replied deferred-reply)
+  (make-message-intern id to from action body
+                       in-reply-to wants-reply replied
+                       deferred-reply))
+
+;; Note: the body of messages is currently an alist, but it's created
+;;   from a keyword based property list (see the following two functions).
+;;   But, that's an extra conversion step, and maybe totally unnecessary:
+;;   we already have message-ref, and this could just pull a keyword
+;;   from a property list.
+;;   The main ways this might be useful are error checking,
+;;   serialization across the wire (but even that might require some
+;;   change), and using existing tooling (though adding new tooling
+;;   would be negligible in implementation effort.)
+
+;; This cons cell is immutable and unique (for eq? tests)
+(define %nothing-provided (cons 'nothing 'provided))
+
+(define* (message-ref message key #:optional (dflt %nothing-provided))
+  "Extract KEY from body of MESSAGE.
+
+Optionally set default with [DFLT]
+If key not found and DFLT not provided, throw an error."
+  (let ((result (assoc key (message-body message))))
+    (if result (cdr result)
+        (if (eq? dflt %nothing-provided)
+            (throw 'message-missing-key
+                   "Message body does not contain key and no default provided"
+                   #:key key
+                   #:message message)
+            dflt))))
+
+
+(define (kwarg-list-to-alist args)
+  (let loop ((remaining args)
+             (result '()))
+    (match remaining
+      (((? keyword? key) val rest ...)
+       (loop rest
+             (cons (cons (keyword->symbol key) val) 
+                   result)))
+      (() result)
+      (_ (throw 'invalid-kwarg-list
+                "Invalid keyword argument list"
+                args)))))
+
+
+(define (send-message from-actor to-id action . message-body-args)
+  "Send a message from an actor to another actor"
+  (let* ((hive (actor-hive from-actor))
+         (message (make-message (hive-gen-message-id hive) to-id
+                                (actor-id from-actor) action
+                                (kwarg-list-to-alist message-body-args))))
+    (8sync (hive-process-message hive message))))
+
+(define (send-message-wait from-actor to-id action . message-body-args)
+  "Send a message from an actor to another, but wait until we get a response"
+  (let* ((hive (actor-hive from-actor))
+         (agenda-prompt (hive-prompt (actor-hive from-actor)))
+         (message (make-message (hive-gen-message-id hive) to-id
+                                (actor-id from-actor) action
+                                (kwarg-list-to-alist message-body-args)
+                                #:wants-reply #t)))
+    (abort-to-prompt agenda-prompt from-actor message)))
+
+;; TODO: Intelligently ~propagate(ish) errors on -wait functions.
+;;   We might have `send-message-wait-brazen' to allow callers to
+;;   not have an exception thrown and instead just have a message with
+;;   the appropriate '*error* message returned.
+
+(define (reply-message from-actor original-message
+                       . message-body-args)
+  "Reply to a message"
+  (set-message-replied! original-message #t)
+  (let* ((hive (actor-hive from-actor))
+         (new-message (make-message (hive-gen-message-id hive)
+                                    (message-from original-message)
+                                    (actor-id from-actor) '*reply*
+                                    (kwarg-list-to-alist message-body-args)
+                                    #:in-reply-to (message-id original-message))))
+    (8sync (hive-process-message hive new-message))))
+
+(define (reply-message-wait from-actor original-message
+                            . message-body-args)
+  "Reply to a messsage, but wait until we get a response"
+  (set-message-replied! original-message #t)
+  (let* ((hive (actor-hive from-actor))
+         (agenda-prompt (hive-prompt (actor-hive from-actor)))
+         (new-message (make-message (hive-gen-message-id hive)
+                                    (message-from original-message)
+                                    (actor-id from-actor) '*reply*
+                                    (kwarg-list-to-alist message-body-args)
+                                    #:wants-reply #t
+                                    #:in-reply-to (message-id original-message))))
+    (abort-to-prompt agenda-prompt from-actor new-message)))
+
+
+
 ;;; Main actor implementation
 ;;; =========================
 
@@ -419,132 +545,6 @@ Instead, actors should call create-actor."
 ;; Live the hive proxy, but has access to the hive itself...
 (define-class <debug-hive-proxy> (<hive-proxy>)
   (hive #:init-keyword #:hive))
-
-
-
-;;; Messages
-;;; ========
-
-
-(define-record-type <message>
-  (make-message-intern id to from action
-                       body in-reply-to wants-reply   ; do we need hive-proxy?
-                       ;; Are these still needed?
-                       replied deferred-reply)
-  message?
-  (id message-id)
-  (to message-to)
-  (from message-from)
-  (action message-action)
-  (body message-body)
-  (in-reply-to message-in-reply-to)
-  (wants-reply message-wants-reply)
-
-  ;; See XUDD source for these.  Not use yet, maybe eventually will be?
-  ;; XUDD uses them for autoreply.
-  ;; Requiring mutation on message objects is clearly not great,
-  ;; but it may be worth it...?  Investigate!
-  (replied message-replied set-message-replied!)
-  (deferred-reply message-deferred-reply set-message-deferred-reply!))
-
-
-(define* (make-message id to from action body
-                       #:key in-reply-to wants-reply
-                       replied deferred-reply)
-  (make-message-intern id to from action body
-                       in-reply-to wants-reply replied
-                       deferred-reply))
-
-;; Note: the body of messages is currently an alist, but it's created
-;;   from a keyword based property list (see the following two functions).
-;;   But, that's an extra conversion step, and maybe totally unnecessary:
-;;   we already have message-ref, and this could just pull a keyword
-;;   from a property list.
-;;   The main ways this might be useful are error checking,
-;;   serialization across the wire (but even that might require some
-;;   change), and using existing tooling (though adding new tooling
-;;   would be negligible in implementation effort.)
-
-;; This cons cell is immutable and unique (for eq? tests)
-(define %nothing-provided (cons 'nothing 'provided))
-
-(define* (message-ref message key #:optional (dflt %nothing-provided))
-  "Extract KEY from body of MESSAGE.
-
-Optionally set default with [DFLT]
-If key not found and DFLT not provided, throw an error."
-  (let ((result (assoc key (message-body message))))
-    (if result (cdr result)
-        (if (eq? dflt %nothing-provided)
-            (throw 'message-missing-key
-                   "Message body does not contain key and no default provided"
-                   #:key key
-                   #:message message)
-            dflt))))
-
-
-(define (kwarg-list-to-alist args)
-  (let loop ((remaining args)
-             (result '()))
-    (match remaining
-      (((? keyword? key) val rest ...)
-       (loop rest
-             (cons (cons (keyword->symbol key) val) 
-                   result)))
-      (() result)
-      (_ (throw 'invalid-kwarg-list
-                "Invalid keyword argument list"
-                args)))))
-
-
-(define (send-message from-actor to-id action . message-body-args)
-  "Send a message from an actor to another actor"
-  (let* ((hive (actor-hive from-actor))
-         (message (make-message (hive-gen-message-id hive) to-id
-                                (actor-id from-actor) action
-                                (kwarg-list-to-alist message-body-args))))
-    (8sync (hive-process-message hive message))))
-
-(define (send-message-wait from-actor to-id action . message-body-args)
-  "Send a message from an actor to another, but wait until we get a response"
-  (let* ((hive (actor-hive from-actor))
-         (agenda-prompt (hive-prompt (actor-hive from-actor)))
-         (message (make-message (hive-gen-message-id hive) to-id
-                                (actor-id from-actor) action
-                                (kwarg-list-to-alist message-body-args)
-                                #:wants-reply #t)))
-    (abort-to-prompt agenda-prompt from-actor message)))
-
-;; TODO: Intelligently ~propagate(ish) errors on -wait functions.
-;;   We might have `send-message-wait-brazen' to allow callers to
-;;   not have an exception thrown and instead just have a message with
-;;   the appropriate '*error* message returned.
-
-(define (reply-message from-actor original-message
-                       . message-body-args)
-  "Reply to a message"
-  (set-message-replied! original-message #t)
-  (let* ((hive (actor-hive from-actor))
-         (new-message (make-message (hive-gen-message-id hive)
-                                    (message-from original-message)
-                                    (actor-id from-actor) '*reply*
-                                    (kwarg-list-to-alist message-body-args)
-                                    #:in-reply-to (message-id original-message))))
-    (8sync (hive-process-message hive new-message))))
-
-(define (reply-message-wait from-actor original-message
-                            . message-body-args)
-  "Reply to a messsage, but wait until we get a response"
-  (set-message-replied! original-message #t)
-  (let* ((hive (actor-hive from-actor))
-         (agenda-prompt (hive-prompt (actor-hive from-actor)))
-         (new-message (make-message (hive-gen-message-id hive)
-                                    (message-from original-message)
-                                    (actor-id from-actor) '*reply*
-                                    (kwarg-list-to-alist message-body-args)
-                                    #:wants-reply #t
-                                    #:in-reply-to (message-id original-message))))
-    (abort-to-prompt agenda-prompt from-actor new-message)))
 
 
 
