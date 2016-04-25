@@ -171,6 +171,13 @@ If key not found and DFLT not provided, throw an error."
             dflt))))
 
 
+(define (message-needs-reply message)
+  "See if this message needs a reply still"
+  (and (message-wants-reply message)
+       (not (or (message-replied message)
+                (message-deferred-reply message)))))
+
+
 (define (kwarg-list-to-alist args)
   (let loop ((remaining args)
              (result '()))
@@ -378,6 +385,7 @@ more compact following syntax:
   ;; This is a map from cons cell of message-id
   ;;   to a cons cell of (actor-id . coroutine)
   ;; @@: Should we have a <waiting-coroutine> record type?
+  ;; @@: Should there be any way to clear out "old" coroutines?
   (waiting-coroutines #:init-thunk make-hash-table
                       #:getter hive-waiting-coroutines)
   ;; Message prompt
@@ -450,7 +458,18 @@ more compact following syntax:
         (lambda ()
           (define message-handler (actor-message-handler actor))
           ;; @@: Should a more general error handling happen here?
-          (message-handler actor message))
+          (let ((result
+                 (message-handler actor message)))
+            ;; Possibly autoreply
+            (if (message-needs-reply message)
+                (begin
+                  ;; @@: Should we give *autoreply* as the action instead of *reply*?
+                  (reply-message actor message
+                                 #:*auto-reply* #t)))
+            ;; Returning result allows actors to possibly make a run-request
+            ;; at the end of handling a message.
+            ;; ... We do want that, right?
+            result))
 
         (lambda (kont actor message)
           (let ((hive (actor-hive actor)))
