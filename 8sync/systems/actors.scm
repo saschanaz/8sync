@@ -464,7 +464,14 @@ more compact following syntax:
   (define (resume-waiting-coroutine)
     (match (hash-remove! (hive-waiting-coroutines hive)
                          (message-in-reply-to message))
-      ((_ . kont)
+      ((_ . (resume-actor-id . kont))
+       (if (not (equal? (message-to message)
+                        resume-actor-id))
+           (throw 'resuming-to-wrong-actor
+                  "Attempted to resume a coroutine to the wrong actor!"
+                  #:expected-actor-id (message-to message)
+                  #:got-actor-id resume-actor-id
+                  #:message message))
        (kont message))
       (#f (throw 'no-waiting-coroutine
                  "message in-reply-to tries to resume nonexistent coroutine"
