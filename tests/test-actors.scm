@@ -19,10 +19,18 @@
 (define-module (tests test-actors)
   #:use-module (srfi srfi-64)
   #:use-module (8sync systems actors)
+  #:use-module (oop goops)
   #:use-module (tests utils))
 
 (test-begin "test-actors")
 
+
+;;; Test writing things to here
+(define %record-out (make-parameter (open-output-string)))
+(define (~display str)
+  (display str (%record-out)))
+(define-syntax-rule (~format args ...)
+  (format (%record-out) args ...))
 
 ;;; Some test dummy values
 ;;; ======================
@@ -82,6 +90,75 @@
          message-in-reply-to message-wants-reply
          (@@ (8sync systems actors) message-replied)
          (@@ (8sync systems actors) message-deferred-reply))))
+
+
+;;; Test reply / autoreply
+;;; ======================
+
+(define-simple-actor <antsy-caller>
+  ((pester-rep actor message)
+   (~display "customer> I'm calling customer service about this!\n")
+   (let ((reply (send-message-wait actor (message-ref message 'who-to-call)
+                                   'field-call)))
+     (if (message-ref reply '*auto-reply* #f)
+         (~display "customer> Whaaaaat?  I can't believe I got voice mail!\n")
+         (begin
+           (~format "*customer hears*: ~a\n" (message-ref reply 'msg))
+           (let ((reply (reply-message-wait
+                         actor reply
+                         #:msg "Yes, it didn't work, I'm VERY ANGRY!")))
+             (if (message-ref reply '*auto-reply* #f)
+                 (~display "customer> Well then!  Harumph.\n")
+                 (error "Not an autoreply?  What's going on here..."))))))))
+
+(define-simple-actor <diligent-rep>
+  ((field-call actor message)
+   (~display "good-rep> Hm, another call from a customer...\n")
+   (let ((reply
+          (reply-message-wait
+           actor message
+           #:msg "Have you tried turning it off and on?")))
+     (~format "*rep hears*: ~a\n" (message-ref reply 'msg))
+     (~display "good-rep> I'm sorry, that's all I can do for you.\n"))))
+
+(define-simple-actor <lazy-rep>
+  ((field-call actor message)
+   (~display "lazy-rep> I'm not answering that.\n")))
+
+(let* ((hive (make-hive))
+       (customer (hive-create-actor hive <antsy-caller>
+                                    #:id-cookie "antsy-caller"))
+       (diligent-rep (hive-create-actor hive <diligent-rep>
+                                        #:id-cookie "diligent-rep"))
+       (lazy-rep (hive-create-actor hive <lazy-rep>
+                                    #:id-cookie "lazy-rep")))
+  ;; * Playing a tape of a diligent service rep *
+  (parameterize ((%record-out (open-output-string)))
+    (let* ((result (ez-run-hive
+                    hive
+                    (list (hive-bootstrap-message hive customer 'pester-rep
+                                                  #:who-to-call diligent-rep))))
+           (displayed-text (get-output-string (%record-out))))
+      (test-equal
+          displayed-text
+          "customer> I'm calling customer service about this!
+good-rep> Hm, another call from a customer...
+*customer hears*: Have you tried turning it off and on?
+*rep hears*: Yes, it didn't work, I'm VERY ANGRY!
+good-rep> I'm sorry, that's all I can do for you.
+customer> Well then!  Harumph.\n")))
+  ;; * Playing a tape of a lazy service rep *
+  (parameterize ((%record-out (open-output-string)))
+    (let* ((result (ez-run-hive
+                    hive
+                    (list (hive-bootstrap-message hive customer 'pester-rep
+                                                  #:who-to-call lazy-rep))))
+           (displayed-text (get-output-string (%record-out))))
+      (test-equal
+          displayed-text
+          "customer> I'm calling customer service about this!
+lazy-rep> I'm not answering that.
+customer> Whaaaaat?  I can't believe I got voice mail!\n"))))
 
 (test-end "test-actors")
 (test-exit)
