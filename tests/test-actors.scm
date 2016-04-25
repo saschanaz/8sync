@@ -65,5 +65,5 @@
          (@@ (8sync systems actors) message-replied)
          (@@ (8sync systems actors) message-deferred-reply))))
 
-(test-end "test-agenda")
+(test-end "test-actors")
 (test-exit)
