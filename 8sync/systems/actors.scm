@@ -620,7 +620,8 @@ Like create-actor, but permits supplying an id-cookie."
 
 (define (self-destruct actor)
   "Remove an actor from the hive."
-  (hash-remove! hive-actor-registry (actor-id actor)))
+  (hash-remove! (hive-actor-registry (actor-hive actor))
+                (actor-id actor)))
 
 
 
