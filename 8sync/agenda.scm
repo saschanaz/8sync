@@ -71,6 +71,7 @@
             8sync 8sync-delay
             8sync-run 8sync-run-at 8sync-run-delay
             8sync-port 8sync-port-remove
+            8sync-nowait
             
             catch-8sync
 
@@ -593,7 +594,7 @@ Possibly specify WHEN as the second argument."
 
 ;; TODO: Write (%run-immediately)
 
-(define-syntax-rule (8sync-immediate body)
+(define-syntax-rule (8sync-nowait body)
   "Run body asynchronously but ignore its result...
 forge ahead in our current function!"
   (8sync-abort-to-prompt
@@ -602,7 +603,7 @@ forge ahead in our current function!"
       (list (make-run-request
              ;; See comment in 8sync-port
              (wrap (kont #f)) #f)
-            (make-run-request body #f))))))
+            (make-run-request (lambda () body) #f))))))
 
 (define-syntax-rule (catch-8sync exp (handler-key handler) ...)
   (catch '8sync-caught-error
