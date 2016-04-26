@@ -75,7 +75,10 @@ EXTRA_DIST = 						\
 	tests/utils.scm					\
 	demos/run-demo.sh				\
 	demos/ircbot.scm				\
-	demos/hello-web.scm
+	demos/hello-web.scm				\
+	demos/actors/botherbotherbother.scm		\
+	demos/actors/simplest-possible.scm		\
+	demos/actors/robotscanner.scm
 
 
 ## Make changelog on demand
