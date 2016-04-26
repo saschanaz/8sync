@@ -49,7 +49,8 @@ SOURCES =  \
 	8sync/repl.scm \
 	8sync/systems/irc.scm \
 	8sync/systems/web.scm \
-	8sync/systems/actors.scm
+	8sync/systems/actors.scm \
+	8sync/systems/actors/debug.scm
 
 TESTS =							\
 	tests/test-agenda.scm				\
