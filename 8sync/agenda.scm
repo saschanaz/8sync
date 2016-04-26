@@ -1,5 +1,5 @@
 ;;; 8sync --- Asynchronous programming for Guile
-;;; Copyright (C) 2015 Christopher Allan Webber <cwebber@dustycloud.org>
+;;; Copyright (C) 2015, 2016 Christopher Allan Webber <cwebber@dustycloud.org>
 ;;;
 ;;; This file is part of 8sync.
 ;;;
