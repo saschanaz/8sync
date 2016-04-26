@@ -83,8 +83,8 @@
 (define %random-state
   (make-parameter (random-state-from-platform)))
 
-;; Probably bigger than necessary
-(define random-number-size (expt 10 50))
+;; Same size as a uuid4 I think...
+(define random-number-size (expt 2 128))
 
 (define (big-random-number)
   (random random-number-size (%random-state)))
