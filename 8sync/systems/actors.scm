@@ -560,25 +560,13 @@ that method for documentation."
     ;; return the actor id
     actor-id))
 
-(define* (hive-create-actor hive actor-class
-                            #:key
-                            (init '())
-                            id-cookie)
+(define* (hive-create-actor hive actor-class #:rest init)
+  (%hive-create-actor hive actor-class
+                      init #f))
+
+(define* (hive-create-actor* hive actor-class id-cookie #:rest init)
   (%hive-create-actor hive actor-class
                       init id-cookie))
-
-(define-syntax hive-create-actor*
-  (syntax-rules ()
-    "Create an instance of actor-class attached to this hive.
-Return the new actor's id.
-
-Used internally, and used for bootstrapping a fresh hive.
-
-Note that actors should generally not call this method directly.
-Instead, actors should call create-actor."
-    ((_ args ... (init-args ...))
-     (hive-create-actor args ...
-                        #:init (list init-args ...)))))
 
 
 ;; TODO: Give actors this instead of the actual hive reference

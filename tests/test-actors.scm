@@ -126,12 +126,9 @@
    (~display "lazy-rep> I'm not answering that.\n")))
 
 (let* ((hive (make-hive))
-       (customer (hive-create-actor hive <antsy-caller>
-                                    #:id-cookie "antsy-caller"))
-       (diligent-rep (hive-create-actor hive <diligent-rep>
-                                        #:id-cookie "diligent-rep"))
-       (lazy-rep (hive-create-actor hive <lazy-rep>
-                                    #:id-cookie "lazy-rep")))
+       (customer (hive-create-actor* hive <antsy-caller> "antsy-caller"))
+       (diligent-rep (hive-create-actor* hive <diligent-rep> "diligent-rep"))
+       (lazy-rep (hive-create-actor* hive <lazy-rep> "lazy-rep")))
   ;; * Playing a tape of a diligent service rep *
   (parameterize ((%record-out (open-output-string)))
     (let* ((result (ez-run-hive
