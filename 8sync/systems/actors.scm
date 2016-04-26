@@ -201,7 +201,7 @@ If key not found and DFLT not provided, throw an error."
          (message (make-message (hive-gen-message-id hive) to-id
                                 (actor-id from-actor) action
                                 (kwarg-list-to-alist message-body-args))))
-    (8sync (hive-process-message hive message))))
+    (8sync-nowait (hive-process-message hive message))))
 
 (define (send-message-wait from-actor to-id action . message-body-args)
   "Send a message from an actor to another, but wait until we get a response"
@@ -228,7 +228,7 @@ If key not found and DFLT not provided, throw an error."
                                     (actor-id from-actor) '*reply*
                                     (kwarg-list-to-alist message-body-args)
                                     #:in-reply-to (message-id original-message))))
-    (8sync (hive-process-message hive new-message))))
+    (8sync-nowait (hive-process-message hive new-message))))
 
 (define (reply-message-wait from-actor original-message
                             . message-body-args)
