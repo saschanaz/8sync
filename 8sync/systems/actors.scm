@@ -59,6 +59,9 @@
             hive-id
             hive-create-actor hive-create-actor*
 
+            create-actor create-actor*
+            self-destruct
+
             <message>
             make-message message?
             message-to message-action message-from
@@ -588,6 +591,36 @@ Instead, actors should call create-actor."
 ;; Live the hive proxy, but has access to the hive itself...
 (define-class <debug-hive-proxy> (<hive-proxy>)
   (hive #:init-keyword #:hive))
+
+
+
+;;; Various API methods for actors to interact with the system
+;;; ==========================================================
+
+;; TODO: move send-message and friends here...?
+
+;; TODO: Rewrite this inside of a <hive-proxy> ?
+(define* (create-actor from-actor actor-class #:rest init)
+  "Create an instance of actor-class.  Return the new actor's id.
+
+This is the method actors should call directly (unless they want
+to supply an id-cookie, in which case they should use
+create-actor*)."
+  (8sync (%hive-create-actor (actor-hive from-actor)
+                             init #f)))
+
+
+(define* (create-actor* from-actor actor-class id-cookie #:rest init)
+  "Create an instance of actor-class.  Return the new actor's id.
+
+Like create-actor, but permits supplying an id-cookie."
+  (8sync (%hive-create-actor (actor-hive from-actor)
+                             init id-cookie)))
+
+
+(define (self-destruct actor)
+  "Remove an actor from the hive."
+  (hash-remove! hive-actor-registry (actor-id actor)))
 
 
 
