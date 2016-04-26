@@ -261,7 +261,7 @@
    (send-message actor overseer 'transmission
                  #:message "Mission accomplished.")))
 
-(define (main)
+(define (main . args)
   (define hive (make-hive))
   (define overseer (hive-create-actor hive <overseer>))
   (define initial-messages
