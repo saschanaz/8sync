@@ -22,7 +22,7 @@
 (define-simple-actor <emo>
   (greet-proog
    (lambda (actor message)
-     (display "Heya Proog!\n")
+     (display "emo> What's next, Proog?\n")
      (send-message
       actor (message-ref message 'target)
       'greet-emo))))
@@ -30,7 +30,7 @@
 (define-simple-actor <proog>
   (greet-emo
    (lambda (actor message)
-     (display "Hi, Emo!\n"))))
+     (display "proog> Listen, Emo!  Listen to the sounds of the machine!\n"))))
 
 (define hive (make-hive))
 (define our-emo (hive-create-actor hive <emo>))
