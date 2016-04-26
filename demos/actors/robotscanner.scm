@@ -16,6 +16,23 @@
 ;;; You should have received a copy of the GNU Lesser General Public
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
+;;; =====================================================================
+;;; Robot Scanner test demo (from XUDD, originally).
+;;; 
+;;; Here's the premise.  There's a warehouse full of droids, some
+;;; infected, and some not.  The SecurityRobot is being sent in to clean
+;;; up the mess.  It's capable of sending a message that infected droids
+;;; are susceptible to responding in a predictable way.  Once it has
+;;; identified that a droid is infected, it shoots it full of holes till
+;;; the droid is terminated.  The SecurityRobot goes from room to room
+;;; till things are cleared out.
+;;; 
+;;; Overseeing the operation is the "overseer".  The security robot keeps
+;;; the overseer up to date on its progress as it goes.  (For this demo,
+;;; the overseer is also responsible for initializing the world and
+;;; reporting info back to the user.)
+;;; =====================================================================
+
 (use-modules (8sync systems actors)
              (oop goops)
              (ice-9 match))
