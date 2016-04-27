@@ -133,7 +133,7 @@
   (parameterize ((%record-out (open-output-string)))
     (let* ((result (ez-run-hive
                     hive
-                    (list (hive-bootstrap-message hive customer 'pester-rep
+                    (list (bootstrap-message hive customer 'pester-rep
                                                   #:who-to-call diligent-rep))))
            (displayed-text (get-output-string (%record-out))))
       (test-equal
@@ -148,7 +148,7 @@ customer> Well then!  Harumph.\n")))
   (parameterize ((%record-out (open-output-string)))
     (let* ((result (ez-run-hive
                     hive
-                    (list (hive-bootstrap-message hive customer 'pester-rep
+                    (list (bootstrap-message hive customer 'pester-rep
                                                   #:who-to-call lazy-rep))))
            (displayed-text (get-output-string (%record-out))))
       (test-equal

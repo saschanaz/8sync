@@ -37,5 +37,5 @@
 (define our-proog (hive-create-actor hive <proog>))
 (define (main . args)
   (ez-run-hive hive
-               (list (hive-bootstrap-message hive our-emo 'greet-proog
-                                             #:target our-proog))))
+               (list (bootstrap-message hive our-emo 'greet-proog
+                                        #:target our-proog))))

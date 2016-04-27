@@ -129,7 +129,7 @@
   (define start-bothering-tasks
     (map
      (lambda (student)
-       (hive-bootstrap-message hive student 'bother-professor
+       (bootstrap-message hive student 'bother-professor
                                #:target professor))
      students))
 

@@ -265,5 +265,5 @@
   (define hive (make-hive))
   (define overseer (hive-create-actor hive <overseer>))
   (define initial-messages
-    (list (hive-bootstrap-message hive overseer 'init-world)))
+    (list (bootstrap-message hive overseer 'init-world)))
   (ez-run-hive hive initial-messages))

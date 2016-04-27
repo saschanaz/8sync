@@ -72,7 +72,7 @@
             reply-message reply-message-wait
 
             ez-run-hive
-            hive-bootstrap-message
+            bootstrap-message
 
             serialize-message write-message
             serialize-message-pretty pprint-message
@@ -620,7 +620,7 @@ an integer."
       (spawn-and-queue-repl-server! agenda)))
     (start-agenda agenda)))
 
-(define (hive-bootstrap-message hive to-id action . message-body-args)
+(define (bootstrap-message hive to-id action . message-body-args)
   (wrap
    (apply send-message hive to-id action message-body-args)))
 
