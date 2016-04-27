@@ -71,6 +71,8 @@
             send-message send-message-wait
             reply-message reply-message-wait
 
+            <- <-wait <-reply <-reply-wait
+
             ez-run-hive
             bootstrap-message
 
@@ -244,6 +246,16 @@ If key not found and DFLT not provided, throw an error."
                                     #:wants-reply #t
                                     #:in-reply-to (message-id original-message))))
     (abort-to-prompt abort-to from-actor new-message)))
+
+
+;;; Aliases!
+;;; See: http://mumble.net/~jar/articles/oo-moon-weinreb.html
+;;;   (also worth seeing: http://mumble.net/~jar/articles/oo.html )
+
+(define <- send-message)
+(define <-wait send-message-wait)
+(define <-reply reply-message)
+(define <-reply-wait reply-message-wait)
 
 
 
