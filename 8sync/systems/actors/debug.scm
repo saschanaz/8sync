@@ -20,10 +20,27 @@
   #:use-module (oop goops)
   #:use-module (8sync systems actors)
   #:export (hive-resolve-local-actor
-            hive-create-actor-gimmie))
+            actor-hive
 
-(define hive-resolve-local-actor
-  (@@ (8sync systems actors) hive-resolve-local-actor))
+            hive-create-actor-gimmie
+            hive-create-actor-gimmie*))
+
+
+;;; Expose not normally exposed methods
+;;; ===================================
+
+;; "private" kind of a misnomer
+(define-syntax-rule (expose private-var)
+  (define private-var
+    (@@ (8sync systems actors) private-var)))
+
+(expose hive-resolve-local-actor)
+(expose actor-hive)
+
+
+
+;;; Some utilities
+;;; =============
 
 (define (hive-create-actor-gimmie . args)
   "Create an actor on the hive, and give us that actor.
@@ -31,8 +48,10 @@ Uses hive-create-actor* arguments."
   (let ((actor-id (apply hive-create-actor args)))
     (hive-resolve-local-actor hive actor-id)))
 
-(define-syntax-rule (hive-create-actor-gimmie* args ...)
+(define (hive-create-actor-gimmie* . args)
   "Create an actor on the hive, and give us that actor.
 Uses hive-create-actor* arguments."
-  (let ((actor-id (hive-create-actor* args ...)))
+  (let ((actor-id (apply hive-create-actor* args)))
     (hive-resolve-local-actor hive actor-id)))
+
+
