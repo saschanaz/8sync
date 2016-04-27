@@ -484,13 +484,12 @@ more compact following syntax:
     (call-with-prompt (hive-prompt hive)
       thunk
       (lambda (kont actor message)
-        (let ((hive (actor-hive actor)))
-          ;; Register the coroutine
-          (hash-set! (hive-waiting-coroutines hive)
-                     (message-id message)
-                     (cons (actor-id actor) kont))
-          ;; Send off the message
-          (8sync (hive-process-message hive message))))))
+        ;; Register the coroutine
+        (hash-set! (hive-waiting-coroutines hive)
+                   (message-id message)
+                   (cons (actor-id actor) kont))
+        ;; Send off the message
+        (8sync (hive-process-message hive message)))))
 
   (define (process-local-message)
     (let ((actor (resolve-actor-to)))
