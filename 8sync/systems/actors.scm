@@ -35,7 +35,6 @@
 
             <actor>
             actor-id
-            actor-hive
             actor-message-handler
 
             ;;; Commenting out the <address> type for now;
@@ -119,9 +118,11 @@
 
 (define-record-type <message>
   (make-message-intern id to from action
-                       body in-reply-to wants-reply   ; do we need hive-proxy?
-                       ;; Are these still needed?
-                       replied deferred-reply)
+                       body in-reply-to wants-reply
+                       replied
+                       ;; @@: Not used yet.
+                       ;; Will we ever find a real use case?
+                       deferred-reply)
   message?
   (id message-id)
   (to message-to)
@@ -552,7 +553,6 @@ so this gets called from the nicer hive-create-actor interface.  See
 that method for documentation."
   (let* ((actor-id (hive-gen-actor-id hive id-cookie))
          (actor (apply make actor-class
-                       ;; @@: If we switch to a hive-proxy, do it here
                        #:hive hive
                        #:id actor-id
                        init)))
@@ -569,25 +569,12 @@ that method for documentation."
                       init id-cookie))
 
 
-;; TODO: Give actors this instead of the actual hive reference
-(define-class <hive-proxy> ()
-  (send-message #:getter proxy-send-message
-                #:init-keyword #:send-message)
-  (create-actor #:getter proxy-create-actor
-                #:init-keyword #:create-actor))
-
-;; Live the hive proxy, but has access to the hive itself...
-(define-class <debug-hive-proxy> (<hive-proxy>)
-  (hive #:init-keyword #:hive))
-
-
 
 ;;; Various API methods for actors to interact with the system
 ;;; ==========================================================
 
 ;; TODO: move send-message and friends here...?
 
-;; TODO: Rewrite this inside of a <hive-proxy> ?
 (define* (create-actor from-actor actor-class #:rest init)
   "Create an instance of actor-class.  Return the new actor's id.
 
