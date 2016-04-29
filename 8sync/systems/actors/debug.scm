@@ -48,7 +48,7 @@ Uses hive-create-actor* arguments."
   (let ((actor-id (apply hive-create-actor hive actor-class init)))
     (hive-resolve-local-actor hive actor-id)))
 
-(define (hive-create-actor-gimmie* hive actor-class id-cookie init)
+(define (hive-create-actor-gimmie* hive actor-class id-cookie . init)
   "Create an actor on the hive, and give us that actor.
 Uses hive-create-actor* arguments."
   (let ((actor-id (apply hive-create-actor*
