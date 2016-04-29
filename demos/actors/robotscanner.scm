@@ -114,35 +114,33 @@
   (message-handler
    #:init-value
    (make-action-dispatch
-    ((set-next-room actor message)
+    ((set-next-room actor message id)
      "Set the room following this"
-     (slot-set! actor 'next-room
-                (message-ref message 'id)))
+     (slot-set! actor 'next-room id))
 
-    ((set-previous-room actor message)
+    ((set-previous-room actor message id)
      "Set the room previous to this"
-     (slot-set! actor 'previous-room
-                (message-ref message 'id)))
+     (slot-set! actor 'previous-room id))
 
     ((get-next-room actor message)
      "Return a reference to the link following this"
      (<-reply actor message
-                    #:id (slot-ref actor 'next-room)))
+              #:id (slot-ref actor 'next-room)))
 
     ((get-previous-room actor message)
      "Return a reference to the link preceding this"
      (<-reply actor message
-                    #:id (slot-ref actor 'previous-room)))
+              #:id (slot-ref actor 'previous-room)))
 
     ((list-droids actor message)
      "Return a list of all the droid ids we know of in this room"
      (<-reply actor message
                     #:droid-ids (slot-ref actor 'droids)))
 
-    ((register-droid actor message)
+    ((register-droid actor message droid-id)
      "Register a droid as being in this room"
      (slot-set! actor 'droids
-                (cons (message-ref message 'droid-id)
+                (cons droid-id
                       (slot-ref actor 'droids)))))))
 
 
@@ -200,10 +198,9 @@
 
 ;;; Security robot... designed to seek out and destroy infected droids.
 (define-simple-actor <security-robot>
-  ((begin-mission actor message)
+  ((begin-mission actor message starting-room overseer)
    ;; used to track the current room / if any rooms are remaining
-   (define room (message-ref message 'starting-room))
-   (define overseer (message-ref message 'overseer))
+   (define room starting-room)
 
    ;; Walk through all rooms, clearing out infected droids
    ;; Continue this whil there's still another room to investigate.
