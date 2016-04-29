@@ -31,7 +31,6 @@
             big-random-number
             big-random-number-string
             simple-message-id-generator
-            require-slot
 
             <actor>
             actor-id
@@ -48,6 +47,7 @@
             actor-id-hive
             actor-id-string
 
+            mlambda
             make-action-dispatch
             define-simple-actor
 
@@ -104,13 +104,6 @@
     (lambda ()
       (set! counter (1+ counter))
       (string-append prefix (number->string counter)))))
-
-(define (require-slot slot-name)
-  "Generate something for #:init-thunk to complain about unfilled slot"
-  (lambda ()
-    (throw 'required-slot
-           (format #f "Slot ~s not filled" slot-name)
-           slot-name)))
 
 
 
@@ -264,17 +257,14 @@ If key not found and DFLT not provided, throw an error."
 
 (define-class <actor> ()
   ;; An address object
-  (id #:init-thunk (require-slot "id")
-      #:init-keyword #:id
+  (id #:init-keyword #:id
       #:getter actor-id)
   ;; The hive we're connected to.
   ;; We need this to be able to send messages.
-  (hive #:init-thunk (require-slot "hive")
-        #:init-keyword #:hive
+  (hive #:init-keyword #:hive
         #:accessor actor-hive)
   ;; How we receive and process new messages
-  (message-handler #:init-thunk (require-slot "message-handler")
-                   #:allocation #:each-subclass))
+  (message-handler #:allocation #:each-subclass))
 
 (define-method (actor-message-handler (actor <actor>))
   (slot-ref actor 'message-handler))
@@ -326,6 +316,24 @@ If key not found and DFLT not provided, throw an error."
 ;;; Actor utilities
 ;;; ===============
 
+(define-syntax mlambda
+  (syntax-rules ()
+    "A lambda for building message handlers.
+
+Use it like:
+  (mlambda (actor message foo)
+    ...)
+
+Which is like doing manually:
+  (lambda (actor message)
+    (let ((foo (message-ref message foo)))
+      ...))"
+    ((_ (actor message message-arg ...)
+        body body* ...)
+     (lambda (actor message)
+       (let ((message-arg (message-ref message (quote message-arg))) ...)
+         body body* ...)))))
+
 (define (simple-dispatcher action-map)
   (lambda (actor message)
     (let* ((action (message-action message))
@@ -343,7 +351,7 @@ If key not found and DFLT not provided, throw an error."
   (syntax-rules ()
     ((_ ((action-name action-args ...) body ...))
      (cons (quote action-name)
-           (lambda (action-args ...)
+           (mlambda (action-args ...)
              body ...)))
     ((_ (action-name handler))
      (cons (quote action-name) handler))))
@@ -387,8 +395,6 @@ more compact following syntax:
 (define-generic hive-handle-failed-forward)
 
 (define-class <hive> (<actor>)
-  ;; This gets set to itself immediately after being created
-  (hive #:init-value #f)
   (actor-registry #:init-thunk make-hash-table
                   #:getter hive-actor-registry)
   (msg-id-generator #:init-thunk simple-message-id-generator
