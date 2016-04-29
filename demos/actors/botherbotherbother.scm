@@ -81,6 +81,7 @@
 
   ;; Oof!  Those kids!
   (display (string-append (random-choice complaints)))
+  (newline)
 
   ;; More than one student is bothering us, lose our temper
   (if (> (hash-count (const #t) whos-bothering)
