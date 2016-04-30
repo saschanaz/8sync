@@ -47,7 +47,7 @@
             actor-id-hive
             actor-id-string
 
-            mlambda
+            mlambda define-mhandler
             make-action-dispatch
             define-simple-actor
 
@@ -333,6 +333,14 @@ Which is like doing manually:
      (lambda (actor message)
        (let ((message-arg (message-ref message (quote message-arg))) ...)
          body body* ...)))))
+
+;; @@: Sadly, docstrings won't work with this...
+;;   I think we need to bust out syntax-case to make that happen...
+(define-syntax-rule (define-mhandler (name actor message message-arg ...)
+                      body ...)
+  (define name
+    (mlambda (actor message message-arg ...)
+             body ...)))
 
 (define (simple-dispatcher action-map)
   (lambda (actor message)
