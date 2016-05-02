@@ -316,6 +316,12 @@ If key not found and DFLT not provided, throw an error."
 ;;; Actor utilities
 ;;; ===============
 
+
+(define-syntax-rule (with-message-args (message message-arg ...)
+                                       body body* ...)
+  (let ((message-arg (message-ref message (quote message-arg))) ...)
+    body body* ...))
+
 (define-syntax mlambda
   (syntax-rules ()
     "A lambda for building message handlers.
@@ -331,8 +337,7 @@ Which is like doing manually:
     ((_ (actor message message-arg ...)
         body body* ...)
      (lambda (actor message)
-       (let ((message-arg (message-ref message (quote message-arg))) ...)
-         body body* ...)))))
+       (with-message-args (message message-arg ...) body body* ...)))))
 
 ;; @@: Sadly, docstrings won't work with this...
 ;;   I think we need to bust out syntax-case to make that happen...
