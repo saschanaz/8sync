@@ -538,7 +538,8 @@ more compact following syntax:
 
   (define (call-catching-coroutine thunk)
     (define (call-catching-errors)
-      ;; TODO: maybe parameterize and use maybe-catch-all from agenda.scm
+      ;; TODO: maybe parameterize (or attach to hive) and use
+      ;;   maybe-catch-all from agenda.scm
       ;; @@: Why not just use with-throw-handler and let the catch
       ;;   happen at the agenda?  That's what we used to do, but
       ;;   it ended up with a SIGABRT.  See:
