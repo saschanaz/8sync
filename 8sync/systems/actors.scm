@@ -352,6 +352,8 @@ Which is like doing manually:
     (let* ((action (message-action message))
            (method (assoc-ref action-map action)))
       (if (not method)
+          ;; @@: There's every possibility this should be handled in
+          ;;  hive-process-message instead.
           (throw 'action-not-found
                  "No appropriate action handler found for actor"
                  #:action action
@@ -370,6 +372,12 @@ Which is like doing manually:
      (cons (quote action-name) handler))))
 
 (define-syntax-rule (build-actions action-item ...)
+  "Build a mapping of actions.  Same syntax as make-action-dispatch
+but this doesn't build the dispatcher for you (you probably want to
+pass it to simple-dispatcher).
+
+The advantage here is that since this simply builds an alist, you can
+compose it with other action maps."
   (list (%expand-action-item action-item) ...))
 
 (define-syntax make-action-dispatch
