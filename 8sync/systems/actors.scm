@@ -369,6 +369,9 @@ Which is like doing manually:
     ((_ (action-name handler))
      (cons (quote action-name) handler))))
 
+(define-syntax-rule (build-actions action-item ...)
+  (list (%expand-action-item action-item) ...))
+
 (define-syntax make-action-dispatch
   (syntax-rules ()
     "Expand a list of action names and actions into an alist
@@ -390,8 +393,7 @@ more compact following syntax:
    ((party actor message)
      (display \"Life of the party!\")))"
     ((make-action-dispatch action-item ...)
-     (simple-dispatcher
-      (list (%expand-action-item action-item) ...)))))
+     (simple-dispatcher (build-actions action-item ...)))))
 
 (define-syntax-rule (define-simple-actor class actions ...)
   (define-class class (<actor>)
