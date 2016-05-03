@@ -538,13 +538,23 @@ more compact following syntax:
 
   (define (call-catching-coroutine thunk)
     (define (call-catching-errors)
-      (with-throw-handler
-          #t thunk
-          (lambda (key . args)
-            (if (message-needs-reply message)
-                ;; If the message is waiting on a reply, let them know
-                ;; something went wrong.
-                (hive-reply-with-error hive message key args)))))
+      ;; TODO: maybe parameterize and use maybe-catch-all from agenda.scm
+      ;; @@: Why not just use with-throw-handler and let the catch
+      ;;   happen at the agenda?  That's what we used to do, but
+      ;;   it ended up with a SIGABRT.  See:
+      ;;     http://lists.gnu.org/archive/html/bug-guile/2016-05/msg00003.html
+      (catch #t
+        thunk
+        ;; In the actor model, we don't totally crash on errors.
+        (lambda _ #f)
+        ;; If an error happens, we raise it
+        (lambda (key . args)
+          (if (message-needs-reply message)
+              ;; If the message is waiting on a reply, let them know
+              ;; something went wrong.
+              (hive-reply-with-error hive message key args))
+          ;; print error message
+          (apply print-error-and-continue key args))))
     (call-with-prompt (hive-prompt hive)
       call-catching-errors
       (lambda (kont actor message)
