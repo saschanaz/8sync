@@ -48,7 +48,7 @@
             actor-id-string
 
             mlambda define-mhandler
-            build-actions make-action-dispatch
+            simple-dispatcher build-actions make-action-dispatch
             define-simple-actor
 
             <hive>
