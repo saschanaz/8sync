@@ -323,7 +323,7 @@ If key not found and DFLT not provided, throw an error."
     body body* ...))
 
 (define-syntax mlambda
-  (syntax-rules ()
+  (lambda (x)
     "A lambda for building message handlers.
 
 Use it like:
@@ -334,13 +334,19 @@ Which is like doing manually:
   (lambda (actor message)
     (let ((foo (message-ref message foo)))
       ...))"
-    ((_ (actor message message-arg ...)
-        body body* ...)
-     (lambda (actor message)
-       (with-message-args (message message-arg ...) body body* ...)))))
+    (syntax-case x ()
+      ((_ (actor message message-arg ...)
+          docstring
+          body ...)
+       (string? (syntax->datum #'docstring))
+       #'(lambda (actor message)
+           docstring
+           (with-message-args (message message-arg ...) body ...)))
+      ((_ (actor message message-arg ...)
+          body body* ...)
+       #'(lambda (actor message)
+           (with-message-args (message message-arg ...) body body* ...))))))
 
-;; @@: Sadly, docstrings won't work with this...
-;;   I think we need to bust out syntax-case to make that happen...
 (define-syntax-rule (define-mhandler (name actor message message-arg ...)
                       body ...)
   (define name
