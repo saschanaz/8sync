@@ -642,7 +642,7 @@ more compact following syntax:
         (process-remote-message))))
 
 (define-method (hive-actor-local? (hive <hive>) address)
-  (hash-ref (hive-actor-registry hive) address))
+  (equal? (hive-id hive) (address-hive-id address)))
 
 (define-method (hive-register-actor! (hive <hive>) (actor <actor>))
   (hash-set! (hive-actor-registry hive) (actor-id actor) actor))
