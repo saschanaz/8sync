@@ -745,7 +745,9 @@ Also handles sleeping when all we have to do is wait on the schedule."
                        ;;   the default stop-condition?
                        (stop-condition stop-on-nothing-to-do)
                        (get-time gettimeofday)
-                       (handle-ports update-agenda-from-select!))
+                       (handle-ports update-agenda-from-select!)
+                       ;; For live hacking madness, etc
+                       (post-run-hook #f))
   ;; TODO: Document fields
   "Start up the AGENDA"
   (let loop ((agenda agenda))
@@ -754,6 +756,11 @@ Also handles sleeping when all we have to do is wait on the schedule."
            ;;   select'ing on ports.
            ;;   We could compose over agenda-run-once and agenda-read-ports
            (agenda-run-once agenda)))
+      ;; @@: This relies on mutation at present on the queue, in the rare
+      ;;   event it's used.  If we ever switch to something more immutable,
+      ;;   it should return a new modified agenda instead.
+      (if post-run-hook
+          (post-run-hook agenda))
       (if (and stop-condition (stop-condition agenda))
           'done
           (let* ((agenda
