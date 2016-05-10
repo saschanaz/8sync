@@ -72,6 +72,7 @@
             8sync-run 8sync-run-at 8sync-run-delay
             8sync-port 8sync-port-remove
             8sync-nowait
+            8sleep
             
             catch-8sync
 
@@ -616,6 +617,11 @@ forge ahead in our current function!"
         (apply handler orig-stacks orig-args)) ...
        (else (raise '8sync-caught-error
                     orig-key orig-args orig-stacks))))))
+
+;; This is sugar... and could probably be considerably
+;; simplified and optimized.  But whatever.
+(define-syntax-rule (8sleep time)
+  (8sync-delay 'no-op time))
 
 
 
