@@ -23,6 +23,7 @@
   #:use-module (ice-9 q)
   #:use-module (ice-9 match)
   #:use-module (ice-9 receive)
+  #:use-module (ice-9 suspendable-ports)
   #:export (<agenda>
             make-agenda agenda?
             agenda-queue agenda-prompt-tag
@@ -57,20 +58,10 @@
             make-run-request run-request?
             run-request-proc run-request-when
 
-            <port-request>
-            make-port-request port-request port-request?
-            port-request-port
-            port-request-read port-request-write port-request-except
-
-            <port-remove-request>
-            make-port-remove-request port-remove-request port-remove-request?
-            port-remove-request-port
-
             run-it wrap wrap-apply run run-at run-delay
 
             8sync 8sync-delay
             8sync-run 8sync-run-at 8sync-run-delay
-            8sync-port 8sync-port-remove
             8sync-nowait
             8sleep
             
@@ -88,6 +79,8 @@
 
             %current-agenda
             start-agenda agenda-run-once))
+
+(install-suspendable-ports!)
 
 ;; @@: Using immutable agendas here, so wouldn't it make sense to
 ;;   replace this queue stuff with using pfds based immutable queues?
@@ -112,14 +105,13 @@
 
 (define-immutable-record-type <agenda>
   (make-agenda-intern queue prompt-tag
-                      read-port-map write-port-map except-port-map
+                      read-port-map write-port-map
                       schedule time catch-handler pre-unwind-handler)
   agenda?
   (queue agenda-queue)
   (prompt-tag agenda-prompt-tag)
   (read-port-map agenda-read-port-map)
   (write-port-map agenda-write-port-map)
-  (except-port-map agenda-except-port-map)
   (schedule agenda-schedule)
   (time agenda-time)
   (catch-handler agenda-catch-handler)
@@ -136,7 +128,6 @@ Generally done automatically for the user through (make-agenda)."
                       (prompt (make-prompt-tag))
                       (read-port-map (make-hash-table))
                       (write-port-map (make-hash-table))
-                      (except-port-map (make-hash-table))
                       (schedule (make-schedule))
                       (time (gettimeofday))
                       (catch-handler #f)
@@ -144,7 +135,7 @@ Generally done automatically for the user through (make-agenda)."
   ;; TODO: document arguments
   "Make a fresh agenda."
   (make-agenda-intern queue prompt
-                      read-port-map write-port-map except-port-map
+                      read-port-map write-port-map
                       schedule time
                       catch-handler pre-unwind-handler))
 
@@ -443,32 +434,6 @@ Will produce (0 . 0) instead of a negative number, if needed."
   (make-run-request (wrap body ...) (tdelta delay-time)))
 
 
-;; A request to set up a port with at least one of read, write, except
-;; handling processes
-
-(define-record-type <port-request>
-  (make-port-request-intern port read write except)
-  port-request?
-  (port port-request-port)
-  (read port-request-read)
-  (write port-request-write)
-  (except port-request-except))
-
-(define* (make-port-request port #:key read write except)
-  (if (not (or read write except))
-      (throw 'no-port-handler-given "No port handler given.\n"))
-  (make-port-request-intern port read write except))
-
-(define port-request make-port-request)
-
-(define-record-type <port-remove-request>
-  (make-port-remove-request port)
-  port-remove-request?
-  (port port-remove-request-port))
-
-(define port-remove-request make-port-remove-request)
-
-
 
 ;;; Asynchronous escape to run things
 ;;; =================================
@@ -572,27 +537,6 @@ Possibly specify WHEN as the second argument."
 (define-syntax-rule (8sync-delay args ...)
   (8sync-run-delay args ...))
 
-(define-syntax-rule (8sync-port port port-request-args ...)
-  (8sync-abort-to-prompt
-   (make-async-request
-    (lambda (kont)
-      (list (make-port-request port port-request-args ...)
-            (make-run-request
-             ;; What's with returning #f to kont?
-             ;; Otherwise we sometimes get errors like
-             ;; "Zero values returned to single-valued continuation""
-             (wrap (kont #f)) #f))))))
-
-(define-syntax-rule (8sync-port-remove port)
-  (8sync-abort-to-prompt
-   (make-async-request
-    (lambda (kont)
-      (list (make-port-remove-request port)
-            (make-run-request
-             ;; See comment in 8sync-port
-             (wrap (kont #f)) #f))))))
-
-
 ;; TODO: Write (%run-immediately)
 
 (define-syntax-rule (8sync-nowait body)
@@ -602,7 +546,9 @@ forge ahead in our current function!"
    (make-async-request
     (lambda (kont)
       (list (make-run-request
-             ;; See comment in 8sync-port
+             ;; What's with returning #f to kont?
+             ;; Otherwise we sometimes get errors like
+             ;; "Zero values returned to single-valued continuation""
              (wrap (kont #f)) #f)
             (make-run-request (lambda () body) #f))))))
 
@@ -660,7 +606,7 @@ Also handles sleeping when all we have to do is wait on the schedule."
          (lambda ()
            (select (hash-keys (agenda-read-port-map agenda))
                    (hash-keys (agenda-write-port-map agenda))
-                   (hash-keys (agenda-except-port-map agenda))
+                   '()
                    sec usec))
          (lambda (key . rest-args)
            (match rest-args
@@ -672,23 +618,20 @@ Also handles sleeping when all we have to do is wait on the schedule."
       (lambda (initial-procs)
         (fold
          (lambda (port prev)
-           (cons (lambda ()
-                   ((hash-ref port-map port) port))
-                 prev))
+           (define proc (hashq-ref port-map port))
+           ;; Now that we've selected on this port, it can be removed
+           (hashq-remove! port-map port)
+           (cons proc prev))
          initial-procs
          ports)))
     (match (do-select)
-      ((read-ports write-ports except-ports)
-       ;; @@: Come on, we can do better than append ;P
+      ((read-ports write-ports except-ports) ; except-ports not used
        ((compose (ports->procs
                   read-ports
                   (agenda-read-port-map agenda))
                  (ports->procs
                   write-ports
-                  (agenda-write-port-map agenda))
-                 (ports->procs
-                  except-ports
-                  (agenda-except-port-map agenda)))
+                  (agenda-write-port-map agenda)))
         '()))))
   (define (update-agenda)
     (let ((procs-to-run (get-procs-to-run))
@@ -716,33 +659,35 @@ Also handles sleeping when all we have to do is wait on the schedule."
       (update-agenda)
       agenda))
 
-(define (agenda-handle-port-request! agenda port-request)
-  "Update an agenda for a port-request"
-  (define (handle-selector request-selector port-map-selector)
-    (if (request-selector port-request)
-        ;; @@: Should we remove if #f?
-        (hash-set! (port-map-selector agenda)
-                   (port-request-port port-request)
-                   (request-selector port-request))))
-  (handle-selector port-request-read agenda-read-port-map)
-  (handle-selector port-request-write agenda-write-port-map)
-  (handle-selector port-request-except agenda-except-port-map))
+(define-record-type <read-request>
+  (make-read-request port proc)
+  read-request?
+  (port read-request-port)
+  (proc read-request-proc))
 
+(define-record-type <write-request>
+  (make-write-request port proc)
+  write-request?
+  (port write-request-port)
+  (proc write-request-proc))
 
-(define (agenda-handle-port-remove-request! agenda port-remove-request)
-  "Update an agenda for a port-remove-request"
-  (let ((port (port-remove-request-port port-remove-request)))
-    (hash-remove! (agenda-read-port-map agenda) port)
-    (hash-remove! (agenda-write-port-map agenda) port)
-    (hash-remove! (agenda-except-port-map agenda) port)))
+(define (agenda-handle-read-request! agenda read-request)
+  "Handle <read-request>, which is a request to add this port to the poll/select
+on suspendable ports."
+  (hashq-set! (agenda-read-port-map agenda)
+              (read-request-port read-request)
+              (read-request-proc read-request)))
 
+(define (agenda-handle-write-request! agenda write-request)
+  (hashq-set! (agenda-write-port-map agenda)
+              (write-request-port write-request)
+              (write-request-proc write-request)))
 
 (define (stop-on-nothing-to-do agenda)
   (and (q-empty? (agenda-queue agenda))
        (schedule-empty? (agenda-schedule agenda))
        (= 0 (hash-count (const #t) (agenda-read-port-map agenda)))
-       (= 0 (hash-count (const #t) (agenda-write-port-map agenda)))
-       (= 0 (hash-count (const #t) (agenda-except-port-map agenda)))))
+       (= 0 (hash-count (const #t) (agenda-write-port-map agenda)))))
 
 
 (define* (start-agenda agenda
@@ -822,6 +767,20 @@ Also handles sleeping when all we have to do is wait on the schedule."
         (or pre-unwind-handler (lambda _ #f)))
       (begin body ...)))
 
+(define (wait-for-readable port)
+  (display "Waiting to read\n")
+  (8sync-abort-to-prompt
+   (make-async-request
+    (lambda (kont)
+      (make-read-request port (wrap (kont #f)))))))
+
+(define (wait-for-writable port)
+  (display "Waiting to write\n")
+  (8sync-abort-to-prompt
+   (make-async-request
+    (lambda (kont)
+      (make-write-request port (wrap (kont #f)))))))
+
 (define (agenda-run-once agenda)
   "Run once through the agenda, and produce a new agenda
 based on the results"
@@ -829,7 +788,11 @@ based on the results"
     (call-with-prompt
      (agenda-prompt-tag agenda)
      (lambda ()
-       (parameterize ((%current-agenda agenda))
+       (parameterize ((%current-agenda agenda)
+                      ;; @@: Couldn't we just parameterize this at the start of
+                      ;;   the agenda...?
+                      (current-read-waiter wait-for-readable)
+                      (current-write-waiter wait-for-writable))
          (maybe-catch-all
           ((agenda-catch-handler agenda)
            (agenda-pre-unwind-handler agenda))
@@ -864,11 +827,12 @@ based on the results"
           (match result
             ((? run-request? new-proc)
              (enqueue new-proc))
-            ((? port-request? port-request)
-             (agenda-handle-port-request! agenda port-request))
-            ((? port-remove-request? port-remove-request)
-             (agenda-handle-port-remove-request! agenda port-remove-request))
+            ((? read-request? read-request)
+             (agenda-handle-read-request! agenda read-request))
+            ((? write-request? write-request)
+             (agenda-handle-write-request! agenda write-request))
             ;; do nothing
+            ;; @@: Why not throw an error?
             (_ #f)))
         ;; @@: We might support delay-wrapped procedures here
         (match proc-result
