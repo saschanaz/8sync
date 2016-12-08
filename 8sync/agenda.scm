@@ -768,14 +768,12 @@ on suspendable ports."
       (begin body ...)))
 
 (define (wait-for-readable port)
-  (display "Waiting to read\n")
   (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
       (make-read-request port (wrap (kont #f)))))))
 
 (define (wait-for-writable port)
-  (display "Waiting to write\n")
   (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
