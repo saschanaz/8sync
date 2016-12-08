@@ -27,6 +27,7 @@
   #:use-module (ice-9 getopt-long)
   #:use-module (ice-9 format)
   #:use-module (ice-9 receive)
+  #:use-module (ice-9 rdelim)
   #:use-module (ice-9 q)
   #:use-module (ice-9 match)
   #:export (;; The only things you definitely need if writing a bot
@@ -61,16 +62,14 @@
 (define default-irc-port 6665)
 
 (define* (irc-socket-setup hostname #:optional (inet-port default-irc-port))
-  (let ((s (socket PF_INET SOCK_STREAM 0))
-        (ip-address (inet-ntoa (car (hostent:addr-list (gethost hostname))))))
+  (let* ((s (socket PF_INET SOCK_STREAM 0))
+         (flags (fcntl s F_GETFL))
+         (ip-address (inet-ntop AF_INET (car (hostent:addr-list (gethost hostname))))))
+    (fcntl s F_SETFL (logior O_NONBLOCK flags))
     (connect s AF_INET
              (inet-pton AF_INET ip-address)
              inet-port)
     s))
-
-(define (install-socket socket handler)
-  (display "Installing socket...\n")   ; debugging :)
-  (make-port-request socket #:read handler))
 
 (define irc-eol "\r\n")
 
@@ -224,39 +223,22 @@
          (newline)))))
   handle-line)
 
-(define (make-basic-irc-handler handle-line username)
-  (let ((buffer '()))
-    (define (reset-buffer)
-      (set! buffer '()))
-    (define (should-read-char socket)
-      (and (not (port-closed? socket))
-           (char-ready? socket)
-           (not (eof-object? (peek-char socket)))))
-    (define (irc-handler socket)
-      (while (should-read-char socket)
-        (set! buffer (cons (read-char socket) buffer))
-        (match buffer
-          ((#\newline #\return (? char? line-chars) ...)
-           (let ((ready-line (list->string (reverse line-chars))))
-             ;; reset buffer
-             (set! buffer '())
-             ;; run it
-             (8sync (handle-line
-                      socket
-                      ready-line
-                      username))))
-          (_ #f)))
-      ;; I need to shut things down on EOF object
-      (cond
-       ((port-closed? socket)
-        (display "port closed time\n")
-        (port-remove-request socket))
-       ((and (char-ready? socket)
-             (eof-object? (peek-char socket)))
-        (display "port eof time\n")
-        (close socket)
-        (port-remove-request socket))))
-    irc-handler))
+(define (irc-loop socket handle-line username)
+  (define (loop)
+    (define line (string-trim-right (read-line socket) #\return))
+    (handle-line socket line username)
+    (cond
+     ;; The port's been closed for some reason, so stop looping
+     ((port-closed? socket)
+      'done)
+     ;; We've reached the EOF object, which means we should close
+     ;; the port ourselves and stop looping
+     ((eof-object? (peek-char socket))
+      (close socket)
+      'done)
+     ;; Otherwise, let's read till the next line!
+     (else (loop))))
+  (loop))
 
 (define default-line-handler (make-handle-line))
 
@@ -269,11 +251,7 @@
     (lambda () #f)
     (lambda ()
       (enq! (agenda-queue agenda)
-            (wrap (install-socket
-                   socket
-                   (make-basic-irc-handler
-                    line-handler
-                    username))))
+            (wrap (irc-loop socket line-handler username)))
       (enq! (agenda-queue agenda) (wrap (handle-login socket username
                                                       #:channels channels)))
       (start-agenda agenda))
