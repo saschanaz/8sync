@@ -27,7 +27,7 @@
   #:export (<agenda>
             make-agenda agenda?
             agenda-queue agenda-prompt-tag
-            agenda-read-port-map agenda-write-port-map agenda-except-port-map
+            agenda-read-port-map agenda-write-port-map
             agenda-schedule
             
             make-async-prompt-tag
@@ -650,8 +650,7 @@ Also handles sleeping when all we have to do is wait on the schedule."
                           (selector agenda))
               0)))
     (or (has-items? agenda-read-port-map)
-        (has-items? agenda-write-port-map)
-        (has-items? agenda-except-port-map)))
+        (has-items? agenda-write-port-map)))
 
   (if (or (ports-to-select?)
           ;; select doubles as sleep...
