@@ -57,7 +57,7 @@
   (build-system gnu-build-system)
   (native-inputs `(("autoconf" ,autoconf)
                    ("automake" ,automake)
-                   ("guile" ,guile-2.0)
+                   ("guile" ,guile-next)
                    ("pkg-config" ,pkg-config)
                    ("texinfo" ,texinfo)))
   (arguments
