@@ -285,22 +285,12 @@
                    '("applesauce"))))))
 
 (test-%run-and-friends (run-in-fake-agenda
-                        (8sync (string-concatenate '("apple" "sauce"))))
-                       #f)
-
-(test-%run-and-friends (run-in-fake-agenda
-                        (8sync (string-concatenate '("apple" "sauce"))
-                                '(8 . 0)))
-                       '(8 . 0))
-
-(test-%run-and-friends (run-in-fake-agenda
                         (8sync-delay (string-concatenate '("apple" "sauce"))
                                       8))
                        ;; whoa, I'm surprised equal? can
                        ;; compare records like this
                        (tdelta 8))
 
-;; TODO: test %port-request
 ;; TODO: test 8sync and friends!
 
 
@@ -342,111 +332,6 @@
   (test-equal (speaker)
     '("I bet I can make you say you're a dummy!\n")))
 
-;; delimited continuation tests
-
-(define (return-monkey)
-  (speaker "(Hint, it's a monkey...)\n")
-  'monkey)
-
-(define (talk-about-the-zoo)
-  (speaker "Today I went to the zoo and I saw...\n")
-  (speaker
-   (string-concatenate
-    `("A " ,(symbol->string (8sync (return-monkey))) "!\n"))))
-
-(begin
-  (set! speaker (speak-it))
-  ;; (enq! q talk-about-the-zoo-but-wait)
-  (start-agenda (make-agenda #:queue (make-q* talk-about-the-zoo))
-                #:stop-condition (true-after-n-times 10))
-  (test-equal (speaker)
-              '("Today I went to the zoo and I saw...\n"
-                "(Hint, it's a monkey...)\n"
-                "A monkey!\n")))
-
-
-;; Error handling tests
-;; --------------------
-
-(define (remote-func-breaks)
-  (speaker "Here we go...\n")
-  (+ 1 2 (/ 1 0))
-  (speaker "SHOULD NOT HAPPEN\n"))
-
-(define (indirection-remote-func-breaks)
-  (speaker "bebop\n")
-  (8sync (remote-func-breaks))
-  (speaker "bidop\n"))
-
-(define* (local-func-gets-break #:key with-indirection)
-  (speaker "Time for exception fun!\n")
-  (let ((caught-exception #f))
-    (catch-8sync
-     (8sync-run (if with-indirection
-                         (indirection-remote-func-breaks)
-                         (remote-func-breaks)))
-      ('numerical-overflow
-       (lambda (orig-stacks . orig-args)
-         (set! caught-exception #t)
-         (speaker "in here now!\n")
-         (test-equal orig-args '("/" "Numerical overflow" #f #f))
-         (test-assert (list? orig-stacks))
-         (test-equal (length orig-stacks)
-                     (if with-indirection 2 1))
-         (for-each
-          (lambda (x)
-            (test-assert (stack? x)))
-          orig-stacks))))
-    (test-assert caught-exception))
-  (speaker "Well that was fun :)\n"))
-
-
-(begin
-  (set! speaker (speak-it))
-  (start-agenda (make-agenda #:queue (make-q* local-func-gets-break))
-                #:stop-condition (true-after-n-times 10))
-  (test-equal (speaker)
-              '("Time for exception fun!\n"
-                "Here we go...\n"
-                "in here now!\n"
-                "Well that was fun :)\n")))
-
-(begin
-  (set! speaker (speak-it))
-  (start-agenda (make-agenda
-                 #:queue (make-q* (wrap (local-func-gets-break
-                                         #:with-indirection #t))))
-                #:stop-condition (true-after-n-times 10))
-  (test-equal (speaker)
-              '("Time for exception fun!\n"
-                "bebop\n"
-                "Here we go...\n"
-                "in here now!\n"
-                "Well that was fun :)\n")))
-
-;; Make sure catching tools work
-
-(let ((speaker (speak-it))
-      (catch-result #f))
-  (catch-8sync
-   (begin
-     (speaker "hello")
-     (throw '8sync-caught-error
-            'my-orig-key '(apple orange banana) '(*fake-stack* *fake-stack* *fake-stack*))
-     (speaker "no goodbyes"))
-   ('some-key
-    (lambda (stacks . rest)
-      (speaker "should not happen")))
-   ('my-orig-key
-    (lambda (stacks fruit1 fruit2 fruit3)
-      (set! catch-result
-            `((fruit1 ,fruit1)
-              (fruit2 ,fruit2)
-              (fruit3 ,fruit3))))))
-  (test-equal (speaker) '("hello"))
-  (test-equal catch-result '((fruit1 apple)
-                             (fruit2 orange)
-                             (fruit3 banana))))
 
 ;; End tests
 

@@ -60,13 +60,11 @@
 
             run-it wrap wrap-apply run run-at run-delay
 
-            8sync 8sync-delay
+            8sync-delay
             8sync-run 8sync-run-at 8sync-run-delay
             8sync-nowait
             8sleep
             
-            catch-8sync
-
             ;; used for introspecting the error, but a method for making
             ;; is not exposed
             wrapped-exception?
@@ -477,16 +475,6 @@ return the wrong thing via (8sync) and trip themselves up."
                (wrapped-exception-stacks body-result))
         body-result)))
 
-(define-syntax 8sync
-  (syntax-rules ()
-    "Run BODY asynchronously (8synchronously?) at a prompt, then return.
-
-Possibly specify WHEN as the second argument."
-    ((8sync body)
-     (8sync-run body))
-    ((8sync body when)
-     (8sync-run-at body when))))
-
 (define-syntax-rule (8sync-run body ...)
   (8sync-run-at body ... #f))
 
@@ -551,18 +539,6 @@ forge ahead in our current function!"
              ;; "Zero values returned to single-valued continuation""
              (wrap (kont #f)) #f)
             (make-run-request (lambda () body) #f))))))
-
-(define-syntax-rule (catch-8sync exp (handler-key handler) ...)
-  (catch '8sync-caught-error
-    (lambda ()
-      exp)
-    (lambda (_ orig-key orig-args orig-stacks)
-      (cond
-       ((or (eq? handler-key #t)
-            (eq? orig-key handler-key))
-        (apply handler orig-stacks orig-args)) ...
-       (else (raise '8sync-caught-error
-                    orig-key orig-args orig-stacks))))))
 
 ;; This is sugar... and could probably be considerably
 ;; simplified and optimized.  But whatever.
@@ -829,7 +805,10 @@ based on the results"
             ((? write-request? write-request)
              (agenda-handle-write-request! agenda write-request))
             ;; do nothing
-            ;; @@: Why not throw an error?
+            ;; Remember, we don't throw an error here because procedures can
+            ;; return a run request, eg with run-it, at the end of their
+            ;; evaluation to keep looping.
+            ;; @@: Though is this really a useful feature?
             (_ #f)))
         ;; @@: We might support delay-wrapped procedures here
         (match proc-result
