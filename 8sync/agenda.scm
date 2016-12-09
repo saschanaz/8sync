@@ -62,7 +62,7 @@
 
             8sync-delay
             8sync-run 8sync-run-at 8sync-run-delay
-            8sync-nowait
+            8sync
             8sleep
             
             ;; used for introspecting the error, but a method for making
@@ -527,7 +527,7 @@ return the wrong thing via (8sync) and trip themselves up."
 
 ;; TODO: Write (%run-immediately)
 
-(define-syntax-rule (8sync-nowait body)
+(define-syntax-rule (8sync body)
   "Run body asynchronously but ignore its result...
 forge ahead in our current function!"
   (8sync-abort-to-prompt
