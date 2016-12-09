@@ -22,6 +22,9 @@
 
 ;; This is a very preliminary web module.
 
+;;; TODO: This is using deprecated code and needs a rewrite after the
+;;; suspendable-ports merge.
+
 (define-module (8sync systems web)
   #:use-module (web server)
   #:use-module (web request)
