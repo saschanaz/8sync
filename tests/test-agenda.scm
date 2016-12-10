@@ -257,42 +257,7 @@
 ;;; %run, 8sync and friends tests
 ;;; ==============================
 
-(define-syntax-rule (run-in-fake-agenda
-                     code-to-run)
-  (let ((agenda (make-agenda)))
-    (parameterize ((%current-agenda agenda))
-      (call-with-prompt
-       (agenda-prompt-tag agenda)
-       (lambda ()
-         (list '*normal-result* code-to-run))
-       (lambda (kont async-request)
-         (list '*caught-kont*
-               kont async-request
-               ((@@ (8sync agenda) setup-async-request)
-                kont async-request)))))))
-
-(define (test-%run-and-friends run-result expected-when)
-  (match run-result
-    (('*caught-kont* kont async-request setup-request)
-     (let* ((fake-kont (speak-it))
-            (run-request ((@@ (8sync agenda) setup-async-request)
-                          fake-kont async-request)))
-       (test-equal (car async-request) '*async-request*)
-       (test-equal (run-request-when run-request) expected-when)
-       ;; we're using speaker as a fake continuation ;p
-       ((run-request-proc run-request))
-       (test-equal (fake-kont)
-                   '("applesauce"))))))
-
-(test-%run-and-friends (run-in-fake-agenda
-                        (8sync-delay (string-concatenate '("apple" "sauce"))
-                                      8))
-                       ;; whoa, I'm surprised equal? can
-                       ;; compare records like this
-                       (tdelta 8))
-
-;; TODO: test 8sync and friends!
-
+;; TODO: We need to rewrite the whole lot here...
 
 ;;; Agenda tests
 ;;; ============

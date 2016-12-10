@@ -459,75 +459,7 @@ return the wrong thing via (8sync) and trip themselves up."
               "Invalid request passed back via an (8sync) procedure."
               async-request))))
 
-(define-record-type <wrapped-exception>
-  (make-wrapped-exception key args stacks)
-  wrapped-exception?
-  (key wrapped-exception-key)
-  (args wrapped-exception-args)
-  (stacks wrapped-exception-stacks))
-
-(define-syntax-rule (propagate-%async-exceptions body)
-  (let ((body-result body))
-    (if (wrapped-exception? body-result)
-        (throw '8sync-caught-error
-               (wrapped-exception-key body-result)
-               (wrapped-exception-args body-result)
-               (wrapped-exception-stacks body-result))
-        body-result)))
-
-(define-syntax-rule (8sync-run body ...)
-  (8sync-run-at body ... #f))
-
-(define-syntax-rule (8sync-run-at body ... when)
-  (propagate-%async-exceptions
-   (8sync-abort-to-prompt
-    ;; Send an asynchronous request to apply a continuation to the
-    ;; following function, then handle that as a request to the agenda
-    (make-async-request
-     (lambda (kont)
-       ;; We're making a run request
-       (make-run-request
-        ;; Wrapping the following execution to run...
-        (wrap
-         ;; Once we get the result from the inner part, we'll resume
-         ;; this continuation, but first
-         ;; @@: Is this running immediately, or queueing the result
-         ;;   after evaluation for the next agenda tick?  It looks
-         ;;   like evaluating immediately.  Is that what we want?
-         (kont
-          ;; Any unhandled errors are caught
-          (let ((exception-stack #f))
-            (catch #t
-              ;; Run the actual code the user requested
-              (lambda ()
-                body ...)
-              ;; If something bad happened and we didn't catch it,
-              ;; we'll wrap it up in such a way that the continuation
-              ;; can address it
-              (lambda (key . args)
-                (cond
-                 ((eq? key '8sync-caught-error)
-                  (match args
-                    ((orig-key orig-args orig-stacks)
-                     (make-wrapped-exception
-                      orig-key orig-args
-                      (cons exception-stack orig-stacks)))))
-                 (else
-                  (make-wrapped-exception key args
-                                          (list exception-stack)))))
-              (lambda _
-                (set! exception-stack (make-stack #t 1 0)))))))
-        when))))))
-
-(define-syntax-rule (8sync-run-delay body ... delay-time)
-  (8sync-run-at body ... (tdelta delay-time)))
-
-(define-syntax-rule (8sync-delay args ...)
-  (8sync-run-delay args ...))
-
-;; TODO: Write (%run-immediately)
-
-(define-syntax-rule (8sync body)
+(define-syntax-rule (8sync body ...)
   "Run body asynchronously but ignore its result...
 forge ahead in our current function!"
   (8sync-abort-to-prompt
@@ -538,12 +470,14 @@ forge ahead in our current function!"
              ;; Otherwise we sometimes get errors like
              ;; "Zero values returned to single-valued continuation""
              (wrap (kont #f)) #f)
-            (make-run-request (lambda () body) #f))))))
+            (make-run-request (lambda () body ...) #f))))))
 
-;; This is sugar... and could probably be considerably
-;; simplified and optimized.  But whatever.
-(define-syntax-rule (8sleep time)
-  (8sync-delay 'no-op time))
+;; TODO: Rewrite when we move to this being just `sleep'.
+(define (8sleep time)
+  (8sync-abort-to-prompt
+   (make-async-request
+    (lambda (kont)
+      (make-run-request (lambda () (kont #f)) time)))))
 
 ;; Voluntarily yield execution
 (define (yield)  ; @@: should this be define-inlinable?
