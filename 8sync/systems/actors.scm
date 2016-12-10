@@ -684,16 +684,16 @@ that method for documentation."
 This is the method actors should call directly (unless they want
 to supply an id-cookie, in which case they should use
 create-actor*)."
-  (8sync (%hive-create-actor (actor-hive from-actor) actor-class
-                             init #f)))
+  (%hive-create-actor (actor-hive from-actor) actor-class
+                      init #f))
 
 
 (define* (create-actor* from-actor actor-class id-cookie #:rest init)
   "Create an instance of actor-class.  Return the new actor's id.
 
 Like create-actor, but permits supplying an id-cookie."
-  (8sync (%hive-create-actor (actor-hive from-actor) actor-class
-                             init id-cookie)))
+  (%hive-create-actor (actor-hive from-actor) actor-class
+                      init id-cookie))
 
 
 (define (self-destruct actor)
