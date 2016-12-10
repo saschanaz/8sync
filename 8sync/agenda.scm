@@ -545,6 +545,13 @@ forge ahead in our current function!"
 (define-syntax-rule (8sleep time)
   (8sync-delay 'no-op time))
 
+;; Voluntarily yield execution
+(define (yield)  ; @@: should this be define-inlinable?
+  "Voluntarily yield execution to the scheduler."
+  (8sync-abort-to-prompt
+   (make-async-request
+    (lambda (kont)
+      (make-run-request (lambda () (kont #f)) #f)))))
 
 
 ;;; Execution of agenda, and current agenda
