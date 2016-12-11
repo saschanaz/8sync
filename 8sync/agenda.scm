@@ -477,7 +477,7 @@ forge ahead in our current function!"
   (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
-      (make-run-request (lambda () (kont #f)) time)))))
+      (make-run-request (lambda () (kont #f)) (tdelta time))))))
 
 ;; Voluntarily yield execution
 (define (yield)  ; @@: should this be define-inlinable?
