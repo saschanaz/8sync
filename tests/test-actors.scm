@@ -98,13 +98,13 @@
 (define-simple-actor <antsy-caller>
   ((pester-rep actor message)
    (~display "customer> I'm calling customer service about this!\n")
-   (let ((reply (send-message-wait actor (message-ref message 'who-to-call)
-                                   'field-call)))
+   (let ((reply (<-wait actor (message-ref message 'who-to-call)
+                        'field-call)))
      (if (message-ref reply '*auto-reply* #f)
          (~display "customer> Whaaaaat?  I can't believe I got voice mail!\n")
          (begin
            (~format "*customer hears*: ~a\n" (message-ref reply 'msg))
-           (let ((reply (reply-message-wait
+           (let ((reply (<-reply-wait
                          actor reply
                          #:msg "Yes, it didn't work, I'm VERY ANGRY!")))
              (if (message-ref reply '*auto-reply* #f)
@@ -115,7 +115,7 @@
   ((field-call actor message)
    (~display "good-rep> Hm, another call from a customer...\n")
    (let ((reply
-          (reply-message-wait
+          (<-reply-wait
            actor message
            #:msg "Have you tried turning it off and on?")))
      (~format "*rep hears*: ~a\n" (message-ref reply 'msg))

@@ -68,9 +68,6 @@
             message-wants-reply
             message-ref
 
-            send-message send-message-wait
-            reply-message reply-message-wait
-
             <- <-wait <-reply <-reply-wait
 
             ez-run-hive
@@ -186,7 +183,10 @@ If key not found and DFLT not provided, throw an error."
                 args)))))
 
 
-(define (send-message from-actor to-id action . message-body-args)
+;;; See: https://web.archive.org/web/20081223021934/http://mumble.net/~jar/articles/oo-moon-weinreb.html
+;;;   (also worth seeing: http://mumble.net/~jar/articles/oo.html )
+
+(define (<- from-actor to-id action . message-body-args)
   "Send a message from an actor to another actor"
   (let* ((hive (actor-hive from-actor))
          (message (make-message (hive-gen-message-id hive) to-id
@@ -194,7 +194,7 @@ If key not found and DFLT not provided, throw an error."
                                 (kwarg-list-to-alist message-body-args))))
     (8sync (hive-process-message hive message))))
 
-(define (send-message-wait from-actor to-id action . message-body-args)
+(define (<-wait from-actor to-id action . message-body-args)
   "Send a message from an actor to another, but wait until we get a response"
   (let* ((hive (actor-hive from-actor))
          (abort-to (hive-prompt (actor-hive from-actor)))
@@ -209,8 +209,7 @@ If key not found and DFLT not provided, throw an error."
 ;;   not have an exception thrown and instead just have a message with
 ;;   the appropriate '*error* message returned.
 
-(define (reply-message from-actor original-message
-                       . message-body-args)
+(define (<-reply from-actor original-message . message-body-args)
   "Reply to a message"
   (set-message-replied! original-message #t)
   (let* ((hive (actor-hive from-actor))
@@ -221,8 +220,7 @@ If key not found and DFLT not provided, throw an error."
                                     #:in-reply-to (message-id original-message))))
     (8sync (hive-process-message hive new-message))))
 
-(define (reply-message-wait from-actor original-message
-                            . message-body-args)
+(define (<-reply-wait from-actor original-message . message-body-args)
   "Reply to a messsage, but wait until we get a response"
   (set-message-replied! original-message #t)
   (let* ((hive (actor-hive from-actor))
@@ -234,16 +232,6 @@ If key not found and DFLT not provided, throw an error."
                                     #:wants-reply #t
                                     #:in-reply-to (message-id original-message))))
     (abort-to-prompt abort-to from-actor new-message)))
-
-
-;;; Aliases!
-;;; See: http://mumble.net/~jar/articles/oo-moon-weinreb.html
-;;;   (also worth seeing: http://mumble.net/~jar/articles/oo.html )
-
-(define <- send-message)
-(define <-wait send-message-wait)
-(define <-reply reply-message)
-(define <-reply-wait reply-message-wait)
 
 
 
@@ -516,8 +504,7 @@ more compact following syntax:
     ;; Possibly autoreply
     (if (message-needs-reply message)
         ;; @@: Should we give *autoreply* as the action instead of *reply*?
-        (reply-message actor message
-                       #:*auto-reply* #t)))
+        (<-reply actor message #:*auto-reply* #t)))
 
   (define (resolve-actor-to)
     "Get the actor the message was aimed at"
@@ -720,7 +707,7 @@ an integer."
 
 (define (bootstrap-message hive to-id action . message-body-args)
   (wrap
-   (apply send-message hive to-id action message-body-args)))
+   (apply <- hive to-id action message-body-args)))
 
 
 
