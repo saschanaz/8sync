@@ -126,11 +126,6 @@
   (body message-body)
   (in-reply-to message-in-reply-to)
   (wants-reply message-wants-reply)
-
-  ;; See XUDD source for these.  Not use yet, maybe eventually will be?
-  ;; XUDD uses them for autoreply.
-  ;; Requiring mutation on message objects is clearly not great,
-  ;; but it may be worth it...?  Investigate!
   (replied message-replied set-message-replied!)
   (deferred-reply message-deferred-reply set-message-deferred-reply!))
 
