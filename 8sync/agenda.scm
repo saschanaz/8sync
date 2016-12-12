@@ -78,8 +78,6 @@
             %current-agenda
             start-agenda agenda-run-once))
 
-(install-suspendable-ports!)
-
 ;; @@: Using immutable agendas here, so wouldn't it make sense to
 ;;   replace this queue stuff with using pfds based immutable queues?
 
@@ -617,6 +615,7 @@ on suspendable ports."
                        (post-run-hook #f))
   ;; TODO: Document fields
   "Start up the AGENDA"
+  (install-suspendable-ports!)
   (let loop ((agenda agenda))
     (let ((agenda   
            ;; @@: Hm, maybe here would be a great place to handle
