@@ -110,6 +110,11 @@
 ;;; ========
 
 
+;; @@: We may want to add a deferred-reply to the below, similar to
+;;   what we had in XUDD, for actors which do their own response
+;;   queueing.... ie, that might receive messages but need to shelve
+;;   them to be acted upon after something else is taken care of.
+
 (define-record-type <message>
   (make-message-intern id to from action
                        body in-reply-to wants-reply
