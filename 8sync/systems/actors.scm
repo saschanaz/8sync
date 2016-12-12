@@ -70,7 +70,7 @@
 
             <- <-wait <-reply <-reply-wait
 
-            call-with-message msg-receive =>
+            call-with-message msg-receive
 
             ez-run-hive
             bootstrap-message
@@ -621,12 +621,6 @@ argument.  Similar to call-with-values in concept."
   (call-with-message the-message
                      (lambda* arglist
                        body ...)))
-
-;; Emacs: (put '=> 'scheme-indent-function 2)
-;;; An experimental alias.
-(define-syntax-rule (=> rest ...)
-  (msg-receive rest ...))
-
 
 
 ;;; Various API methods for actors to interact with the system
