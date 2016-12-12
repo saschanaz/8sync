@@ -437,7 +437,10 @@ more compact following syntax:
                                     (actor-id hive) '*error*
                                     new-message-body
                                     #:in-reply-to (message-id original-message))))
-    (8sync (hive-process-message hive new-message))))
+    ;; We only return a thunk, rather than run 8sync here, because if
+    ;; we ran 8sync in the middle of a catch we'd end up with an
+    ;; unresumable continuation.
+    (lambda () (hive-process-message hive new-message))))
 
 (define-method (hive-process-message (hive <hive>) message)
   "Handle one message, or forward it via an ambassador"
@@ -459,6 +462,7 @@ more compact following syntax:
       actor))
 
   (define (call-catching-coroutine thunk)
+    (define queued-error-handling-thunk #f)
     (define (call-catching-errors)
       ;; TODO: maybe parameterize (or attach to hive) and use
       ;;   maybe-catch-all from agenda.scm
@@ -475,9 +479,16 @@ more compact following syntax:
           (if (message-needs-reply? message)
               ;; If the message is waiting on a reply, let them know
               ;; something went wrong.
-              (hive-reply-with-error hive message key args))
+              ;; However, we have to do it outside of this catch
+              ;; routine, or we'll end up in an unrewindable continuation
+              ;; situation.
+              (set! queued-error-handling-thunk
+                    (hive-reply-with-error hive message key args)))
           ;; print error message
-          (apply print-error-and-continue key args))))
+          (apply print-error-and-continue key args)))
+      ;; @@: This is a kludge.  See above for why.
+      (if queued-error-handling-thunk
+          (8sync (queued-error-handling-thunk))))
     (call-with-prompt (hive-prompt hive)
       call-catching-errors
       (lambda (kont actor message)
