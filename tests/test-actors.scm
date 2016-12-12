@@ -79,13 +79,13 @@
 
 (define* (antsy-caller-pester-rep actor message #:key who-to-call)
   (~display "customer> I'm calling customer service about this!\n")
-  (msg-recieve (first-reply #:key msg)
+  (msg-receive (first-reply #:key msg)
       (<-wait actor who-to-call 'field-call)
     (if (message-auto-reply? first-reply)
         (~display "customer> Whaaaaat?  I can't believe I got voice mail!\n")
         (begin
           (~format "*customer hears*: ~a\n" msg)
-          (msg-recieve (second-reply #:key *auto-reply*)
+          (msg-receive (second-reply #:key *auto-reply*)
               (<-reply-wait actor first-reply
                             #:msg "Yes, it didn't work, I'm VERY ANGRY!")
             (if (message-auto-reply? second-reply)
@@ -97,7 +97,7 @@
 
 (define (rep-field-call actor message)
   (~display "good-rep> Hm, another call from a customer...\n")
-  (msg-recieve (reply #:key msg)
+  (msg-receive (reply #:key msg)
       (<-reply-wait
        actor message
        #:msg "Have you tried turning it off and on?")
@@ -120,13 +120,13 @@
                     (list (bootstrap-message hive customer 'pester-rep
                                              #:who-to-call diligent-rep))))
            (displayed-text (get-output-string (%record-out))))
-      (test-equal displayed-text
-        "customer> I'm calling customer service about this!
+      (test-equal "customer> I'm calling customer service about this!
 good-rep> Hm, another call from a customer...
 *customer hears*: Have you tried turning it off and on?
 *rep hears*: Yes, it didn't work, I'm VERY ANGRY!
 good-rep> I'm sorry, that's all I can do for you.
-customer> Well then!  Harumph.\n")))
+customer> Well then!  Harumph.\n"
+        displayed-text)))
   ;; * Playing a tape of a lazy service rep *
   (parameterize ((%record-out (open-output-string)))
     (let* ((result (ez-run-hive
@@ -134,11 +134,10 @@ customer> Well then!  Harumph.\n")))
                     (list (bootstrap-message hive customer 'pester-rep
                                                   #:who-to-call lazy-rep))))
            (displayed-text (get-output-string (%record-out))))
-      (test-equal
-          displayed-text
-          "customer> I'm calling customer service about this!
+      (test-equal "customer> I'm calling customer service about this!
 lazy-rep> I'm not answering that.
-customer> Whaaaaat?  I can't believe I got voice mail!\n"))))
+customer> Whaaaaat?  I can't believe I got voice mail!\n"
+          displayed-text))))
 
 (test-end "test-actors")
 (test-exit)
