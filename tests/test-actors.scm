@@ -79,13 +79,13 @@
 
 (define* (antsy-caller-pester-rep actor message #:key who-to-call)
   (~display "customer> I'm calling customer service about this!\n")
-  (=> (first-reply #:key msg)
+  (msg-recieve (first-reply #:key msg)
       (<-wait actor who-to-call 'field-call)
     (if (message-auto-reply? first-reply)
         (~display "customer> Whaaaaat?  I can't believe I got voice mail!\n")
         (begin
           (~format "*customer hears*: ~a\n" msg)
-          (=> (second-reply #:key *auto-reply*)
+          (msg-recieve (second-reply #:key *auto-reply*)
               (<-reply-wait actor first-reply
                             #:msg "Yes, it didn't work, I'm VERY ANGRY!")
             (if (message-auto-reply? second-reply)
@@ -97,7 +97,7 @@
 
 (define (rep-field-call actor message)
   (~display "good-rep> Hm, another call from a customer...\n")
-  (=> (reply #:key msg)
+  (msg-recieve (reply #:key msg)
       (<-reply-wait
        actor message
        #:msg "Have you tried turning it off and on?")
