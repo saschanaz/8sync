@@ -47,7 +47,6 @@
             actor-id-hive
             actor-id-string
 
-            mlambda define-mhandler
             simple-dispatcher build-actions make-action-dispatch
             define-simple-actor
 
@@ -66,9 +65,12 @@
             message-to message-action message-from
             message-id message-body message-in-reply-to
             message-wants-reply
-            message-ref
+
+            message-auto-reply?
 
             <- <-wait <-reply <-reply-wait
+
+            call-with-message msg-receive =>
 
             ez-run-hive
             bootstrap-message
@@ -111,10 +113,7 @@
 (define-record-type <message>
   (make-message-intern id to from action
                        body in-reply-to wants-reply
-                       replied
-                       ;; @@: Not used yet.
-                       ;; Will we ever find a real use case?
-                       deferred-reply)
+                       replied)
   message?
   (id message-id)
   (to message-to)
@@ -123,50 +122,22 @@
   (body message-body)
   (in-reply-to message-in-reply-to)
   (wants-reply message-wants-reply)
-  (replied message-replied set-message-replied!)
-  (deferred-reply message-deferred-reply set-message-deferred-reply!))
+  (replied message-replied set-message-replied!))
 
 
 (define* (make-message id to from action body
                        #:key in-reply-to wants-reply
-                       replied deferred-reply)
+                       replied)
   (make-message-intern id to from action body
-                       in-reply-to wants-reply replied
-                       deferred-reply))
+                       in-reply-to wants-reply replied))
 
-;; Note: the body of messages is currently an alist, but it's created
-;;   from a keyword based property list (see the following two functions).
-;;   But, that's an extra conversion step, and maybe totally unnecessary:
-;;   we already have message-ref, and this could just pull a keyword
-;;   from a property list.
-;;   The main ways this might be useful are error checking,
-;;   serialization across the wire (but even that might require some
-;;   change), and using existing tooling (though adding new tooling
-;;   would be negligible in implementation effort.)
+(define (message-auto-reply? message)
+  (eq? (message-action message) '*auto-reply*))
 
-;; This cons cell is immutable and unique (for eq? tests)
-(define %nothing-provided (cons 'nothing 'provided))
-
-(define* (message-ref message key #:optional (dflt %nothing-provided))
-  "Extract KEY from body of MESSAGE.
-
-Optionally set default with [DFLT]
-If key not found and DFLT not provided, throw an error."
-  (let ((result (assoc key (message-body message))))
-    (if result (cdr result)
-        (if (eq? dflt %nothing-provided)
-            (throw 'message-missing-key
-                   "Message body does not contain key and no default provided"
-                   #:key key
-                   #:message message)
-            dflt))))
-
-
-(define (message-needs-reply message)
+(define (message-needs-reply? message)
   "See if this message needs a reply still"
   (and (message-wants-reply message)
-       (not (or (message-replied message)
-                (message-deferred-reply message)))))
+       (not (message-replied message))))
 
 
 (define (kwarg-list-to-alist args)
@@ -191,7 +162,7 @@ If key not found and DFLT not provided, throw an error."
   (let* ((hive (actor-hive from-actor))
          (message (make-message (hive-gen-message-id hive) to-id
                                 (actor-id from-actor) action
-                                (kwarg-list-to-alist message-body-args))))
+                                message-body-args)))
     (8sync (hive-process-message hive message))))
 
 (define (<-wait from-actor to-id action . message-body-args)
@@ -200,7 +171,7 @@ If key not found and DFLT not provided, throw an error."
          (abort-to (hive-prompt (actor-hive from-actor)))
          (message (make-message (hive-gen-message-id hive) to-id
                                 (actor-id from-actor) action
-                                (kwarg-list-to-alist message-body-args)
+                                message-body-args
                                 #:wants-reply #t)))
     (abort-to-prompt abort-to from-actor message)))
 
@@ -216,7 +187,18 @@ If key not found and DFLT not provided, throw an error."
          (new-message (make-message (hive-gen-message-id hive)
                                     (message-from original-message)
                                     (actor-id from-actor) '*reply*
-                                    (kwarg-list-to-alist message-body-args)
+                                    message-body-args
+                                    #:in-reply-to (message-id original-message))))
+    (8sync (hive-process-message hive new-message))))
+
+(define (<-auto-reply from-actor original-message)
+  "Auto-reply to a message.  Internal use only!"
+  (set-message-replied! original-message #t)
+  (let* ((hive (actor-hive from-actor))
+         (new-message (make-message (hive-gen-message-id hive)
+                                    (message-from original-message)
+                                    (actor-id from-actor) '*auto-reply*
+                                    '()
                                     #:in-reply-to (message-id original-message))))
     (8sync (hive-process-message hive new-message))))
 
@@ -228,7 +210,7 @@ If key not found and DFLT not provided, throw an error."
          (new-message (make-message (hive-gen-message-id hive)
                                     (message-from original-message)
                                     (actor-id from-actor) '*reply*
-                                    (kwarg-list-to-alist message-body-args)
+                                    message-body-args
                                     #:wants-reply #t
                                     #:in-reply-to (message-id original-message))))
     (abort-to-prompt abort-to from-actor new-message)))
@@ -299,43 +281,6 @@ If key not found and DFLT not provided, throw an error."
 ;;; Actor utilities
 ;;; ===============
 
-
-(define-syntax-rule (with-message-args (message message-arg ...)
-                                       body body* ...)
-  (let ((message-arg (message-ref message (quote message-arg))) ...)
-    body body* ...))
-
-(define-syntax mlambda
-  (lambda (x)
-    "A lambda for building message handlers.
-
-Use it like:
-  (mlambda (actor message foo)
-    ...)
-
-Which is like doing manually:
-  (lambda (actor message)
-    (let ((foo (message-ref message foo)))
-      ...))"
-    (syntax-case x ()
-      ((_ (actor message message-arg ...)
-          docstring
-          body ...)
-       (string? (syntax->datum #'docstring))
-       #'(lambda (actor message)
-           docstring
-           (with-message-args (message message-arg ...) body ...)))
-      ((_ (actor message message-arg ...)
-          body body* ...)
-       #'(lambda (actor message)
-           (with-message-args (message message-arg ...) body body* ...))))))
-
-(define-syntax-rule (define-mhandler (name actor message message-arg ...)
-                      body ...)
-  (define name
-    (mlambda (actor message message-arg ...)
-             body ...)))
-
 (define (simple-dispatcher action-map)
   (lambda (actor message)
     (let* ((action (message-action message))
@@ -349,14 +294,10 @@ Which is like doing manually:
                  #:actor actor
                  #:message message
                  #:available-actions (map car action-map)))
-      (method actor message))))
+      (apply method actor message (message-body message)))))
 
 (define-syntax %expand-action-item
   (syntax-rules ()
-    ((_ ((action-name action-args ...) body ...))
-     (cons (quote action-name)
-           (mlambda (action-args ...)
-             body ...)))
     ((_ (action-name handler))
      (cons (quote action-name) handler))))
 
@@ -486,11 +427,11 @@ more compact following syntax:
   (set-message-replied! original-message #t)
   (let* ((new-message-body
           (if (orig-actor-on-same-hive?)
-              `((original-message . ,original-message)
-                (error-key . ,error-key)
-                (error-args . ,error-args))
-              `((original-message . ,original-message)
-                (error-key . ,error-key))))
+              `(#:original-message ,original-message
+                #:error-key ,error-key
+                #:error-args ,error-args)
+              `(#:original-message ,original-message
+                #:error-key ,error-key)))
          (new-message (make-message (hive-gen-message-id hive)
                                     (message-from original-message)
                                     (actor-id hive) '*error*
@@ -502,9 +443,8 @@ more compact following syntax:
   "Handle one message, or forward it via an ambassador"
   (define (maybe-autoreply actor)
     ;; Possibly autoreply
-    (if (message-needs-reply message)
-        ;; @@: Should we give *autoreply* as the action instead of *reply*?
-        (<-reply actor message #:*auto-reply* #t)))
+    (if (message-needs-reply? message)
+        (<-auto-reply actor message)))
 
   (define (resolve-actor-to)
     "Get the actor the message was aimed at"
@@ -532,7 +472,7 @@ more compact following syntax:
         (lambda _ #f)
         ;; If an error happens, we raise it
         (lambda (key . args)
-          (if (message-needs-reply message)
+          (if (message-needs-reply? message)
               ;; If the message is waiting on a reply, let them know
               ;; something went wrong.
               (hive-reply-with-error hive message key args))
@@ -564,7 +504,8 @@ more compact following syntax:
 
   (define (resume-waiting-coroutine)
     (cond
-     ((eq? (message-action message) '*reply*)
+     ((or (eq? (message-action message) '*reply*)
+          (eq? (message-action message) '*auto-reply*))
       (call-catching-coroutine
        (lambda ()
          (match (hash-remove! (hive-waiting-coroutines hive)
@@ -653,6 +594,28 @@ that method for documentation."
   (%hive-create-actor hive actor-class
                       init id-cookie))
 
+(define (call-with-message message proc)
+  "Applies message body arguments into procedure, with message as first
+argument.  Similar to call-with-values in concept."
+  (apply proc message (message-body message)))
+
+;; (msg-receive (<- bar baz)
+;;     (baz)
+;;   basil)
+
+;; Emacs: (put 'msg-receive 'scheme-indent-function 2)
+
+;; @@: Or receive-msg or receieve-message or??
+(define-syntax-rule (msg-receive arglist the-message body ...)
+  (call-with-message the-message
+                     (lambda* arglist
+                       body ...)))
+
+;; Emacs: (put '=> 'scheme-indent-function 2)
+;;; An experimental alias.
+(define-syntax-rule (=> rest ...)
+  (msg-receive rest ...))
+
 
 
 ;;; Various API methods for actors to interact with the system
@@ -724,8 +687,7 @@ an integer."
    (message-body message)
    (message-in-reply-to message)
    (message-wants-reply message)
-   (message-replied message)
-   (message-deferred-reply message)))
+   (message-replied message)))
 
 (define* (write-message message #:optional (port (current-output-port)))
   "Write out a message to a port for easy reading later.
@@ -745,8 +707,7 @@ to improve that.  You'll need a better serializer for that.."
     (body ,(message-body message))
     (in-reply-to ,(message-in-reply-to message))
     (wants-reply ,(message-wants-reply message))
-    (replied ,(message-replied message))
-    (deferred-reply ,(message-deferred-reply message))))
+    (replied ,(message-replied message))))
 
 (define (pprint-message message)
   "Pretty print a message."
@@ -755,10 +716,10 @@ to improve that.  You'll need a better serializer for that.."
 (define* (read-message #:optional (port (current-input-port)))
   "Read a message serialized via serialize-message from PORT"
   (match (read port)
-    ((id to from action body in-reply-to wants-reply replied deferred-reply)
+    ((id to from action body in-reply-to wants-reply replied)
      (make-message-intern
       id to from action body
-      in-reply-to wants-reply replied deferred-reply))
+      in-reply-to wants-reply replied))
     (anything-else
      (throw 'message-read-bad-structure
             "Could not read message from structure"

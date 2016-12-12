@@ -19,6 +19,7 @@
 (define-module (tests test-actors)
   #:use-module (srfi srfi-64)
   #:use-module (8sync systems actors)
+  #:use-module (8sync agenda)
   #:use-module (oop goops)
   #:use-module (tests utils))
 
@@ -45,34 +46,13 @@
   (make-message ((simple-message-id-generator))
                 %fake-emo-id
                 %fake-hive-actor-id ; Bootstrap messages come from the hive
-                'greet-proog `((target . ,%fake-proog-id))))
+                'greet-proog `(#:target ,%fake-proog-id)))
 
 ;;; Actor utilities
 ;;; ===============
 
 ;;; Message tests
 ;;; =============
-
-(let ((monkey-message
-       (make-message 'id 'to 'from 'action
-                     '((monkey . banana)))))
-  ;; A key we have
-  (test-equal (message-ref monkey-message 'monkey)
-    'banana)
-
-  ;; A key we don't have
-  (let ((caught-error #f))
-    (catch 'message-missing-key
-      (lambda ()
-        (message-ref monkey-message 'coo-coo))
-      (lambda (. args)
-        (set! caught-error #t)))
-    (test-assert caught-error))
-
-  ;; A key we don't have, with a default set
-  (test-equal (message-ref monkey-message 'coo-coo 'danger-danger)
-    'danger-danger))
-
 
 ;; Make sure our test message serializes and deserializes okay
 
@@ -88,42 +68,46 @@
      (test-equal (getter test-message) (getter reread-message)))
    (list message-id message-to message-from message-action message-body
          message-in-reply-to message-wants-reply
-         (@@ (8sync systems actors) message-replied)
-         (@@ (8sync systems actors) message-deferred-reply))))
+         (@@ (8sync systems actors) message-replied))))
 
 
 ;;; Test reply / autoreply
 ;;; ======================
 
 (define-simple-actor <antsy-caller>
-  ((pester-rep actor message)
-   (~display "customer> I'm calling customer service about this!\n")
-   (let ((reply (<-wait actor (message-ref message 'who-to-call)
-                        'field-call)))
-     (if (message-ref reply '*auto-reply* #f)
-         (~display "customer> Whaaaaat?  I can't believe I got voice mail!\n")
-         (begin
-           (~format "*customer hears*: ~a\n" (message-ref reply 'msg))
-           (let ((reply (<-reply-wait
-                         actor reply
-                         #:msg "Yes, it didn't work, I'm VERY ANGRY!")))
-             (if (message-ref reply '*auto-reply* #f)
-                 (~display "customer> Well then!  Harumph.\n")
-                 (error "Not an autoreply?  What's going on here..."))))))))
+  (pester-rep (wrap-apply antsy-caller-pester-rep)))
+
+(define* (antsy-caller-pester-rep actor message #:key who-to-call)
+  (~display "customer> I'm calling customer service about this!\n")
+  (=> (first-reply #:key msg)
+      (<-wait actor who-to-call 'field-call)
+    (if (message-auto-reply? first-reply)
+        (~display "customer> Whaaaaat?  I can't believe I got voice mail!\n")
+        (begin
+          (~format "*customer hears*: ~a\n" msg)
+          (=> (second-reply #:key *auto-reply*)
+              (<-reply-wait actor first-reply
+                            #:msg "Yes, it didn't work, I'm VERY ANGRY!")
+            (if (message-auto-reply? second-reply)
+                (~display "customer> Well then!  Harumph.\n")
+                (error "Not an autoreply?  What's going on here...")))))))
 
 (define-simple-actor <diligent-rep>
-  ((field-call actor message)
-   (~display "good-rep> Hm, another call from a customer...\n")
-   (let ((reply
-          (<-reply-wait
-           actor message
-           #:msg "Have you tried turning it off and on?")))
-     (~format "*rep hears*: ~a\n" (message-ref reply 'msg))
-     (~display "good-rep> I'm sorry, that's all I can do for you.\n"))))
+  (field-call (wrap-apply rep-field-call)))
+
+(define (rep-field-call actor message)
+  (~display "good-rep> Hm, another call from a customer...\n")
+  (=> (reply #:key msg)
+      (<-reply-wait
+       actor message
+       #:msg "Have you tried turning it off and on?")
+    (~format "*rep hears*: ~a\n" msg)
+    (~display "good-rep> I'm sorry, that's all I can do for you.\n")))
 
 (define-simple-actor <lazy-rep>
-  ((field-call actor message)
-   (~display "lazy-rep> I'm not answering that.\n")))
+  (field-call
+   (lambda (actor message)
+     (~display "lazy-rep> I'm not answering that.\n"))))
 
 (let* ((hive (make-hive))
        (customer (hive-create-actor* hive <antsy-caller> "antsy-caller"))
@@ -134,11 +118,10 @@
     (let* ((result (ez-run-hive
                     hive
                     (list (bootstrap-message hive customer 'pester-rep
-                                                  #:who-to-call diligent-rep))))
+                                             #:who-to-call diligent-rep))))
            (displayed-text (get-output-string (%record-out))))
-      (test-equal
-          displayed-text
-          "customer> I'm calling customer service about this!
+      (test-equal displayed-text
+        "customer> I'm calling customer service about this!
 good-rep> Hm, another call from a customer...
 *customer hears*: Have you tried turning it off and on?
 *rep hears*: Yes, it didn't work, I'm VERY ANGRY!
