@@ -2,11 +2,16 @@
 
 #+TITLE: 8sync NEWS
 
-: Copyright (C) 2015  Christopher Allan Webber
+: Copyright (C) 2015-2016  Christopher Allan Webber
 : 
 : Copying and distribution of this file, with or without modification, are
 : permitted in any medium without royalty provided the copyright notice
 : and this notice are preserved.
+
+* 8sync 0.2
+
+The primary update to this release is the inclusion of a new actor
+model subsystem.
 
 * 8sync 0.1
 
