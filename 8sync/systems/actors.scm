@@ -70,7 +70,7 @@
 
             <- <-wait <-reply <-reply-wait
 
-            call-with-message msg-receive
+            call-with-message msg-receive msg-val
 
             ez-run-hive
             bootstrap-message
@@ -622,10 +622,19 @@ argument.  Similar to call-with-values in concept."
 ;; Emacs: (put 'msg-receive 'scheme-indent-function 2)
 
 ;; @@: Or receive-msg or receieve-message or??
-(define-syntax-rule (msg-receive arglist the-message body ...)
-  (call-with-message the-message
+(define-syntax-rule (msg-receive arglist message body ...)
+  "Call body with arglist (which can accept arguments like lambda*)
+applied from the message-body of message."
+  (call-with-message message
                      (lambda* arglist
                        body ...)))
+
+(define (msg-val message)
+  "Retrieve the first value from the message-body of message.
+Like single value return from a procedure call.  Probably the most
+common case when waiting on a reply from some action invocation."
+  (call-with-message message
+                     (lambda (_ val) val)))
 
 
 ;;; Various API methods for actors to interact with the system
