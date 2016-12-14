@@ -29,7 +29,7 @@ Foundation Web site at @url{http://www.gnu.org/licenses/lgpl.html}.
 
 
 @titlepage
-@title 8sync 0.1
+@title 8sync
 @subtitle Using 8sync, an asynchronous event loop for Guile
 @author Christopher Allan Webber
 @page
