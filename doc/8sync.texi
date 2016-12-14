@@ -72,22 +72,22 @@ Foundation Web site at @url{http://www.gnu.org/licenses/lgpl.html}.
 
 8sync's goal is to make asynchronous programming easy.
 If you've worked with most other asynchronous programming environments,
-  you know that it generally isn't.
+you know that it generally isn't.
 Usually asynchronous programming involves entering some sort of
-  ``callback hell''.
+`callback hell''.
 Some nicer environments like Asyncio for Python provide generator-based
-  coroutines, but even these require a lot of work to carefully line up.
+coroutines, but even these require a lot of work to carefully line up.
 
 Coding in 8sync, on the other hand, looks almost entirely like coding
-  anywhere else.
+anywhere else.
 This is because 8sync makes great use of a cool feature in Guile called
-  ``delimited continuations'' to power natural-feeling coroutines.
+``delimited continuations'' to power natural-feeling coroutines.
 Because of this, you can invoke your asynchronous code with a small wrapper
-  around it, and that code will pop off to complete whatever other task it
-  needs to do, and resume your function when it's ready passing back the
-  appropriate value.
+around it, and that code will pop off to complete whatever other task it
+needs to do, and resume your function when it's ready passing back the
+appropriate value.
 (No need to manually chain the coroutines together, and no callback hell at
-  all!)
+all!)
 
 Now that's pretty cool!
 
@@ -101,43 +101,43 @@ Now that's pretty cool!
 @itemize @bullet
 @item
 @uref{https://docs.python.org/3.5/library/asyncio.html, asyncio}
-  for Python provides a nice asynchronous programming environment, and
-  makes great use of generator-style coroutines.
+for Python provides a nice asynchronous programming environment, and
+makes great use of generator-style coroutines.
 It's a bit more difficult to work with than 8sync (or so thinks the author)
-  because you have to ``line up'' the coroutines.
+because you have to ``line up'' the coroutines.
 
 @item
 @uref{http://dthompson.us/pages/software/sly.html, Sly}
-  by David Thompson is an awesome functional reactive game programming
-  library for Guile.
+by David Thompson is an awesome functional reactive game programming
+library for Guile.
 If you want to write graphical games, Sly is almost certainly a better choice
-  than 8sync.
+than 8sync.
 Thanks to David for being very patient in explaining tough concepts;
-  experience on hacking Sly greatly informed 8sync's development.
+experience on hacking Sly greatly informed 8sync's development.
 (Check out Sly, it rocks!)
 
 @item
 Reading @uref{https://mitpress.mit.edu/sicp/, SICP}, particularly
-  @uref{https://mitpress.mit.edu/sicp/full-text/book/book-Z-H-19.html#%_chap_3,
-        Chapter 3's writings on concurrent systems},
-  greatly informed 8sync's design.
+@uref{https://mitpress.mit.edu/sicp/full-text/book/book-Z-H-19.html#%_chap_3,
+      Chapter 3's writings on concurrent systems},
+greatly informed 8sync's design.
 
 @item
 Finally, @uref{https://docs.python.org/3.5/library/asyncio.html, XUDD}
-  was an earlier ``research project'' that preceeded 8sync.
+was an earlier ``research project'' that preceeded 8sync.
 It attempted to bring an actor model system to Python.
 However, the author eventually grew frustrated with some of Python's
-  limitations, fell in love with Guile, and well... now we have 8sync, which
-  is much more general anyway.
+limitations, fell in love with Guile, and well... now we have 8sync, which
+is much more general anyway.
 
 @end itemize
 
 The motivation to build 8sync came out of
-  @uref{https://lists.gnu.org/archive/html/guile-devel/2015-10/msg00015.html,
-        a conversation}
-  at the FSF 30th party between Mark Weaver, David Thompson, Andrew
-  Engelbrecht, and Christopher Allan Webber over how to build
-  an asynchronous event loop for Guile and just what would be needed.
+@uref{https://lists.gnu.org/archive/html/guile-devel/2015-10/msg00015.html,
+      a conversation}
+at the FSF 30th party between Mark Weaver, David Thompson, Andrew
+Engelbrecht, and Christopher Allan Webber over how to build
+an asynchronous event loop for Guile and just what would be needed.
 
 A little over a month after that, hacking on 8sync began!
 
@@ -147,57 +147,57 @@ A little over a month after that, hacking on 8sync began!
 @chapter 8sync's license and general comments on copyleft
 
 8sync is released under the GNU LGPL (Lesser General Public License),
-  version 3 or later, as published by the Free Software Foundation.
+version 3 or later, as published by the Free Software Foundation.
 The short version of this is that if you distribute a modifications to
-  8sync, whether alone or in some larger combination, must release the
-  corresponding source code.
+8sync, whether alone or in some larger combination, must release the
+corresponding source code.
 A program which uses this library, if distributed without source code,
-  must also allow relinking with a modified version of this library.
+must also allow relinking with a modified version of this library.
 In general, it is best to contribute them back to 8sync under the same terms;
-  we'd appreciate any enhancements or fixes to be contributed upstream to
-  8sync itself.
+we'd appreciate any enhancements or fixes to be contributed upstream to
+8sync itself.
 (This is an intentional oversimplification for brevity, please read the LGPL
-  for the precise terms.)
+for the precise terms.)
 
 This usage of the LGPL helps us ensure that 8sync and derivatives of
-  8sync as a library will remain free.
+8sync as a library will remain free.
 Though it is not a requirement, we request you use 8sync to build free
-  software rather than use it to contribute to the growing world of
-  proprietary software.
+software rather than use it to contribute to the growing world of
+proprietary software.
 
 The choice of the LGPL for 8sync was a strategic one.
 This is not a general recommendation to use the LGPL instead of the GPL
-  for all libraries.
+for all libraries.
 In general, we encourage stronger copyleft.
 (For more thinking on this position, see
-  @uref{https://www.gnu.org/licenses/why-not-lgpl.html,
-        Why you shouldn't use the Lesser GPL for your next library}.)
+@uref{https://www.gnu.org/licenses/why-not-lgpl.html,
+      Why you shouldn't use the Lesser GPL for your next library}.)
 
 Although 8sync provides some unique features, its main functionality is as
-  an asynchronous event loop, and there are many other asynchronous event
-  loop systems out there such as Node.js for Javascript and Asyncio for
-  Python (there are others as well).
+an asynchronous event loop, and there are many other asynchronous event
+loop systems out there such as Node.js for Javascript and Asyncio for
+Python (there are others as well).
 It is popular in some of these communities to hold anti-copyleft positions,
-  which is unfortunate, and many community members seem to be adopting
-  these positions because other developers they look up to are holding
-  them.
+which is unfortunate, and many community members seem to be adopting
+these positions because other developers they look up to are holding
+them.
 If you have come from one of these communities and are exploring 8sync, we
-  hope reading this will help you reconsider your position.
+hope reading this will help you reconsider your position.
 
 In particular, if you are building a library or application that uses
-  8sync in some useful way, consider releasing your program under the GNU
-  GPL or GNU AGPL!
+8sync in some useful way, consider releasing your program under the GNU
+GPL or GNU AGPL!
 In a world where more and more software is locked down, where software is used
-  to restrict users, we could use every chance we can get to provide
-  protections so that software which is free remains free, and encourages even
-  more software freedom to be built upon it.
+to restrict users, we could use every chance we can get to provide
+protections so that software which is free remains free, and encourages even
+more software freedom to be built upon it.
 
 So to answer the question, ``Can I build a proprietary program on top of
-  8sync?'' our response is
-  ``Yes, but please don't.
-    Choose to release your software under a freedom-respecting license.
-    And help us turn the tide towards greater software freedom...
-      consider a strong copyleft license!''
+8sync?'' our response is
+``Yes, but please don't.
+Choose to release your software under a freedom-respecting license.
+And help us turn the tide towards greater software freedom...
+consider a strong copyleft license!''
 
 
 
