@@ -471,11 +471,25 @@ forge ahead in our current function!"
             (make-run-request (lambda () body ...) #f))))))
 
 ;; TODO: Rewrite when we move to this being just `sleep'.
-(define (8sleep time)
+(define (8sleep secs)
+  "Like sleep, but asynchronous."
   (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
-      (make-run-request (lambda () (kont #f)) (tdelta time))))))
+      (make-run-request (lambda () (kont #f)) (tdelta secs))))))
+
+(define (8usleep usecs)
+  "Like usleep, but asynchronous."
+  (define (usecs->time-pair)
+    (if (< 1000000)
+        (cons 0 usecs)
+        (let* ((sec (floor (/ usecs 1000000)))
+               (msec (- usecs (* sec 1000000))))
+          (cons sec msec))))
+  (8sync-abort-to-prompt
+   (make-async-request
+    (lambda (kont)
+      (make-run-request (lambda () (kont #f)) (tdelta usecs->time-pair))))))
 
 ;; Voluntarily yield execution
 (define (yield)  ; @@: should this be define-inlinable?
