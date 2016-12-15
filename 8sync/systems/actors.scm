@@ -36,6 +36,8 @@
             actor-id
             actor-message-handler
 
+            %current-actor
+
             ;;; Commenting out the <address> type for now;
             ;;; it may be back when we have better serializers
             ;; <address>
@@ -281,6 +283,8 @@
   "Render the full actor id as a human-readable string"
   (address->string (actor-id actor)))
 
+(define %current-actor
+  (make-parameter #f))
 
 
 ;;; Actor utilities
@@ -510,13 +514,14 @@ more compact following syntax:
        (lambda ()
          (define message-handler (actor-message-handler actor))
          ;; @@: Should a more general error handling happen here?
-         (let ((result
-                (message-handler actor message)))
-           (maybe-autoreply actor)
-           ;; Returning result allows actors to possibly make a run-request
-           ;; at the end of handling a message.
-           ;; ... We do want that, right?
-           result)))))
+         (parameterize ((%current-actor actor))
+           (let ((result
+                  (message-handler actor message)))
+             (maybe-autoreply actor)
+             ;; Returning result allows actors to possibly make a run-request
+             ;; at the end of handling a message.
+             ;; ... We do want that, right?
+             result))))))
 
   (define (resume-waiting-coroutine)
     (cond
