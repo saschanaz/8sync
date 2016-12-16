@@ -22,6 +22,7 @@
   #:use-module (oop goops)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
+  #:use-module (ice-9 control)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
@@ -236,7 +237,38 @@
   (hive #:init-keyword #:hive
         #:accessor actor-hive)
   ;; How we receive and process new messages
-  (message-handler #:allocation #:each-subclass))
+  (message-handler #:init-value (wrap-apply actor-inheritable-message-handler)
+                   ;; @@: There's no reason not to use #:class instead of
+                   ;;   #:each-subclass anywhere in this file, except for
+                   ;;   Guile bug #25211 (#:class is broken in Guile 2.2)
+                   #:allocation #:each-subclass)
+
+  ;; This is the default, "simple" way to inherit and process messages.
+  (actions #:init-value '()
+           #:allocation #:each-subclass))
+
+(define (actor-inheritable-message-handler actor message)
+  (define action (message-action message))
+  (define (find-message-handler return)
+    (for-each (lambda (this-class)
+                (define actions
+                  (or (and (class-slot-definition this-class 'actions)
+                           (class-slot-ref this-class 'actions))
+                      '()))
+                (for-each (match-lambda
+                            ((action-name . method)
+                             (when (eq? action-name action)
+                               (return method))))
+                          actions))
+              (class-precedence-list (class-of actor)))
+    (throw 'action-not-found
+           "No appropriate action handler found for actor"
+           #:action action
+           #:actor actor
+           #:message message))
+  (define method
+    (call/ec find-message-handler))
+  (apply method actor message (message-body message)))
 
 (define-method (actor-message-handler (actor <actor>))
   (slot-ref actor 'message-handler))
@@ -285,6 +317,7 @@
 
 (define %current-actor
   (make-parameter #f))
+
 
 
 ;;; Actor utilities
