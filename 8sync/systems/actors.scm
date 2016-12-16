@@ -228,25 +228,6 @@
 ;;; Main actor implementation
 ;;; =========================
 
-(define-class <actor> ()
-  ;; An address object
-  (id #:init-keyword #:id
-      #:getter actor-id)
-  ;; The hive we're connected to.
-  ;; We need this to be able to send messages.
-  (hive #:init-keyword #:hive
-        #:accessor actor-hive)
-  ;; How we receive and process new messages
-  (message-handler #:init-value (wrap-apply actor-inheritable-message-handler)
-                   ;; @@: There's no reason not to use #:class instead of
-                   ;;   #:each-subclass anywhere in this file, except for
-                   ;;   Guile bug #25211 (#:class is broken in Guile 2.2)
-                   #:allocation #:each-subclass)
-
-  ;; This is the default, "simple" way to inherit and process messages.
-  (actions #:init-value '()
-           #:allocation #:each-subclass))
-
 (define (actor-inheritable-message-handler actor message)
   (define action (message-action message))
   (define (find-message-handler return)
@@ -269,6 +250,25 @@
   (define method
     (call/ec find-message-handler))
   (apply method actor message (message-body message)))
+
+(define-class <actor> ()
+  ;; An address object
+  (id #:init-keyword #:id
+      #:getter actor-id)
+  ;; The hive we're connected to.
+  ;; We need this to be able to send messages.
+  (hive #:init-keyword #:hive
+        #:accessor actor-hive)
+  ;; How we receive and process new messages
+  (message-handler #:init-value actor-inheritable-message-handler
+                   ;; @@: There's no reason not to use #:class instead of
+                   ;;   #:each-subclass anywhere in this file, except for
+                   ;;   Guile bug #25211 (#:class is broken in Guile 2.2)
+                   #:allocation #:each-subclass)
+
+  ;; This is the default, "simple" way to inherit and process messages.
+  (actions #:init-value '()
+           #:allocation #:each-subclass))
 
 (define-method (actor-message-handler (actor <actor>))
   (slot-ref actor 'message-handler))
