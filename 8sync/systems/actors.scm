@@ -53,6 +53,8 @@
             simple-dispatcher build-actions make-action-dispatch
             define-simple-actor
 
+            mhandlers
+
             <hive>
             make-hive
             ;; There are more methods for the hive, but there's
@@ -323,6 +325,8 @@
 ;;; Actor utilities
 ;;; ===============
 
+;;;;;;;;;;; Deprecated abstractions start here ;;;;;;;;;;;
+
 (define (simple-dispatcher action-map)
   (lambda (actor message)
     (let* ((action (message-action message))
@@ -375,11 +379,21 @@ more compact following syntax:
     ((make-action-dispatch action-item ...)
      (simple-dispatcher (build-actions action-item ...)))))
 
-(define-syntax-rule (define-simple-actor class actions ...)
+;;;;;;;;;;; Deprecated abstractions end here ;;;;;;;;;;;
+
+
+(define-syntax-rule (mhandlers (symbol method) ...)
+  "Construct an alist of (symbol . method), where the method is wrapped
+with wrap-apply to facilitate live hacking and allow the method definition
+to come after class definition."
+  (list
+   (cons (quote symbol)
+         (wrap-apply method)) ...))
+
+(define-syntax-rule (define-simple-actor class action ...)
   (define-class class (<actor>)
-    (message-handler
-     #:init-value (make-action-dispatch actions ...)
-     #:allocation #:each-subclass)))
+    (actions #:init-value (mhandlers action ...)
+             #:allocation #:each-subclass)))
 
 
 ;;; The Hive
