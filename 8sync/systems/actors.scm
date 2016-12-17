@@ -50,10 +50,9 @@
             actor-id-hive
             actor-id-string
 
-            simple-dispatcher build-actions make-action-dispatch
-            define-simple-actor
+            build-actions
 
-            mhandlers
+            define-simple-actor
 
             <hive>
             make-hive
@@ -325,64 +324,7 @@
 ;;; Actor utilities
 ;;; ===============
 
-;;;;;;;;;;; Deprecated abstractions start here ;;;;;;;;;;;
-
-(define (simple-dispatcher action-map)
-  (lambda (actor message)
-    (let* ((action (message-action message))
-           (method (assoc-ref action-map action)))
-      (if (not method)
-          ;; @@: There's every possibility this should be handled in
-          ;;  hive-process-message instead.
-          (throw 'action-not-found
-                 "No appropriate action handler found for actor"
-                 #:action action
-                 #:actor actor
-                 #:message message
-                 #:available-actions (map car action-map)))
-      (apply method actor message (message-body message)))))
-
-(define-syntax %expand-action-item
-  (syntax-rules ()
-    ((_ (action-name handler))
-     (cons (quote action-name) handler))))
-
-(define-syntax-rule (build-actions action-item ...)
-  "Build a mapping of actions.  Same syntax as make-action-dispatch
-but this doesn't build the dispatcher for you (you probably want to
-pass it to simple-dispatcher).
-
-The advantage here is that since this simply builds an alist, you can
-compose it with other action maps."
-  (list (%expand-action-item action-item) ...))
-
-(define-syntax make-action-dispatch
-  (syntax-rules ()
-    "Expand a list of action names and actions into an alist
-
-You can use this like the following:
-  (make-action-dispatch
-   (cookies
-    (lambda (actor message)
-      (display \"I love cookies!\n\")))
-   (party
-    (lambda (actor message)
-      (display \"Life of the party!\"))))
-
-Alternately, if you'd like to skip the lambda, you could use the slightly
-more compact following syntax:
-  (make-action-dispatch
-   ((cookies actor message)
-     (display \"I love cookies!\n\"))
-   ((party actor message)
-     (display \"Life of the party!\")))"
-    ((make-action-dispatch action-item ...)
-     (simple-dispatcher (build-actions action-item ...)))))
-
-;;;;;;;;;;; Deprecated abstractions end here ;;;;;;;;;;;
-
-
-(define-syntax-rule (mhandlers (symbol method) ...)
+(define-syntax-rule (build-actions (symbol method) ...)
   "Construct an alist of (symbol . method), where the method is wrapped
 with wrap-apply to facilitate live hacking and allow the method definition
 to come after class definition."
@@ -392,7 +334,7 @@ to come after class definition."
 
 (define-syntax-rule (define-simple-actor class action ...)
   (define-class class (<actor>)
-    (actions #:init-value (mhandlers action ...)
+    (actions #:init-value (build-actions action ...)
              #:allocation #:each-subclass)))
 
 
@@ -424,12 +366,12 @@ to come after class definition."
   ;; to send the message, then carry on their way
   (prompt #:init-thunk make-prompt-tag
           #:getter hive-prompt)
-  (message-handler
-   #:init-value
-   (make-action-dispatch
-    ;; This is in the case of an ambassador failing to forward a message...
-    ;; it reports it back to the hive
-    (*failed-forward* hive-handle-failed-forward))))
+  (actions #:allocation #:each-subclass
+           #:init-value
+           (build-actions
+            ;; This is in the case of an ambassador failing to forward a
+            ;; message... it reports it back to the hive
+            (*failed-forward* hive-handle-failed-forward))))
 
 (define-method (hive-handle-failed-forward (hive <hive>) message)
   "Handle an ambassador failing to forward a message"
