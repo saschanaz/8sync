@@ -21,11 +21,9 @@
 
 (define-simple-actor <emo>
   (greet-proog
-   (lambda (actor message)
+   (lambda (actor message target)
      (display "emo> What's next, Proog?\n")
-     (send-message
-      actor (message-ref message 'target)
-      'greet-emo))))
+     (<- actor target 'greet-emo))))
 
 (define-simple-actor <proog>
   (greet-emo
@@ -38,4 +36,4 @@
 (define (main . args)
   (ez-run-hive hive
                (list (bootstrap-message hive our-emo 'greet-proog
-                                        #:target our-proog))))
+                                        our-proog))))

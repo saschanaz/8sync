@@ -50,33 +50,31 @@
   (name #:init-keyword #:name)
   (dead #:init-value #f
         #:accessor student-dead)
-  (message-handler
-   #:init-value
-   (make-action-dispatch
-    (bother-professor
-     (lambda (actor message)
-       "Go bother a professor"
-       (while (not (student-dead actor))
-         (format #t "~a: Bother bother bother!\n"
-                 (actor-id-actor actor))
-         (send-message
-          actor (message-ref message 'target)
-          'be-bothered
-          #:noise "Bother bother bother!\n"))))
+  (actions #:allocation #:each-subclass
+           #:init-value
+           (build-actions
+            (bother-professor
+             (lambda* (actor message #:key target)
+               "Go bother a professor"
+               (while (not (student-dead actor))
+                 (format #t "~a: Bother bother bother!\n"
+                         (actor-id-actor actor))
+                 (<- actor target
+                     'be-bothered
+                     #:noise "Bother bother bother!\n"))))
 
-    (be-lambda-consvardraed
-     (lambda (actor message)
-       "This kills the student."
-       (format #t "~a says: AAAAAAAHHHH!!! I'm dead!\n"
-               (actor-id-actor actor))
-       (set! (student-dead actor) #t))))))
+            (be-lambda-consvardraed
+             (lambda (actor message)
+               "This kills the student."
+               (format #t "~a says: AAAAAAAHHHH!!! I'm dead!\n"
+                       (actor-id-actor actor))
+               (set! (student-dead actor) #t))))))
 
 (define complaints
   '("Hey!" "Stop that!" "Oof!"))
 
-(define (professor-be-bothered actor message)
+(define (professor-be-bothered actor message . rest)
   (define whos-bothering (professor-bothered-by actor))
-
   (hash-set! whos-bothering (message-from message) #t)
 
   ;; Oof!  Those kids!
@@ -91,9 +89,8 @@
                 (actor-id actor))
         (hash-for-each
          (lambda (student _)
-           (send-message
-            actor student
-            'be-lambda-consvardraed)
+           (<- actor student
+               'be-lambda-consvardraed)
            ;; Remove student from bothering list
            (hash-remove! whos-bothering student))
          whos-bothering))
@@ -106,10 +103,10 @@
   ;; We'll use a hash table as a fake set.
   (bothered-by #:init-thunk make-hash-table
                #:getter professor-bothered-by)
-  (message-handler
-   #:init-value
-   (make-action-dispatch
-    (be-bothered professor-be-bothered))))
+  (actions #:allocation #:each-subclass
+           #:init-value
+           (build-actions
+            (be-bothered professor-be-bothered))))
 
 (define num-students 10)
 
