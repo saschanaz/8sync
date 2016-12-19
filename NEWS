@@ -8,6 +8,104 @@
 : permitted in any medium without royalty provided the copyright notice
 : and this notice are preserved.
 
+* 8sync 0.3
+
+** 8sync now targets Guile 2.2, Guile 2.0 dropped
+
+In order to take advantage of Guile 2.2's suspendable ports facilities,
+Guile 2.0 support has been dropped from 8sync.  (The Guile 2.1.X series is
+the Guile 2.2 preview series.  A minimum of Guile 2.1.4 is required.)
+
+While this may make 8sync slightly harder to install before major free
+software distributions catch up (Guix users should have no problem), there
+are major benefits to be found as well; networked code will be
+significantly easier to write.  For more information, read on.
+
+
+** Suspendable ports overhaul
+
+Previous 8sync networked code required hooking up a "port request" to the
+scheduler, which would assign a port listening on a read or write event
+with a callback.  By making use of Guile 2.2's new [[https://www.gnu.org/software/guile/docs/master/guile.html/Non_002dBlocking-I_002fO.html][suspendable ports]] code,
+network enabled code mostly is completely straightforward to write.  If a
+port is set to be nonblocking, attempting to read or write to a port that
+would normally block will automatically suspend to 8sync's scheduler.  When
+that port is discovered to be ready to read or write, the agenda will
+automatically resume the suspended code.  As such, writing nonblocking code
+looks almost exactly like writing blocking code in Guile... very little
+extra work needs to be done.
+
+8sync's internal demos and subsystems have also been updated to this
+feature.
+
+Not all ports will work with the new behavior, but most involving a file
+descriptor will, which is the vast majority of I/O facilities.  Hopefully
+over time the range of ports which are available to take advantage of this
+feature will grow.
+
+** Overhaul of the "8sync" and "8sync-*" macros / procedures
+
+The previous 8sync macro was realized to be a flawed design, more or less
+emulating a synchronous call stack while providing the main feature of
+yielding.  Thus 8sync, and several related macros (8sync-run-at, 8sync-run,
+8sync-delay, 8sync-run-delay) have been removed, and 8sync-nowait has been
+renamed to 8sync.
+
+This leads to the question, "what is the primary coordination mechanism in
+8sync between asynchronous processes?"  At least for now, this is the actor
+subystem.  (While 8sync core continues to not require the actor subsystem,
+for the reasons just described, many users will want to use it.)
+
+** Actor system overhaul
+
+Given its increased role in 8sync, the actor system has also received
+several major updates:
+
+*** send-message and friends deprecated in favor of <- and friends
+
+send-message, send-message-wait, reply-message, and reply-message-wait have
+all been removed in favor of what was previously their aliases: <-, <-wait,
+<-reply, and <-reply-wait.  The semantics are the same.
+
+*** Message body now "applied" to a procedure
+
+Previously to access a message body's contents, you used message-ref,
+since a message body was merely a key-value property list.  There was
+a special purpose message handler to make accessing the contents of a
+message's body easier, with define-mhandler.  Now this is no more,
+since invoking a message handler will call the procedure more or less
+like so:
+
+#+BEGIN_SRC scheme
+(apply this-message-handler actor message (message-body this-message))
+#+END_SRC
+
+"Waiting" for a reply message continues to return the message as
+before, but to access its body, the message is likewise applied, using
+either "receive-message" or "call-with-message".
+
+*** New %current-actor parameter
+
+*** Default message handler now "inheritable"
+
+The default message handler now looks at the actor slot of the actor
+and its predecessors, which must have #:allocation #:class or
+#:each-subclass.  The #:init-value of the actor slot is just an alist
+of (action-symbol . message-handler).  There is convenient sugar for
+defining this alist named "build-actions".  Use it!
+
+If for some reason you want to control the way messages are handled
+in some way that is different than the general pattern, you may
+customize the message-handler slot of your actor.
+
+** New yield procedure
+
+Allows asynchronously executing code to voluntarily yield to the scheduler.
+
+** New procedure: 8usleep
+
+Like usleep, but asynchronous.
+
 * 8sync 0.2
 
 The primary update to this release is the inclusion of a new actor
