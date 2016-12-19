@@ -48,7 +48,6 @@ SOURCES =  \
 	8sync/agenda.scm \
 	8sync/repl.scm \
 	8sync/systems/irc.scm \
-	8sync/systems/web.scm \
 	8sync/systems/actors.scm \
 	8sync/systems/actors/debug.scm
 
@@ -76,7 +75,6 @@ EXTRA_DIST = 						\
 	tests/utils.scm					\
 	demos/run-demo.sh				\
 	demos/ircbot.scm				\
-	demos/hello-web.scm				\
 	demos/actors/botherbotherbother.scm		\
 	demos/actors/simplest-possible.scm		\
 	demos/actors/robotscanner.scm
