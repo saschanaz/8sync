@@ -60,10 +60,8 @@
 
             run-it wrap wrap-apply run run-at run-delay
 
-            8sync-delay
-            8sync-run 8sync-run-at 8sync-run-delay
             8sync
-            8sleep
+            8sleep 8usleep
             
             ;; used for introspecting the error, but a method for making
             ;; is not exposed
