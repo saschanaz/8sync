@@ -122,14 +122,15 @@
                        body in-reply-to wants-reply
                        replied)
   message?
-  (id message-id)
-  (to message-to)
-  (from message-from)
-  (action message-action)
-  (body message-body)
-  (in-reply-to message-in-reply-to)
-  (wants-reply message-wants-reply)
-  (replied message-replied set-message-replied!))
+  (id message-id)                    ; id of this message
+  (to message-to)                    ; actor id this is going to
+  (from message-from)                ; actor id of sender
+  (action message-action)            ; action (a symbol) to be handled
+  (body message-body)                ; argument list "body" of message
+  (in-reply-to message-in-reply-to)  ; message id this is in reply to, if any
+  (wants-reply message-wants-reply)  ; whether caller is waiting for reply
+  (replied message-replied           ; was this message replied to?
+           set-message-replied!))
 
 
 (define* (make-message id to from action body
