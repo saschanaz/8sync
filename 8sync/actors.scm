@@ -512,45 +512,50 @@ to come after class definition."
              result))))))
 
   (define (resume-waiting-coroutine)
-    (cond
-     ((or (eq? (message-action message) '*reply*)
-          (eq? (message-action message) '*auto-reply*))
-      (call-catching-coroutine
-       (lambda ()
-         (match (hash-remove! (hive-waiting-coroutines hive)
-                              (message-in-reply-to message))
-           ((_ . (resume-actor-id . kont))
-            (if (not (equal? (message-to message)
-                             resume-actor-id))
-                (throw 'resuming-to-wrong-actor
-                       "Attempted to resume a coroutine to the wrong actor!"
-                       #:expected-actor-id (message-to message)
-                       #:got-actor-id resume-actor-id
-                       #:message message))
-            (let (;; @@: How should we resolve resuming coroutines to actors who are
-                  ;;   now gone?
-                  (actor (resolve-actor-to))
-                  (result (kont message)))
-              (maybe-autoreply actor)
-              result))
-           (#f (throw 'no-waiting-coroutine
-                      "message in-reply-to tries to resume nonexistent coroutine"
-                      message))))))
-     ;; Yikes, we must have gotten an error or something back
-     (else
-      ;; @@: Not what we want in the long run?
-      ;; What we'd *prefer* to do is to resume this message
-      ;; and throw an error inside the message handler
-      ;; (say, from send-mesage-wait), but that causes a SIGABRT (??!!)
-      (hash-remove! (hive-waiting-coroutines hive)
-                    (message-in-reply-to message))
-      (let ((explaination
-             (if (eq? (message-action message) '*reply*)
-                 "Won't resume coroutine; got an *error* as a reply"
-                 "Won't resume coroutine because action is not *reply*")))
-        (throw 'hive-unresumable-coroutine
-               explaination
-               #:message message)))))
+    (case (message-action message)
+      ;; standard reply / auto-reply
+      ((*reply* *auto-reply*)
+       (call-catching-coroutine
+        (lambda ()
+          (match (hash-remove! (hive-waiting-coroutines hive)
+                               (message-in-reply-to message))
+            ((_ . (resume-actor-id . kont))
+             (if (not (equal? (message-to message)
+                              resume-actor-id))
+                 (throw 'resuming-to-wrong-actor
+                        "Attempted to resume a coroutine to the wrong actor!"
+                        #:expected-actor-id (message-to message)
+                        #:got-actor-id resume-actor-id
+                        #:message message))
+             (let (;; @@: How should we resolve resuming coroutines to actors who are
+                   ;;   now gone?
+                   (actor (resolve-actor-to))
+                   (result (kont message)))
+               (maybe-autoreply actor)
+               result))
+            (#f (throw 'no-waiting-coroutine
+                       "message in-reply-to tries to resume nonexistent coroutine"
+                       message))))))
+      ;; Yikes, an error!
+      ((*error*)
+       ;; @@: Not what we want in the long run?
+       ;; What we'd *prefer* to do is to resume this message
+       ;; and throw an error inside the message handler
+       ;; (say, from send-mesage-wait), but that causes a SIGABRT (??!!)
+       (hash-remove! (hive-waiting-coroutines hive)
+                     (message-in-reply-to message))
+       (let ((explaination
+              (if (eq? (message-action message) '*reply*)
+                  "Won't resume coroutine; got an *error* as a reply"
+                  "Won't resume coroutine because action is not *reply*")))
+         (throw 'hive-unresumable-coroutine
+                explaination #:message message)))
+      ;; Unhandled action for a reply!
+      (else
+       (throw 'hive-unresumable-coroutine
+              "Won't resume coroutine, nonsense action on reply message"
+              #:action (message-action message)
+              #:message message))))
 
   (define (process-remote-message)
     ;; Find the ambassador
