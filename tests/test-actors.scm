@@ -18,7 +18,7 @@
 
 (define-module (tests test-actors)
   #:use-module (srfi srfi-64)
-  #:use-module (8sync systems actors)
+  #:use-module (8sync actors)
   #:use-module (8sync agenda)
   #:use-module (oop goops)
   #:use-module (tests utils))
@@ -68,7 +68,7 @@
      (test-equal (getter test-message) (getter reread-message)))
    (list message-id message-to message-from message-action message-body
          message-in-reply-to message-wants-reply
-         (@@ (8sync systems actors) message-replied))))
+         (@@ (8sync actors) message-replied))))
 
 
 ;;; Test reply / autoreply

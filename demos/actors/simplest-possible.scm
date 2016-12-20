@@ -16,7 +16,7 @@
 ;;; You should have received a copy of the GNU Lesser General Public
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
-(use-modules (8sync systems actors)
+(use-modules (8sync actors)
              (oop goops))
 
 (define-simple-actor <emo>

@@ -16,9 +16,9 @@
 ;;; You should have received a copy of the GNU Lesser General Public
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
-(define-module (8sync systems actors debug)
+(define-module (8sync debug)
   #:use-module (oop goops)
-  #:use-module (8sync systems actors)
+  #:use-module (8sync actors)
   #:export (hive-resolve-local-actor
             actor-hive
 
@@ -32,7 +32,7 @@
 ;; "private" kind of a misnomer
 (define-syntax-rule (expose private-var)
   (define private-var
-    (@@ (8sync systems actors) private-var)))
+    (@@ (8sync actors) private-var)))
 
 (expose hive-resolve-local-actor)
 (expose actor-hive)

@@ -23,7 +23,7 @@
 ;; Puppet show simulator.
 
 (use-modules (8sync agenda)
-             (8sync systems actors)
+             (8sync actors)
              (oop goops)
              (ice-9 hash-table)
              (ice-9 format))

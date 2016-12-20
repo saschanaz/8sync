@@ -33,7 +33,7 @@
 ;;; reporting info back to the user.)
 ;;; =====================================================================
 
-(use-modules (8sync systems actors)
+(use-modules (8sync actors)
              (oop goops)
              (ice-9 match))
 

@@ -48,8 +48,8 @@ SOURCES =  \
 	8sync/agenda.scm \
 	8sync/repl.scm \
 	8sync/systems/irc.scm \
-	8sync/systems/actors.scm \
-	8sync/systems/actors/debug.scm
+	8sync/actors.scm \
+	8sync/debug.scm
 
 TESTS =							\
 	tests/test-agenda.scm				\

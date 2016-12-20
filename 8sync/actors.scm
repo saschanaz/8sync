@@ -16,9 +16,7 @@
 ;;; You should have received a copy of the GNU Lesser General Public
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
-;; XUDD inspired actor system
-
-(define-module (8sync systems actors)
+(define-module (8sync actors)
   #:use-module (oop goops)
   #:use-module (srfi srfi-9)
   #:use-module (srfi srfi-9 gnu)
