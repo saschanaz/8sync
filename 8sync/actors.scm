@@ -70,7 +70,7 @@
 
             message-auto-reply?
 
-            <- <-wait <-reply <-reply-wait
+            <- <-wait <-wait* <-reply <-reply-wait <-reply-wait*
 
             call-with-message msg-receive msg-val
 
@@ -170,7 +170,8 @@
 
 ;; @@: Could we get rid of some of the conditional checks through
 ;;   some macro-foo?
-(define-inlinable (send-message xtra-params from-actor to-id action
+
+(define-inlinable (send-message send-options from-actor to-id action
                                 replying-to-message wants-reply?
                                 message-body-args)
   (if replying-to-message
@@ -185,10 +186,13 @@
                         (if replying-to-message
                             (message-id replying-to-message)
                             #f))))
-    ;; TODO: add xtra-params to both of these
     (if wants-reply?
         (abort-to-prompt (hive-prompt (actor-hive from-actor))
-                         from-actor new-message)
+                         from-actor new-message send-options)
+        ;; @@: It might be that eventually we pass in send-options
+        ;;   here too.  Since <-wait and <-reply-wait are the only ones
+        ;;   that use it yet, for now it kind of just makes things
+        ;;   confusing.
         (8sync (hive-process-message hive new-message)))))
 
 
@@ -197,10 +201,17 @@
   (send-message '() from-actor to-id action
                 #f #f message-body-args))
 
+(define (<-wait* send-options from-actor to-id action . message-body-args)
+  "Like <-wait, but allows extra parameters, for example whether to
+#:accept-errors"
+  (apply wait-maybe-handle-errors
+         (send-message send-options from-actor to-id action
+                       #f #t message-body-args)
+         send-options))
+
 (define (<-wait from-actor to-id action . message-body-args)
   "Send a message from an actor to another, but wait until we get a response"
-  (send-message '() from-actor to-id action
-                #f #t message-body-args))
+  (apply <-wait* '() from-actor to-id action message-body-args))
 
 ;; TODO: Intelligently ~propagate(ish) errors on -wait functions.
 ;;   We might have `send-message-wait-brazen' to allow callers to
@@ -217,10 +228,31 @@
   (send-message '() from-actor (message-from original-message) '*auto-reply*
                 original-message #f '()))
 
+(define (<-reply-wait* send-options from-actor original-message
+                       . message-body-args)
+  "Reply to a messsage, but wait until we get a response"
+  (apply wait-maybe-handle-errors
+         (send-message send-options from-actor
+                       (message-from original-message) '*reply*
+                       original-message #t message-body-args)
+         send-options))
+
 (define (<-reply-wait from-actor original-message . message-body-args)
   "Reply to a messsage, but wait until we get a response"
-  (send-message '() from-actor (message-from original-message) '*reply*
-                original-message #t message-body-args))
+  (apply <-reply-wait* '() from-actor original-message message-body-args))
+
+(define* (wait-maybe-handle-errors message
+                                   #:key accept-errors
+                                   #:allow-other-keys)
+  "Before returning a message to a waiting caller, see if we need to
+raise an exception if an error."
+  (define action (message-action message))
+  (cond ((and (eq? action '*error*)
+              (not accept-errors))
+         (throw 'hive-unresumable-coroutine
+                "Won't resume coroutine; got an *error* as a reply"
+                #:message message))
+        (else message)))
 
 
 
@@ -438,6 +470,14 @@ to come after class definition."
     ;; unresumable continuation.
     (lambda () (hive-process-message hive new-message))))
 
+(define-record-type <waiting-on-reply>
+  (make-waiting-on-reply actor-id kont send-options)
+  waiting-on-reply?
+  (actor-id waiting-on-reply-actor-id)
+  (kont waiting-on-reply-kont)
+  (send-options waiting-on-reply-send-options))
+
+
 (define-method (hive-process-message (hive <hive>) message)
   "Handle one message, or forward it via an ambassador"
   (define (maybe-autoreply actor)
@@ -487,11 +527,12 @@ to come after class definition."
           (8sync (queued-error-handling-thunk))))
     (call-with-prompt (hive-prompt hive)
       call-catching-errors
-      (lambda (kont actor message)
+      (lambda (kont actor message send-options)
         ;; Register the coroutine
         (hash-set! (hive-waiting-coroutines hive)
                    (message-id message)
-                   (cons (actor-id actor) kont))
+                   (make-waiting-on-reply
+                    (actor-id actor) kont send-options))
         ;; Send off the message
         (8sync (hive-process-message hive message)))))
 
@@ -513,42 +554,29 @@ to come after class definition."
   (define (resume-waiting-coroutine)
     (case (message-action message)
       ;; standard reply / auto-reply
-      ((*reply* *auto-reply*)
+      ((*reply* *auto-reply* *error*)
        (call-catching-coroutine
         (lambda ()
           (match (hash-remove! (hive-waiting-coroutines hive)
                                (message-in-reply-to message))
-            ((_ . (resume-actor-id . kont))
+            ((_ . waiting)
              (if (not (equal? (message-to message)
-                              resume-actor-id))
+                              (waiting-on-reply-actor-id waiting)))
                  (throw 'resuming-to-wrong-actor
                         "Attempted to resume a coroutine to the wrong actor!"
                         #:expected-actor-id (message-to message)
-                        #:got-actor-id resume-actor-id
+                        #:got-actor-id (waiting-on-reply-actor-id waiting)
                         #:message message))
-             (let (;; @@: How should we resolve resuming coroutines to actors who are
-                   ;;   now gone?
-                   (actor (resolve-actor-to))
-                   (result (kont message)))
+             (let* (;; @@: How should we resolve resuming coroutines to actors who are
+                    ;;   now gone?
+                    (actor (resolve-actor-to))
+                    (kont (waiting-on-reply-kont waiting))
+                    (result (kont message)))
                (maybe-autoreply actor)
                result))
             (#f (throw 'no-waiting-coroutine
                        "message in-reply-to tries to resume nonexistent coroutine"
                        message))))))
-      ;; Yikes, an error!
-      ((*error*)
-       ;; @@: Not what we want in the long run?
-       ;; What we'd *prefer* to do is to resume this message
-       ;; and throw an error inside the message handler
-       ;; (say, from send-mesage-wait), but that causes a SIGABRT (??!!)
-       (hash-remove! (hive-waiting-coroutines hive)
-                     (message-in-reply-to message))
-       (let ((explaination
-              (if (eq? (message-action message) '*reply*)
-                  "Won't resume coroutine; got an *error* as a reply"
-                  "Won't resume coroutine because action is not *reply*")))
-         (throw 'hive-unresumable-coroutine
-                explaination #:message message)))
       ;; Unhandled action for a reply!
       (else
        (throw 'hive-unresumable-coroutine
