@@ -165,23 +165,42 @@
 ;;; See: https://web.archive.org/web/20081223021934/http://mumble.net/~jar/articles/oo-moon-weinreb.html
 ;;;   (also worth seeing: http://mumble.net/~jar/articles/oo.html )
 
+;; This is the internal, generalized message sending method.
+;; Users shouldn't use it!  Use the <-foo forms instead.
+
+;; @@: Could we get rid of some of the conditional checks through
+;;   some macro-foo?
+(define-inlinable (send-message xtra-params from-actor to-id action
+                                replying-to-message wants-reply?
+                                message-body-args)
+  (if replying-to-message
+      (set-message-replied! replying-to-message #t))
+  (let* ((hive (actor-hive from-actor))
+         (new-message
+          (make-message (hive-gen-message-id hive) to-id
+                        (actor-id from-actor) action
+                        message-body-args
+                        #:wants-reply wants-reply?
+                        #:in-reply-to
+                        (if replying-to-message
+                            (message-id replying-to-message)
+                            #f))))
+    ;; TODO: add xtra-params to both of these
+    (if wants-reply?
+        (abort-to-prompt (hive-prompt (actor-hive from-actor))
+                         from-actor new-message)
+        (8sync (hive-process-message hive new-message)))))
+
+
 (define (<- from-actor to-id action . message-body-args)
   "Send a message from an actor to another actor"
-  (let* ((hive (actor-hive from-actor))
-         (message (make-message (hive-gen-message-id hive) to-id
-                                (actor-id from-actor) action
-                                message-body-args)))
-    (8sync (hive-process-message hive message))))
+  (send-message '() from-actor to-id action
+                #f #f message-body-args))
 
 (define (<-wait from-actor to-id action . message-body-args)
   "Send a message from an actor to another, but wait until we get a response"
-  (let* ((hive (actor-hive from-actor))
-         (abort-to (hive-prompt (actor-hive from-actor)))
-         (message (make-message (hive-gen-message-id hive) to-id
-                                (actor-id from-actor) action
-                                message-body-args
-                                #:wants-reply #t)))
-    (abort-to-prompt abort-to from-actor message)))
+  (send-message '() from-actor to-id action
+                #f #t message-body-args))
 
 ;; TODO: Intelligently ~propagate(ish) errors on -wait functions.
 ;;   We might have `send-message-wait-brazen' to allow callers to
@@ -190,38 +209,18 @@
 
 (define (<-reply from-actor original-message . message-body-args)
   "Reply to a message"
-  (set-message-replied! original-message #t)
-  (let* ((hive (actor-hive from-actor))
-         (new-message (make-message (hive-gen-message-id hive)
-                                    (message-from original-message)
-                                    (actor-id from-actor) '*reply*
-                                    message-body-args
-                                    #:in-reply-to (message-id original-message))))
-    (8sync (hive-process-message hive new-message))))
+  (send-message '() from-actor (message-from original-message) '*reply*
+                original-message #f message-body-args))
 
 (define (<-auto-reply from-actor original-message)
   "Auto-reply to a message.  Internal use only!"
-  (set-message-replied! original-message #t)
-  (let* ((hive (actor-hive from-actor))
-         (new-message (make-message (hive-gen-message-id hive)
-                                    (message-from original-message)
-                                    (actor-id from-actor) '*auto-reply*
-                                    '()
-                                    #:in-reply-to (message-id original-message))))
-    (8sync (hive-process-message hive new-message))))
+  (send-message '() from-actor (message-from original-message) '*auto-reply*
+                original-message #f '()))
 
 (define (<-reply-wait from-actor original-message . message-body-args)
   "Reply to a messsage, but wait until we get a response"
-  (set-message-replied! original-message #t)
-  (let* ((hive (actor-hive from-actor))
-         (abort-to (hive-prompt (actor-hive from-actor)))
-         (new-message (make-message (hive-gen-message-id hive)
-                                    (message-from original-message)
-                                    (actor-id from-actor) '*reply*
-                                    message-body-args
-                                    #:wants-reply #t
-                                    #:in-reply-to (message-id original-message))))
-    (abort-to-prompt abort-to from-actor new-message)))
+  (send-message '() from-actor (message-from original-message) '*reply*
+                original-message #t message-body-args))
 
 
 
