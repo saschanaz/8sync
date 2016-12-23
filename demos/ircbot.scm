@@ -28,8 +28,8 @@
 
 (define-class <my-irc-bot> (<irc-bot>))
 
-(define-method (irc-bot-handle-line (irc-bot <my-irc-bot>) speaker channel
-                                    line emote?)
+(define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                            line emote?)
   (define my-name (irc-bot-username irc-bot))
   (define (looks-like-me? str)
     (or (equal? str my-name)

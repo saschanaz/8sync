@@ -35,8 +35,8 @@
   #:export (<irc-bot>
             irc-bot-username irc-bot-server irc-bot-channels irc-bot-port
 
-            irc-bot-handle-line irc-bot-handle-misc-input
-            irc-bot-handle-user-join irc-bot-handle-user-quit
+            handle-line handle-misc-input
+            handle-user-join handle-user-quit
 
             default-irc-port))
 
@@ -192,7 +192,7 @@
 (define (irc-bot-main-loop irc-bot message)
   (define socket (irc-bot-socket irc-bot))
   (define line (string-trim-right (read-line socket) #\return))
-  (irc-bot-dispatch-raw-line irc-bot line)
+  (dispatch-raw-line irc-bot line)
   (cond
    ;; The port's been closed for some reason, so stop looping
    ((port-closed? socket)
@@ -220,7 +220,7 @@
 
 ;;; Likely-to-be-overridden generic methods
 
-(define-method (irc-bot-dispatch-raw-line (irc-bot <irc-bot>) raw-line)
+(define-method (dispatch-raw-line (irc-bot <irc-bot>) raw-line)
   "Dispatch a raw line of input"
   (receive (line-prefix line-command line-params)
       (parse-line raw-line)
@@ -235,17 +235,17 @@
                                 line-text emote?))))
       (_ (irc-bot-handle-misc-input irc-bot raw-line)))))
 
-(define-method (irc-bot-handle-line (irc-bot <irc-bot>) username channel-name
+(define-method (handle-line (irc-bot <irc-bot>) username channel-name
                                     line-text emote?)
   (echo-message irc-bot username channel-name line-text emote?))
 
-(define-method (irc-bot-handle-misc-input (irc-bot <irc-bot>) raw-line)
+(define-method (handle-misc-input (irc-bot <irc-bot>) raw-line)
   (display raw-line)
   (newline))
 
-(define-method (irc-bot-handle-user-join (irc-bot <irc-bot>) user channel)
+(define-method (handle-user-join (irc-bot <irc-bot>) user channel)
   'TODO)
 
-(define-method (irc-bot-handle-user-quit (irc-bot <irc-bot>) user channel)
+(define-method (handle-user-quit (irc-bot <irc-bot>) user channel)
   'TODO)
 
