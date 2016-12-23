@@ -632,6 +632,7 @@ that method for documentation."
                       init #f))
 
 (define* (hive-create-actor* hive actor-class id-cookie #:rest init)
+  "Create an actor, but also add a 'cookie' to the name for debugging"
   (%hive-create-actor hive actor-class
                       init id-cookie))
 
