@@ -22,10 +22,14 @@
 
 (use-modules (8sync)
              (8sync systems irc)
+             (oop goops)
              (srfi srfi-37)
              (ice-9 match))
 
-(define (handle-line irc-bot speaker channel line emote?)
+(define-class <my-irc-bot> (<irc-bot>))
+
+(define-method (irc-bot-handle-line (irc-bot <my-irc-bot>) speaker channel
+                                    line emote?)
   (define my-name (irc-bot-username irc-bot))
   (define (looks-like-me? str)
     (or (equal? str my-name)
@@ -95,9 +99,7 @@
                   (repl #f))
   (define hive (make-hive))
   (define irc-bot
-    (hive-create-actor* hive <irc-bot> "irc-bot"
-                        #:line-handler handle-line
-                        ;; TODO: move these to argument parsing
+    (hive-create-actor* hive <my-irc-bot> "irc-bot"
                         #:username username
                         #:server server
                         #:channels channels))
@@ -105,7 +107,7 @@
   (ez-run-hive hive (list (bootstrap-message hive irc-bot 'init))))
 
 (define (main args)
-  (define parsed-args (parse-args "ircbot.scm" (pk 'args args)))
+  (define parsed-args (parse-args "ircbot.scm" args))
   (apply (lambda* (#:key username #:allow-other-keys)
            (when (not username)
              (display "Error: username not specified!")

@@ -33,8 +33,10 @@
   #:use-module (ice-9 match)
   #:use-module (oop goops)
   #:export (<irc-bot>
-            irc-bot-username irc-bot-server irc-bot-channels
-            irc-bot-port irc-bot-handler
+            irc-bot-username irc-bot-server irc-bot-channels irc-bot-port
+
+            irc-bot-handle-line irc-bot-handle-misc-input
+            irc-bot-handle-user-join irc-bot-handle-user-quit
 
             default-irc-port))
 
@@ -157,9 +159,6 @@
   (port #:init-keyword #:port
         #:init-value default-irc-port
         #:getter irc-bot-port)
-  (line-handler #:init-keyword #:line-handler
-                #:init-value (wrap-apply echo-message)
-                #:getter irc-bot-line-handler)
   (socket #:accessor irc-bot-socket)
   (actions #:allocation #:each-subclass
            #:init-value (build-actions
@@ -193,7 +192,7 @@
 (define (irc-bot-main-loop irc-bot message)
   (define socket (irc-bot-socket irc-bot))
   (define line (string-trim-right (read-line socket) #\return))
-  (irc-bot-dispatch-line irc-bot line)
+  (irc-bot-dispatch-raw-line irc-bot line)
   (cond
    ;; The port's been closed for some reason, so stop looping
    ((port-closed? socket)
@@ -213,9 +212,18 @@
    (else
     (<- irc-bot (actor-id irc-bot) 'main-loop))))
 
-(define-method (irc-bot-dispatch-line (irc-bot <irc-bot>) line)
+(define* (irc-bot-send-line irc-bot message
+                            channel line #:key emote?)
+  ;; TODO: emote? handling
+  (format (irc-bot-socket irc-bot) "PRIVMSG ~a :~a~a"
+          channel line irc-eol))
+
+;;; Likely-to-be-overridden generic methods
+
+(define-method (irc-bot-dispatch-raw-line (irc-bot <irc-bot>) raw-line)
+  "Dispatch a raw line of input"
   (receive (line-prefix line-command line-params)
-      (parse-line line)
+      (parse-line raw-line)
     (match line-command
       ("PING"
        (display "PONG" (irc-bot-socket irc-bot)))
@@ -223,14 +231,21 @@
        (receive (channel-name line-text emote?)
            (condense-privmsg-line line-params)
          (let ((username (irc-line-username line-prefix)))
-           ((irc-bot-line-handler irc-bot) irc-bot username
-            channel-name line-text emote?))))
-      (_
-       (display line)
-       (newline)))))
+           (irc-bot-handle-line irc-bot username channel-name
+                                line-text emote?))))
+      (_ (irc-bot-handle-misc-input irc-bot raw-line)))))
 
-(define* (irc-bot-send-line irc-bot message
-                            channel line #:key emote?)
-  ;; TODO: emote? handling
-  (format (irc-bot-socket irc-bot) "PRIVMSG ~a :~a~a"
-          channel line irc-eol))
+(define-method (irc-bot-handle-line (irc-bot <irc-bot>) username channel-name
+                                    line-text emote?)
+  (echo-message irc-bot username channel-name line-text emote?))
+
+(define-method (irc-bot-handle-misc-input (irc-bot <irc-bot>) raw-line)
+  (display raw-line)
+  (newline))
+
+(define-method (irc-bot-handle-user-join (irc-bot <irc-bot>) user channel)
+  'TODO)
+
+(define-method (irc-bot-handle-user-quit (irc-bot <irc-bot>) user channel)
+  'TODO)
+
