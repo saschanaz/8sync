@@ -20,36 +20,97 @@
 ;;; You should have received a copy of the GNU Lesser General Public
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
-(use-modules (8sync systems irc)
-             (8sync agenda)
+(use-modules (8sync)
+             (8sync systems irc)
+             (srfi srfi-37)
              (ice-9 match))
 
-(define (handle-message socket my-name speaker
-                        channel message is-action)
+(define (handle-line irc-bot speaker channel line emote?)
+  (define my-name (irc-bot-username irc-bot))
   (define (looks-like-me? str)
     (or (equal? str my-name)
         (equal? str (string-concatenate (list my-name ":")))))
-  (match (string-split message #\space)
+  (match (string-split line #\space)
     (((? looks-like-me? _) action action-args ...)
      (match action
+       ;; The classic botsnack!
        ("botsnack"
-        (irc-format socket "PRIVMSG ~a :Yippie! *does a dance!*" channel))
+        (<- irc-bot (actor-id irc-bot) 'send-line channel
+            "Yippie! *does a dance!*"))
+       ;; Return greeting
        ((or "hello" "hello!" "hello." "greetings" "greetings." "greetings!"
-            "hei" "hei." "hei!")
-        (irc-format socket "PRIVMSG ~a :Oh hi ~a!" channel speaker))
-       ;; Add yours here
+            "hei" "hei." "hei!" "hi" "hi!")
+        (<- irc-bot (actor-id irc-bot) 'send-line channel
+            (format #f "Oh hi ~a!" speaker)))
+
+       ;; --->  Add yours here <---
+
+       ;; Default
        (_
-        (irc-format socket "PRIVMSG ~a :*stupid puppy look*" channel))))
+        (<- irc-bot (actor-id irc-bot) 'send-line channel
+            "*stupid puppy look*"))))
+    ;; Otherwise... just spit the output to current-output-port or whatever
     (_
-     (cond
-      (is-action
-       (format #t "~a emoted ~s in channel ~a\n"
-               speaker message channel))
-      (else
-       (format #t "~a said ~s in channel ~a\n"
-               speaker message channel))))))
+     (if emote?
+         (format #t "~a emoted ~s in channel ~a\n"
+                 speaker line channel)
+         (format #t "~a said ~s in channel ~a\n"
+                 speaker line channel)))))
 
-(define main
-  (make-irc-bot-cli (make-handle-line
-                     #:handle-privmsg (wrap-apply handle-message))))
 
+(define (display-help scriptname)
+  (format #t "Usage: ~a [OPTION] username" scriptname)
+  (display "
+  -h, --help                  display this text
+      --server=SERVER-NAME    connect to SERVER-NAME
+                                defaults to \"irc.freenode.net\"
+      --channels=CHANNEL1,CHANNEL2
+                              join comma-separated list of channels on connect
+                                defaults to \"##botchat\"")
+  (newline))
+
+(define (parse-args scriptname args)
+  (args-fold (cdr args)
+             (list (option '(#\h "help") #f #f
+                           (lambda _
+                             (display-help scriptname)
+                             (exit 0)))
+                   (option '("server") #t #f
+                           (lambda (opt name arg result)
+                             `(#:server ,arg ,@result)))
+                   (option '("channels") #t #f
+                           (lambda (opt name arg result)
+                             `(#:channels ,(string-split arg #\,)
+                               ,@result))))
+             (lambda (opt name arg result)
+               (format #t "Unrecognized option `~a'\n" name)
+               (exit 1))
+             (lambda (option result)
+               `(#:username ,option ,@result))
+             '()))
+
+(define* (run-bot #:key (username "examplebot")
+                  (server "irc.freenode.net")
+                  (channels '("##botchat"))
+                  (repl #f))
+  (define hive (make-hive))
+  (define irc-bot
+    (hive-create-actor* hive <irc-bot> "irc-bot"
+                        #:line-handler handle-line
+                        ;; TODO: move these to argument parsing
+                        #:username username
+                        #:server server
+                        #:channels channels))
+  ;; TODO: load REPL
+  (ez-run-hive hive (list (bootstrap-message hive irc-bot 'init))))
+
+(define (main args)
+  (define parsed-args (parse-args "ircbot.scm" (pk 'args args)))
+  (apply (lambda* (#:key username #:allow-other-keys)
+           (when (not username)
+             (display "Error: username not specified!")
+             (newline) (newline)
+             (display-help "ircbot.scm")
+             (exit 1)))
+         parsed-args)
+  (apply run-bot parsed-args))

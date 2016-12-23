@@ -23,6 +23,7 @@
 (define-module (8sync systems irc)
   #:use-module (8sync repl)
   #:use-module (8sync agenda)
+  #:use-module (8sync actors)
   #:use-module (srfi srfi-9)
   #:use-module (ice-9 getopt-long)
   #:use-module (ice-9 format)
@@ -30,30 +31,12 @@
   #:use-module (ice-9 rdelim)
   #:use-module (ice-9 q)
   #:use-module (ice-9 match)
-  #:export (;; The only things you definitely need if writing a bot
-            make-irc-bot-cli            
-            irc-format irc-display irc-send-message irc-send-formatted
-            
-            ;; Useful things if you're making something more complicated
-            irc-line
-            irc-eol
+  #:use-module (oop goops)
+  #:export (<irc-bot>
+            irc-bot-username irc-bot-server irc-bot-channels
+            irc-bot-port irc-bot-handler
 
-            default-irc-port
-
-            startswith-colon?
-
-            <irc-line>
-            make-irc-line irc-line?
-            irc-line-prefix irc-line-command irc-line-params
-
-            parse-line
-            irc-line-username
-
-            condense-privmsg-line
-            echo-back-message
-
-            make-handle-line make-basic-irc-handler
-            queue-and-start-irc-agenda!))
+            default-irc-port))
 
 
 ;;; Network stuff
@@ -73,59 +56,12 @@
 
 (define irc-eol "\r\n")
 
-(define (irc-line line)
-  (string-concatenate (list line irc-eol)))
-
-(define-syntax-rule (irc-format dest format-string rest ...)
-  (let ((line (string-concatenate
-               (list (format #f format-string rest ...)
-                     irc-eol))))
-    (match dest
-      (#f line)
-      (#t (display line))
-      (else
-       (display line dest)))))
-
-(define* (irc-display line #:optional dest)
-  (if dest
-      (display (irc-line line) dest)
-      (display (irc-line dest))))
-
-(define (irc-send-message socket channel message)
-  (irc-format socket "PRIVMSG ~a :~a" channel message))
-
-(define-syntax-rule (irc-send-formatted socket channel format-string
-                                        args ...)
-  (irc-format socket "PRIVMSG ~a :~a" channel
-              (format #f format-string args ...)))
-
-(define* (handle-login socket username
-                       #:key
-                       (hostname "*")
-                       (servername "*")
-                       (realname username)
-                       (channels '()))
-  (irc-format socket "USER ~a ~a ~a :~a"
-              username hostname servername realname)
-  (irc-format socket "NICK ~a" username)
-  (for-each
-   (lambda (channel)
-     (irc-format socket "JOIN ~a" channel))
-   channels))
-
 (define (startswith-colon? str)
   (and (> (string-length str) 0)
        (eq? (string-ref str 0)
             #\:)))
 
-(define-record-type <irc-line>
-  (make-irc-line prefix command params)
-  irc-line?
-  (prefix irc-line-prefix)
-  (command irc-line-command)
-  (params irc-line-params))
-
-
+;; TODO: This needs a cleanup.  Maybe even just using a regex is fine.
 (define (parse-line line)
   (define (parse-params pre-params)
     ;; This is stupid and imperative but I can't wrap my brain around
@@ -156,11 +92,11 @@
     (((? startswith-colon? prefix)
       command
       pre-params ...)
-     (make-irc-line prefix command
-                    (parse-params pre-params)))
+     (values prefix command
+             (parse-params pre-params)))
     ((command pre-params ...)
-     (make-irc-line #f command
-                    (parse-params pre-params)))))
+     (values #f command
+             (parse-params pre-params)))))
 
 (define (strip-colon-if-necessary string)
   (if (and (> (string-length string) 0)
@@ -169,8 +105,8 @@
       string))
 
 ;; @@: Not sure if this works in all cases, like what about in a non-privmsg one?
-(define (irc-line-username irc-line)
-  (let* ((prefix-name (strip-colon-if-necessary (irc-line-prefix irc-line)))
+(define (irc-line-username irc-line-prefix)
+  (let* ((prefix-name (strip-colon-if-necessary irc-line-prefix))
          (exclaim-index (string-index prefix-name #\!)))
     (if exclaim-index
         (substring/copy prefix-name 0 exclaim-index)
@@ -178,7 +114,7 @@
 
 (define (condense-privmsg-line line)
   "Condense message line and do multiple value return of
-  (channel message is-action)"
+  (channel message emote?)"
   (define (strip-last-char string)
     (substring/copy string 0 (- (string-length string) 1)))
   (let* ((channel-name (caar line))
@@ -195,112 +131,106 @@
                (string-join (cons first-word rest-message) " ")
                #f)))))
 
-(define (echo-back-message socket my-name speaker
-                           channel-name message is-action)
-  (if is-action
+;;; A goofy default
+(define (echo-message irc-bot speaker channel-name
+                      line-text emote?)
+  "Simply echoes the message to the current-output-port."
+  (if emote?
       (format #t "~a emoted ~s in channel ~a\n"
-              speaker message channel-name)
+              speaker line-text channel-name)
       (format #t "~a said ~s in channel ~a\n"
-              speaker message channel-name)))
-
-(define default-handle-privmsg echo-back-message)
-
-(define* (make-handle-line #:key
-                           (handle-privmsg default-handle-privmsg))
-  (define (handle-line socket line my-username)
-    (let ((parsed-line (parse-line line)))
-      (match (irc-line-command parsed-line)
-        ("PING"
-         (irc-display "PONG" socket))
-        ("PRIVMSG"
-         (receive (channel-name message is-action)
-             (condense-privmsg-line (irc-line-params parsed-line))
-           (let ((username (irc-line-username parsed-line)))
-             (handle-privmsg socket my-username username
-                             channel-name message is-action))))
-        (_
-         (display line)
-         (newline)))))
-  handle-line)
-
-(define (irc-loop socket handle-line username)
-  (define (loop)
-    (define line (string-trim-right (read-line socket) #\return))
-    (handle-line socket line username)
-    (cond
-     ;; The port's been closed for some reason, so stop looping
-     ((port-closed? socket)
-      'done)
-     ;; We've reached the EOF object, which means we should close
-     ;; the port ourselves and stop looping
-     ((eof-object? (peek-char socket))
-      (close socket)
-      'done)
-     ;; Otherwise, let's read till the next line!
-     (else (loop))))
-  (loop))
-
-(define default-line-handler (make-handle-line))
-
-(define* (queue-and-start-irc-agenda! agenda socket #:key
-                                      (username "syncbot")
-                                      (inet-port default-irc-port)
-                                      (line-handler default-line-handler)
-                                      (channels '()))
-  (dynamic-wind
-    (lambda () #f)
-    (lambda ()
-      (enq! (agenda-queue agenda)
-            (wrap (irc-loop socket line-handler username)))
-      (enq! (agenda-queue agenda) (wrap (handle-login socket username
-                                                      #:channels channels)))
-      (start-agenda agenda))
-    (lambda ()
-      (display "Cleaning up...\n")
-      (close socket))))
-
+              speaker line-text channel-name)))
 
 
-;;; CLI
+;;; Bot
 ;;; ===
 
-(define option-spec
-  `((server (single-char #\s) (required? #t) (value #t))
-    (port (single-char #\p)
-          (value #t)
-          (predicate
-           ,(lambda (s)
-              (if (string->number s) #t #f))))
-    (username (single-char #\u) (required? #t) (value #t))
-    (channels (value #t))
-    (listen)))
+(define-class <irc-bot> (<actor>)
+  (username #:init-keyword #:username
+            #:getter irc-bot-username)
+  (realname #:init-keyword #:realname
+            #:init-value #f)
+  (server #:init-keyword #:server
+          #:getter irc-bot-server)
+  (channels #:init-keyword #:channels
+            #:getter irc-bot-channels)
+  (port #:init-keyword #:port
+        #:init-value default-irc-port
+        #:getter irc-bot-port)
+  (line-handler #:init-keyword #:line-handler
+                #:init-value (wrap-apply echo-message)
+                #:getter irc-bot-line-handler)
+  (socket #:accessor irc-bot-socket)
+  (actions #:allocation #:each-subclass
+           #:init-value (build-actions
+                         (init irc-bot-init)
+                         (main-loop irc-bot-main-loop)
+                         (send-line irc-bot-send-line))))
 
-(define* (make-irc-bot-cli #:optional
-                           (line-handler default-line-handler)
-                           (print-and-continue-on-error #t))
-  (define (main args)
-    (let* ((options (getopt-long args option-spec))
-           (hostname (option-ref options 'server #f))
-           (port (or (option-ref options 'port #f)
-                     default-irc-port))
-           (username (option-ref options 'username #f))
-           (listen (option-ref options 'listen #f))
-           (channels (option-ref options 'channels ""))
-           (agenda (if print-and-continue-on-error
-                       (make-agenda #:pre-unwind-handler print-error-and-continue)
-                       (make-agenda))))
-      (display `((server ,hostname) (port ,port) (username ,username)
-                 (listen ,listen) (channels-split ,(string-split channels #\space))))
-      (newline)
-      (if listen
-          (spawn-and-queue-repl-server! agenda))
-      (queue-and-start-irc-agenda!
-       agenda
-       (irc-socket-setup hostname port)
-       #:inet-port port
-       #:username username
-       #:channels (string-split channels #\space)
-       #:line-handler line-handler)))
-  main)
+(define (irc-bot-realname irc-bot)
+  (or (slot-ref irc-bot 'realname)
+      (irc-bot-username irc-bot)))
 
-(define main (make-irc-bot-cli))
+(define (irc-bot-init irc-bot message)
+  "Initialize the IRC bot"
+  (define socket
+    (irc-socket-setup (irc-bot-server irc-bot)
+                      (irc-bot-port irc-bot)))
+  (set! (irc-bot-socket irc-bot) socket)
+  (format socket "USER ~a ~a ~a :~a~a"
+          (irc-bot-username irc-bot)
+          "*" "*"  ; hostname and servername
+          (irc-bot-realname irc-bot) irc-eol)
+  (format socket "NICK ~a~a" (irc-bot-username irc-bot) irc-eol)
+
+  (for-each
+   (lambda (channel)
+     (format socket "JOIN ~a~a" channel irc-eol))
+   (irc-bot-channels irc-bot))
+
+  (<- irc-bot (actor-id irc-bot) 'main-loop))
+
+(define (irc-bot-main-loop irc-bot message)
+  (define socket (irc-bot-socket irc-bot))
+  (define line (string-trim-right (read-line socket) #\return))
+  (irc-bot-dispatch-line irc-bot line)
+  (cond
+   ;; The port's been closed for some reason, so stop looping
+   ((port-closed? socket)
+    'done)
+   ;; We've reached the EOF object, which means we should close
+   ;; the port ourselves and stop looping
+   ((eof-object? (peek-char socket))
+    (close socket)
+    'done)
+   ;; ;; Looks like we've been killed somehow... well, stop running
+   ;; ;; then!
+   ;; ((actor-am-i-dead? irc-bot)
+   ;;  (if (not (port-closed? socket))
+   ;;      (close socket))
+   ;;  'done)
+   ;; Otherwise, let's read till the next line!
+   (else
+    (<- irc-bot (actor-id irc-bot) 'main-loop))))
+
+(define-method (irc-bot-dispatch-line (irc-bot <irc-bot>) line)
+  (receive (line-prefix line-command line-params)
+      (parse-line line)
+    (match line-command
+      ("PING"
+       (display "PONG" (irc-bot-socket irc-bot)))
+      ("PRIVMSG"
+       (receive (channel-name line-text emote?)
+           (condense-privmsg-line line-params)
+         (let ((username (irc-line-username line-prefix)))
+           ((irc-bot-line-handler irc-bot) irc-bot username
+            channel-name line-text emote?))))
+      (_
+       (display line)
+       (newline)))))
+
+(define* (irc-bot-send-line irc-bot message
+                            channel line #:key emote?)
+  ;; TODO: emote? handling
+  (format (irc-bot-socket irc-bot) "PRIVMSG ~a :~a~a"
+          channel line irc-eol))
