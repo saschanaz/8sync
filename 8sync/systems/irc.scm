@@ -35,6 +35,8 @@
   #:export (<irc-bot>
             irc-bot-username irc-bot-server irc-bot-channels irc-bot-port
 
+            irc-bot-send-line
+
             handle-line handle-misc-input
             handle-user-join handle-user-quit
 
@@ -164,7 +166,7 @@
            #:init-value (build-actions
                          (init irc-bot-init)
                          (main-loop irc-bot-main-loop)
-                         (send-line irc-bot-send-line))))
+                         (send-line irc-bot-send-line-action))))
 
 (define (irc-bot-realname irc-bot)
   (or (slot-ref irc-bot 'realname)
@@ -212,11 +214,17 @@
    (else
     (<- irc-bot (actor-id irc-bot) 'main-loop))))
 
-(define* (irc-bot-send-line irc-bot message
-                            channel line #:key emote?)
+(define* (irc-bot-send-line-action irc-bot message
+                                   channel line #:key emote?)
+  "Action handler for sending lines.  Real behavior happens in
+irc-bot-send-line."
+  (irc-bot-send-line irc-bot channel line #:emote? emote?))
+
+(define* (irc-bot-send-line irc-bot channel line #:key emote?)
   ;; TODO: emote? handling
   (format (irc-bot-socket irc-bot) "PRIVMSG ~a :~a~a"
           channel line irc-eol))
+
 
 ;;; Likely-to-be-overridden generic methods
 
