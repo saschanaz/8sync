@@ -226,14 +226,15 @@
       (parse-line raw-line)
     (match line-command
       ("PING"
-       (display "PONG" (irc-bot-socket irc-bot)))
+       (display (string-append "PONG" irc-eol)
+                (irc-bot-socket irc-bot)))
       ("PRIVMSG"
        (receive (channel-name line-text emote?)
            (condense-privmsg-line line-params)
          (let ((username (irc-line-username line-prefix)))
-           (irc-bot-handle-line irc-bot username channel-name
-                                line-text emote?))))
-      (_ (irc-bot-handle-misc-input irc-bot raw-line)))))
+           (handle-line irc-bot username channel-name
+                        line-text emote?))))
+      (_ (handle-misc-input irc-bot raw-line)))))
 
 (define-method (handle-line (irc-bot <irc-bot>) username channel-name
                                     line-text emote?)
