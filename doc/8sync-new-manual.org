@@ -1,0 +1,92 @@
+# Permission is granted to copy, distribute and/or modify this document
+# under the terms of the GNU Free Documentation License, Version 1.3
+# or any later version published by the Free Software Foundation;
+# with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
+# A copy of the license is included in the section entitled ``GNU
+# Free Documentation License''.
+# 
+# A copy of the license is also available from the Free Software
+# Foundation Web site at http://www.gnu.org/licenses/fdl.html
+# 
+# Altenately, this document is also available under the Lesser General
+# Public License, version 3 or later, as published by the Free Software
+# Foundation.
+# 
+# A copy of the license is also available from the Free Software
+# Foundation Web site at http://www.gnu.org/licenses/lgpl.html
+
+* Preface
+
+Welcome to 8sync's documentation!
+8sync is an asynchronous programming environment for GNU Guile.
+(Get it? 8sync? Async??? Quiet your groans, it's a great name!)
+
+8sync has some nice properties:
+
+ - 8sync uses the actor model as its fundamental concurrency
+   synchronization mechanism.
+   Since the actor model is a "shared nothing" asynchronous
+   environment, you don't need to worry about deadlocks or other
+   tricky problems common to other asynchronous models.
+   Actors are modular units of code and state which communicate
+   by sending messages to each other.
+ - If you've done enough asynchronous programming, you're probably
+   familiar with the dreaded term "callback hell".
+   Getting around callback hell usually involves a tradeoff of other,
+   still rather difficult to wrap your brain around programming
+   patterns.
+   8sync uses some clever tricks involving "delimited continuations"
+   under the hood to make the code you write look familiar and
+   straightforward.
+   When you need to send a request to another actor and get some
+   information back from it without blocking, there's no need
+   to write a separate procedure... 8sync's scheduler will suspend
+   your procedure and wake it back up when a response is ready.
+ - Even nonblocking I/O code is straightforward to write.
+   Thanks to the "suspendable ports" code introduced in Guile 2.2,
+   writing asynchronous, nonblocking networked code looks mostly
+   like writing the same synchronous code.
+   8sync's scheduler handles suspending and resuming networked
+   code that would otherwise block.
+ - 8sync aims to be "batteries included".
+   Useful subsystems for IRC bots, HTTP servers, and so on are
+   included out of the box.
+ - 8sync prioritizes live hacking.
+   If using an editor like Emacs with a nice mode like Geiser,
+   an 8sync-using developer can change and fine-tune the behavior
+   of code /while it runs/.
+   This makes both debugging and development much more natural,
+   allowing the right designs to evolve under your fingertips.
+   A productive hacker is a happy hacker, after all!
+
+In the future, 8sync will also provide the ability to spawn and
+communicate with actors on different threads, processes, and machines,
+with most code running the same as if actors were running in the same
+execution environment.
+
+But as a caution, 8sync is still very young.
+The API is stabilizing, but not yet stable, and it is not yet well
+"battle-tested".
+Hacker beware!
+But, consider this as much an opportunity as a warning.
+8sync is in a state where there is much room for feedback and
+contributions.
+Your help wanted!
+
+And now, into the wild, beautiful frontier.
+Onward!
+
+* Tutorial
+
+** Intro to the tutorial
+
+** A fun little IRC bot
+
+** Battle bot!
+
+** Adding a "rankings" web page
+
+** Writing our own <irc-bot> from scratch
+
+* API reference
+
