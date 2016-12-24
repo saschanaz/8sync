@@ -322,13 +322,13 @@ raise an exception if an error."
 ;;
 
 (define (make-address actor-id hive-id)
-  (cons actor-id hive-id))
+  (vector actor-id hive-id))
 
 (define (address-actor-id address)
-  (car address))
+  (vector-ref address 0))
 
 (define (address-hive-id address)
-  (cdr address))
+  (vector-ref address 1))
 
 (define (address->string address)
   (string-append (address-actor-id address) "@"
