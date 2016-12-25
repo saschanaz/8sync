@@ -111,10 +111,299 @@ how easy it is to add new networked layers by tacking on a high score
 to our game, and as a finale we'll dive into writing our own little
 irc bot framework "from scratch" on top of the 8sync actor model.
 
-Alright, let's get going.
+Alright, let's get started.
 This should be a lot of fun!
 
 ** A silly little IRC bot
+
+First of all, we're going to need to import some modules.  Put this at
+the top of your file:
+
+#+BEGIN_SRC scheme
+  (use-modules (8sync)               ; 8sync's agenda and actors
+               (8sync systems irc)   ; the irc bot subsystem
+               (oop goops)           ; 8sync's actors use GOOPS
+               (ice-9 format)        ; basic string formatting
+               (ice-9 match))        ; pattern matching
+#+END_SRC
+
+Now we need to add our bot.  Initially, it won't do much.
+
+#+BEGIN_SRC scheme
+  (define-class <my-irc-bot> (<irc-bot>))
+
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    (if emote?
+        (format #t "~a emoted ~s in channel ~a\n"
+                speaker line channel)
+        (format #t "~a said ~s in channel ~a\n"
+                speaker line channel)))
+#+END_SRC
+
+We've just defined our own IRC bot!
+This is an 8sync actor.
+(8sync uses GOOPS to define actors.)
+We extended the handle-line generic method, so this is the code that
+will be called whenever the IRC bot "hears" anything.
+For now the code is pretty basic: it just outputs whatever it "hears"
+from a user in a channel to the current output port.
+Pretty boring!
+But it should help us make sure we have things working when we kick
+things off.
+
+Speaking of, even though we've defined our actor, it's not running
+yet.  Time to fix that!
+
+#+BEGIN_SRC scheme
+(define* (run-bot #:key (username "examplebot")
+                  (server "irc.freenode.net")
+                  (channels '("##botchat")))
+  (define hive (make-hive))
+  (define irc-bot
+    (hive-create-actor* hive <my-irc-bot> "irc-bot"
+                        #:username username
+                        #:server server
+                        #:channels channels))
+  (run-hive hive (list (bootstrap-message hive irc-bot 'init))))
+#+END_SRC
+
+Actors are connected to something called a "hive", which is a
+special kind of actor that runs all the other actors.
+Actors can spawn other actors, but before we start the hive we use
+this special "hive-create-actor*" method.
+It takes the hive as its first argument, the actor class as the second
+argument, a decoraive "cookie" as the third argument (this is
+optional, but it helps with debugging... you can skip it by setting it
+to #f if you prefer), and the rest are initialization arguments to the
+actor.  hive-create-actor* passes back not the actor itself (we don't
+get access to that usually) but the *id* of the actor.
+(More on this later.)
+Finally we run the hive with run-hive and pass it a list of
+"bootstrapped" messages.
+Normally actors send messages to each other (and sometimes themselves),
+but we need to send a message or messages to start things or else
+nothing is going to happen.
+
+We can run it like:
+
+#+BEGIN_SRC scheme
+(run-bot #:username "some-bot-username") ; be creative!
+#+END_SRC
+
+Assuming all the tubes on the internet are properly connected, you
+should be able to join the "##botchat" channel on irc.freenode.net and
+see your bot join as well.
+Now, as you probably guessed, you can't really /do/ much yet.
+If you talk to the bot, it'll send messages to the terminal informing
+you as such, but it's hardly a chat bot if it's not chatting yet.
+
+So let's do the most boring (and annoying) thing possible.
+Let's get it to echo whatever we say back to us.
+Change handle-line to this:
+
+#+BEGIN_SRC scheme
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    (<- irc-bot (actor-id irc-bot) 'send-line channel
+        (format #f "Bawwwwk! ~a says: ~a" speaker line)))
+#+END_SRC
+
+This will do exactly what it looks like: repeat back whatever anyone
+says like an obnoxious parrot.
+Give it a try, but don't keep it running for too long... this
+bot is so annoying it's likely to get banned from whatever channel
+you put it in.
+
+This method handler does have the advantage of being simple though.
+It introduces a new concept simply... sending a message!
+Whenever you see "<-", you can think of that as saying "send this
+message".
+The arguments to "<-" are as follows: the actor sending the message,
+the id of the actor the message is being sent to, the "action" we
+want to invoke (a symbol), and the rest are arguments to the
+"action handler" which is in this case send-line (with itself takes
+two arguments: the channel our bot should send a message to, and
+the line we want it to spit out to the channel).
+
+(Footnote: 8sync's name for sending a message, "<-", comes from older,
+early lisp object oriented systems which were, as it turned out,
+inspired by the actor model!
+Eventually message passing was dropped in favor of something called
+"generic functions" or "generic methods"
+(you may observe we made use of such a thing in extending
+handle-line).
+Many lispers believe that there is no need for message passing
+with generic methods and some advanced functional techniques,
+but in a concurrent environment message passing becomes useful
+again, especially when the communicating objects / actors are not
+in the same address space.)
+
+Normally in the actor model, we don't have direct references to
+an actor, only an identifier.
+This is for two reasons: to quasi-enforce the "shared nothing"
+environment (actors absolutely control their own resources, and
+"all you can do is send a message" to request that they modify
+them) and because... well, you don't even know where that actor is!
+Actors can be anything, and anywhere.
+It's possible in 8sync to have an actor on a remote hive, which means
+the actor could be on a remote process or even remote machine, and
+in most cases message passing will look exactly the same.
+(There are some exceptions; it's possible for two actors on the same
+hive to "hand off" some special types of data that can't be serialized
+across processes or the network, eg a socket or a closure, perhaps even
+one with mutable state.
+This must be done with care, and the actors should be careful both
+to ensure that they are both local and that the actor handing things
+off no longer accesses that value to preserve the actor model.
+But this is an advanced topic, and we are getting ahead of ourselves.)
+We have to supply the id of the receiving actor, and usually we'd have
+only the identifier.
+But since in this case, since the actor we're sending this to is
+ourselves, we have to pass in our identifier, since the Hive won't
+deliver to anything other than an address.
+
+Astute readers may observe, since this is a case where we are just
+referencing our own object, couldn't we just call "sending a line"
+as a method of our own object without all the message passing?
+Indeed, we do have such a method, so we /could/ rewrite handle-line
+like so:
+
+#+BEGIN_SRC scheme
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    (irc-bot-send-line irc-bot channel
+                       (format #f "Bawwwwk! ~a says: ~a" speaker line)))
+#+END_SRC
+
+... but we want to get you comfortable and familiar with message
+passing, and we'll be making use of this same message passing shortly
+so that /other/ actors may participate in communicating with IRC
+through our IRC bot.
+
+Anyway, our current message handler is simply too annoying.
+What would be much more interesting is if we could recognize
+when an actor could repeat messages /only/ when someone is speaking
+to it directly.
+Luckily this is an easy adjustment to make.
+
+#+BEGIN_SRC scheme
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    (define my-name (irc-bot-username irc-bot))
+    (define (looks-like-me? str)
+      (or (equal? str my-name)
+          (equal? str (string-concatenate (list my-name ":")))))
+    (when (looks-like-me?)
+      (<- irc-bot (actor-id irc-bot) 'send-line channel
+          (format #f "Bawwwwk! ~a says: ~a" speaker line))))
+#+END_SRC
+
+This is relatively straightforward, but it isn't very interesting.
+What we would really like to do is have our bot respond to individual
+"commands" like this:
+
+#+BEGIN_SRC text
+  <foo-user> examplebot: hi!
+  <examplebot> Oh hi foo-user!
+  <foo-user> examplebot: botsnack
+  <examplebot> Yippie! *does a dance!*
+  <foo-user> examplebot: echo I'm a very silly bot
+  <examplebot> I'm a very silly bot
+#+END_SRC
+
+Whee, that looks like fun!
+To implement it, we're going to pull out Guile's pattern matcher.
+
+#+BEGIN_SRC scheme
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    (define my-name (irc-bot-username irc-bot))
+    (define (looks-like-me? str)
+      (or (equal? str my-name)
+          (equal? str (string-concatenate (list my-name ":")))))
+    (match (string-split line #\space)
+      (((? looks-like-me? _) action action-args ...)
+       (match action
+         ;; The classic botsnack!
+         ("botsnack"
+          (<- irc-bot (actor-id irc-bot) 'send-line channel
+              "Yippie! *does a dance!*"))
+         ;; Return greeting
+         ((or "hello" "hello!" "hello." "greetings" "greetings." "greetings!"
+              "hei" "hei." "hei!" "hi" "hi!")
+          (<- irc-bot (actor-id irc-bot) 'send-line channel
+              (format #f "Oh hi ~a!" speaker)))
+         ("echo"
+          (<- irc-bot (actor-id irc-bot) 'send-line channel
+              (string-join action-args " ")))
+
+         ;; --->  Add yours here <---
+
+         ;; Default
+         (_
+          (<- irc-bot (actor-id irc-bot) 'send-line channel
+              "*stupid puppy look*"))))
+      ;; Otherwise... just spit the output to current-output-port or whatever
+      (_
+       (if emote?
+           (format #t "~a emoted ~s in channel ~a\n"
+                   speaker line channel)
+           (format #t "~a said ~s in channel ~a\n"
+                   speaker line channel)))))
+#+END_SRC
+
+Parsing the pattern matcher syntax is left as an exercise for the
+reader.
+
+If you're getting the sense that we could make this a bit less wordy,
+you're right:
+
+#+BEGIN_SRC scheme
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    (define my-name (irc-bot-username irc-bot))
+    (define (looks-like-me? str)
+      (or (equal? str my-name)
+          (equal? str (string-concatenate (list my-name ":")))))
+    (define (respond respond-line)
+      (<- irc-bot (actor-id irc-bot) 'send-line channel
+          respond-line))
+    (match (string-split line #\space)
+      (((? looks-like-me? _) action action-args ...)
+       (match action
+         ;; The classic botsnack!
+         ("botsnack"
+          (respond "Yippie! *does a dance!*"))
+         ;; Return greeting
+         ((or "hello" "hello!" "hello." "greetings" "greetings." "greetings!"
+              "hei" "hei." "hei!" "hi" "hi." "hi!")
+          (respond (format #f "Oh hi ~a!" speaker)))
+         ("echo"
+          (respond (string-join action-args " ")))
+
+         ;; --->  Add yours here <---
+
+         ;; Default
+         (_
+          (respond "*stupid puppy look*"))))
+      ;; Otherwise... just spit the output to current-output-port or whatever
+      (_
+       (if emote?
+           (format #t "~a emoted ~s in channel ~a\n"
+                   speaker line channel)
+           (format #t "~a said ~s in channel ~a\n"
+                   speaker line channel)))))
+#+END_SRC
+
+Okay, that looks pretty good!
+Now we have enough information to build an IRC bot that can do a lot
+of things.
+Take some time to experiment with extending the bot a bit before
+moving on to the next section!
+What cool commands can you add?
+
+** An intermission: about live hacking
 
 ** Battle bot!
 
