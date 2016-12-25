@@ -80,7 +80,41 @@ Onward!
 
 ** Intro to the tutorial
 
-** A fun little IRC bot
+IRC!  Internet Relay Chat!
+The classic chat protocol of the Internet.
+And it turns out, one of the best places to learn about networked
+programming.
+
+In the 1990s I remember stumbling into some funky IRC chat rooms and
+being astounded that people there had what they called "bots" hanging
+around.
+From then until now, I've always enjoyed encountering bots whose range
+of functionality has spanned from saying absurd things, to taking
+messages when their "owners" were offline, to reporting the weather,
+to logging meetings for participants.
+And it turns out, IRC bots are a great way to cut your teeth on
+networked programming; since IRC is a fairly simple line-delineated
+protocol, it's a great way to learn to interact with sockets.
+(My first IRC bot helped my team pick a place to go to lunch, previously
+a source of significant dispute!)
+At the time of writing, venture capital awash startups are trying to
+turn chatbots into "big business"... a strange (and perhaps absurd)
+thing given chat bots being a fairly mundane novelty amongst hackers
+and teenagers everywhere in the 1990s.
+
+We ourselves are going to explore chat bots as a basis for getting our
+feet wet in 8sync.
+We'll start from a minimalist example using an irc bot with most of
+the work done for us, then move on to constructing our own actors as
+"game pieces" which interface with our bot, then experiment with just
+how easy it is to add new networked layers by tacking on a high score
+to our game, and as a finale we'll dive into writing our own little
+irc bot framework "from scratch" on top of the 8sync actor model.
+
+Alright, let's get going.
+This should be a lot of fun!
+
+** A silly little IRC bot
 
 ** Battle bot!
 
