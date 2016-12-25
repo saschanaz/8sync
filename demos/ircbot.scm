@@ -24,6 +24,7 @@
              (8sync systems irc)
              (oop goops)
              (srfi srfi-37)
+             (ice-9 format)
              (ice-9 match))
 
 (define-class <my-irc-bot> (<irc-bot>))
