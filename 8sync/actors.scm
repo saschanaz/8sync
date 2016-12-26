@@ -295,14 +295,12 @@ raise an exception if an error."
                    ;; @@: There's no reason not to use #:class instead of
                    ;;   #:each-subclass anywhere in this file, except for
                    ;;   Guile bug #25211 (#:class is broken in Guile 2.2)
-                   #:allocation #:each-subclass)
+                   #:allocation #:each-subclass
+                   #:getter actor-message-handler)
 
   ;; This is the default, "simple" way to inherit and process messages.
   (actions #:init-value '()
            #:allocation #:each-subclass))
-
-(define-method (actor-message-handler (actor <actor>))
-  (slot-ref actor 'message-handler))
 
 ;;; So these are the nicer representations of addresses.
 ;;; However, they don't serialize so easily with scheme read/write, so we're
