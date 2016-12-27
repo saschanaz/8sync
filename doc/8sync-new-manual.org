@@ -405,6 +405,39 @@ What cool commands can you add?
 
 ** An intermission: about live hacking
 
+This section is optional, but highly recommended.
+It requires that you're a user of GNU Emacs.
+If you aren't, don't worry... you can forge ahead and come back in case
+you ever do become an Emacs user.
+(If you're more familiar with Vi/Vim style editing, I hear good things
+about Spacemacs...)
+
+So you may have noticed while updating the last section that the
+start/stop cycle of hacking isn't really ideal.
+You might either edit a file in your editor, then run it, or
+type the whole program into the REPL, but then you'll have to spend
+extra time copying it to a file.
+Wouldn't it be nice if it were possible to both write code in a
+file and try it as you go?
+And wouldn't it be even better if you could live edit a program
+while it's running?
+
+Luckily, there's a great Emacs mode called Geiser which makes
+editing and hacking and experimenting all happen in harmony.
+And even better, 8sync is optimized for this experience.
+8sync provides easy drop-in "cooperative REPL" support, and
+most code can be simply redefined on the fly in 8sync through Geiser
+and actors will immediately update their behavior, so you can test
+and tweak things as you go.
+
+
+
+
+
+# Finally, show off pk
+
+
+
 ** Battle bot!
 
 ** Adding a "rankings" web page

@@ -17,23 +17,42 @@
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (8sync repl)
-  #:use-module (ice-9 q)
-  #:use-module (8sync agenda)
+  #:use-module (oop goops)
+  #:use-module (8sync)
+  #:use-module (system repl server)
   #:use-module (system repl coop-server)
-  #:export (make-coop-server-handler
-            spawn-and-queue-repl-server!))
+  #:export (<repl-manager>))
 
-(define (make-coop-server-handler coop-server)
-  (define (run-self)
-    (poll-coop-repl-server coop-server)
-    ;; queue ourselves again
-    (run-delay (run-self) (/ 1 30)))
-  run-self)
+(define-class <repl-manager> (<actor>)
+  (path #:init-keyword #:path
+        #:init-value "/tmp/8sync-socket"
+        #:getter repl-manager-path)
+  (socket #:init-value #f
+          #:accessor repl-manager-socket)
+  (poll-every #:init-keyword #:poll-every
+              #:init-value (/ 1 30)
+              #:getter repl-manager-poll-every)
+  (actions #:allocation #:each-subclass
+           ;; @@: Should we add a stop action?
+           #:init-value (build-actions
+                         (*cleanup* repl-manager-cleanup)
+                         (init repl-manager-init))))
 
-(define* (spawn-and-queue-repl-server! agenda #:optional port)
-  (let ((coop-server
-         (if port
-             (spawn-coop-repl-server port)
-             (spawn-coop-repl-server))))
-    (enq! (agenda-queue agenda)
-          (make-coop-server-handler coop-server))))
+(define (repl-manager-cleanup repl-manager message)
+  ;; Close the socket, if open
+  (and=> (repl-manager-socket repl-manager)
+         close)
+  ;; Delete the file, if it exists
+  (when (file-exists? (repl-manager-path repl-manager))
+    (delete-file (repl-manager-path repl-manager))))
+
+(define (repl-manager-init repl-manager message)
+  (define socket
+    (make-unix-domain-server-socket #:path (repl-manager-path repl-manager)))
+  (define server
+    (spawn-coop-repl-server socket))
+  (set! (repl-manager-socket repl-manager) socket)
+  (while (actor-am-i-alive? repl-manager)
+    (poll-coop-repl-server server)
+    (8sleep (repl-manager-poll-every repl-manager))))
+

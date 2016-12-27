@@ -25,7 +25,6 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
   #:use-module (8sync agenda)
-  #:use-module (8sync repl)
   #:export (;; utilities... ought to go in their own module
             big-random-number
             big-random-number-string
@@ -47,6 +46,8 @@
             actor-id-actor
             actor-id-hive
             actor-id-string
+
+            actor-am-i-alive?
 
             build-actions
 
@@ -346,6 +347,9 @@ raise an exception if an error."
 
 (define %current-actor
   (make-parameter #f))
+
+(define (actor-am-i-alive? actor)
+  (hive-resolve-local-actor (actor-hive actor) (actor-id actor)))
 
 
 
@@ -694,21 +698,11 @@ Like create-actor, but permits supplying an id-cookie."
 ;;; 8sync bootstrap utilities
 ;;; =========================
 
-(define* (ez-run-hive hive initial-tasks #:key repl-server)
-  "Start up an agenda and run HIVE in it with INITIAL-TASKS.
-
-Should we start up a cooperative REPL for live hacking?  REPL-SERVER
-wants to know!  You can pass it #t or #f, or if you want to specify a port,
-an integer."
+(define* (ez-run-hive hive initial-tasks)
+  "Start up an agenda and run HIVE in it with INITIAL-TASKS."
   (let* ((queue (list->q initial-tasks))
          (agenda (make-agenda #:pre-unwind-handler print-error-and-continue
                               #:queue queue)))
-    (cond
-     ;; If repl-server is an integer, we'll use that as the port
-     ((integer? repl-server)
-      (spawn-and-queue-repl-server! agenda repl-server))
-     (repl-server
-      (spawn-and-queue-repl-server! agenda)))
     (start-agenda agenda)))
 
 (define (bootstrap-message hive to-id action . message-body-args)

@@ -22,6 +22,7 @@
 
 (use-modules (8sync)
              (8sync systems irc)
+             (8sync repl)
              (oop goops)
              (srfi srfi-37)
              (ice-9 format)
@@ -86,7 +87,10 @@
                    (option '("channels") #t #f
                            (lambda (opt name arg result)
                              `(#:channels ,(string-split arg #\,)
-                               ,@result))))
+                               ,@result)))
+                   (option '("repl") #f #t
+                           (lambda (opt name arg result)
+                             `(#:repl ,(or arg #t) ,@result))))
              (lambda (opt name arg result)
                (format #t "Unrecognized option `~a'\n" name)
                (exit 1))
@@ -104,8 +108,22 @@
                         #:username username
                         #:server server
                         #:channels channels))
+  (define repl-manager
+    (cond
+     ((string? repl)
+      (hive-create-actor* hive <repl-manager> "repl"
+                          #:path repl))
+     (repl
+      (hive-create-actor* hive <repl-manager> "repl"))))
+
+  (define initial-messages
+    (if repl
+        (list (bootstrap-message hive irc-bot 'init)
+              (bootstrap-message hive repl-manager 'init))
+        (list (bootstrap-message hive irc-bot 'init))))
+
   ;; TODO: load REPL
-  (ez-run-hive hive (list (bootstrap-message hive irc-bot 'init))))
+  (ez-run-hive hive initial-messages))
 
 (define (main args)
   (define parsed-args (parse-args "ircbot.scm" args))
