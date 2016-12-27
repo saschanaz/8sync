@@ -19,7 +19,6 @@
 (define-module (8sync agenda)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-9)
-  #:use-module (srfi srfi-9 gnu)
   #:use-module (ice-9 q)
   #:use-module (ice-9 match)
   #:use-module (ice-9 receive)
@@ -33,17 +32,6 @@
             make-async-prompt-tag
 
             list->q make-q*
-
-            <time-segment>
-            make-time-segment time-segment?
-            time-segment-time time-segment-queue
-
-            time< time= time<= time-delta+
-            time-minus time-plus
-
-            <time-delta>
-            make-time-delta tdelta time-delta?
-            time-delta-sec time-delta-usec
 
             <schedule>
             make-schedule schedule?
@@ -76,9 +64,6 @@
             %current-agenda
             start-agenda agenda-run-once))
 
-;; @@: Using immutable agendas here, so wouldn't it make sense to
-;;   replace this queue stuff with using pfds based immutable queues?
-
 
 ;;; Agenda definition
 ;;; =================
@@ -90,24 +75,26 @@
 ;;;    operation (from which they can be returned later)
 ;;;  - a mapping of ports to various handler procedures
 ;;;
-;;; The goal, eventually, is for this all to be immutable and functional.
+;;; @@: Is this next part deprecated?
+;;; The goal, maybe eventually, is for this all to be immutable and functional.
 ;;; However, we aren't there yet.  Some tricky things:
 ;;;  - The schedule needs to be immutable, yet reasonably efficient.
 ;;;  - Need to use immutable queues (ijp's pfds library?)
 ;;;  - Modeling reading from ports as something repeatable,
 ;;;    and with reasonable separation from functional components?
 
-(define-immutable-record-type <agenda>
+;; TODO: Tear out the immutable agenda aspect until we're actually ready
+;;   to use it.
+(define-record-type <agenda>
   (make-agenda-intern queue prompt-tag
                       read-port-map write-port-map
-                      schedule time catch-handler pre-unwind-handler)
+                      schedule catch-handler pre-unwind-handler)
   agenda?
-  (queue agenda-queue)
+  (queue agenda-queue set-agenda-queue!)
   (prompt-tag agenda-prompt-tag)
   (read-port-map agenda-read-port-map)
   (write-port-map agenda-write-port-map)
   (schedule agenda-schedule)
-  (time agenda-time)
   (catch-handler agenda-catch-handler)
   (pre-unwind-handler agenda-pre-unwind-handler))
 
@@ -123,15 +110,13 @@ Generally done automatically for the user through (make-agenda)."
                       (read-port-map (make-hash-table))
                       (write-port-map (make-hash-table))
                       (schedule (make-schedule))
-                      (time (gettimeofday))
                       (catch-handler #f)
                       (pre-unwind-handler print-error-and-continue))
   ;; TODO: document arguments
   "Make a fresh agenda."
   (make-agenda-intern queue prompt
                       read-port-map write-port-map
-                      schedule time
-                      catch-handler pre-unwind-handler))
+                      schedule catch-handler pre-unwind-handler))
 
 (define (current-agenda-prompt)
   "Get the prompt for the current agenda; signal an error if there isn't one."
@@ -173,32 +158,6 @@ Generally done automatically for the user through (make-agenda)."
   (time time-segment-time)
   (queue time-segment-queue))
 
-;; @@: This seems to be the same as srfi-18's seconds->time procedure?
-;;   Maybe double check and switch to that?  (Thanks amz3!)
-
-(define (time-from-float-or-fraction time)
-  "Produce a (sec . usec) pair from TIME, a float or fraction"
-  (let* ((mixed-whole (floor time))
-         (mixed-rest (- time mixed-whole))  ; float or fraction component
-         (sec mixed-whole)
-         (usec (floor (* 1000000 mixed-rest))))
-    (cons (inexact->exact sec) (inexact->exact usec))))
-
-(define (time-segment-right-format time)
-  "Ensure TIME is in the right format.
-
-The right format means (second . microsecond).
-If an integer, will convert appropriately."
-  ;; TODO: add floating point / rational number support.
-  (match time
-    ;; time is already a cons of second and microsecnd
-    (((? integer? s) . (? integer? u)) time)
-    ;; time was just an integer (just the second)
-    ((? integer? _) (cons time 0))
-    ((or (? rational? _) (? inexact? _))
-     (time-from-float-or-fraction time))
-    (_ (throw 'invalid-time "Invalid time" time))))
-
 (define* (make-time-segment time #:optional (queue (make-q)))
   "Make a time segment of TIME and QUEUE
 
@@ -228,24 +187,7 @@ run (time-segment-right-format) first."
   (or (time< time1 time2)
       (time= time1 time2)))
 
-
-(define-record-type <time-delta>
-  (make-time-delta-intern sec usec)
-  time-delta?
-  (sec time-delta-sec)
-  (usec time-delta-usec))
-
-(define* (make-time-delta time)
-  "Make a <time-delta> of SEC seconds and USEC microseconds.
-
-This is used primarily so the agenda can recognize RUN-REQUEST objects
-which are meant to delay computation"
-  (match (time-segment-right-format time)
-    ((sec . usec)
-     (make-time-delta-intern sec usec))))
-
-(define tdelta make-time-delta)
-
+;; @@: Maybe we should use floor/ here?
 (define (time-carry-correct time)
   "Corrects/handles time microsecond carry.
 Will produce (0 . 0) instead of a negative number, if needed."
@@ -261,24 +203,18 @@ Will produce (0 . 0) instead of a negative number, if needed."
               (+ (cdr time) 1000000))))
         (else time)))
 
-(define (time-delta+ time time-delta)
-  "Increment a TIME by the value of TIME-DELTA"
-  (time-carry-correct
-   (cons (+ (car time) (time-delta-sec time-delta))
-         (+ (cdr time) (time-delta-usec time-delta)))))
-
 (define (time-minus time1 time2)
   "Subtract TIME2 from TIME1"
   (time-carry-correct
    (cons (- (car time1) (car time2))
          (- (cdr time1) (cdr time2)))))
 
+;; @@: Unused?
 (define (time-plus time1 time2)
   "Add TIME1 and TIME2"
   (time-carry-correct
    (cons (+ (car time1) (car time2))
          (+ (cdr time1) (cdr time2)))))
-
 
 (define-record-type <schedule>
   (make-schedule-intern segments)
@@ -302,41 +238,40 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;   a more functional setup?
 (define (schedule-add! schedule time proc)
   "Mutate SCHEDULE, adding PROC at an appropriate time segment for TIME"
-  (let ((time (time-segment-right-format time)))
-    (define (new-time-segment)
-      (let ((new-segment
-             (make-time-segment time)))
-        (enq! (time-segment-queue new-segment) proc)
-        new-segment))
-    (define (loop segments)
-      (define (segment-equals-time? segment)
-        (time= time (time-segment-time segment)))
+  (define (new-time-segment)
+    (let ((new-segment
+           (make-time-segment time)))
+      (enq! (time-segment-queue new-segment) proc)
+      new-segment))
+  (define (loop segments)
+    (define (segment-equals-time? segment)
+      (time= time (time-segment-time segment)))
 
-      (define (segment-more-than-time? segment)
-        (time< time (time-segment-time segment)))
+    (define (segment-more-than-time? segment)
+      (time< time (time-segment-time segment)))
 
-      ;; We could switch this out to be more mutate'y
-      ;; and avoid the O(n) of space... is that over-optimizing?
-      (match segments
-        ;; If we're at the end of the list, time to make a new
-        ;; segment...
-        ('() (cons (new-time-segment) '()))
-        ;; If the segment's time is exactly our time, good news
-        ;; everyone!  Let's append our stuff to its queue
-        (((? segment-equals-time? first) rest ...)
-         (enq! (time-segment-queue first) proc)
-         segments)
-        ;; If the first segment is more than our time,
-        ;; ours belongs before this one, so add it and
-        ;; start consing our way back
-        (((? segment-more-than-time? first) rest ...)
-         (cons (new-time-segment) segments))
-        ;; Otherwise, build up recursive result
-        ((first rest ... )
-         (cons first (loop rest)))))
-    (set-schedule-segments!
-     schedule
-     (loop (schedule-segments schedule)))))
+    ;; We could switch this out to be more mutate'y
+    ;; and avoid the O(n) of space... is that over-optimizing?
+    (match segments
+      ;; If we're at the end of the list, time to make a new
+      ;; segment...
+      ('() (cons (new-time-segment) '()))
+      ;; If the segment's time is exactly our time, good news
+      ;; everyone!  Let's append our stuff to its queue
+      (((? segment-equals-time? first) rest ...)
+       (enq! (time-segment-queue first) proc)
+       segments)
+      ;; If the first segment is more than our time,
+      ;; ours belongs before this one, so add it and
+      ;; start consing our way back
+      (((? segment-more-than-time? first) rest ...)
+       (cons (new-time-segment) segments))
+      ;; Otherwise, build up recursive result
+      ((first rest ... )
+       (cons first (loop rest)))))
+  (set-schedule-segments!
+   schedule
+   (loop (schedule-segments schedule))))
 
 (define (schedule-empty? schedule)
   "Check if the SCHEDULE is currently empty"
@@ -344,31 +279,30 @@ Will produce (0 . 0) instead of a negative number, if needed."
 
 (define (schedule-segments-split schedule time)
   "Does a multiple value return of time segments before/at and after TIME"
-  (let ((time (time-segment-right-format time)))
-    (define (segment-is-now? segment)
-      (time= (time-segment-time segment) time))
-    (define (segment-is-before-now? segment)
-      (time< (time-segment-time segment) time))
+  (define (segment-is-now? segment)
+    (time= (time-segment-time segment) time))
+  (define (segment-is-before-now? segment)
+    (time< (time-segment-time segment) time))
 
-    (let loop ((segments-before '())
-               (segments-left (schedule-segments schedule)))
-      (match segments-left
-        ;; end of the line, return
-        ('()
-         (values (reverse segments-before) '()))
+  (let loop ((segments-before '())
+             (segments-left (schedule-segments schedule)))
+    (match segments-left
+      ;; end of the line, return
+      ('()
+       (values (reverse segments-before) '()))
 
-        ;; It's right now, so time to stop, but include this one in before
-        ;; but otherwise return
-        (((? segment-is-now? first) rest ...)
-         (values (reverse (cons first segments-before)) rest))
+      ;; It's right now, so time to stop, but include this one in before
+      ;; but otherwise return
+      (((? segment-is-now? first) rest ...)
+       (values (reverse (cons first segments-before)) rest))
 
-        ;; This is prior or at now, so add it and keep going
-        (((? segment-is-before-now? first) rest ...)
-         (loop (cons first segments-before) rest))
+      ;; This is prior or at now, so add it and keep going
+      (((? segment-is-before-now? first) rest ...)
+       (loop (cons first segments-before) rest))
 
-        ;; Otherwise it's past now, just return what we have
-        (segments-after
-         (values segments-before segments-after))))))
+      ;; Otherwise it's past now, just return what we have
+      (segments-after
+       (values segments-before segments-after)))))
 
 (define (schedule-extract-until! schedule time)
   "Extract all segments until TIME from SCHEDULE, and pop old segments off"
@@ -421,11 +355,9 @@ Will produce (0 . 0) instead of a negative number, if needed."
   "Run BODY at WHEN"
   (make-run-request (wrap body ...) when))
 
-;; @@: Is it okay to overload the term "delay" like this?
-;;   Would `run-in' be better?
 (define-syntax-rule (run-delay body ... delay-time)
   "Run BODY at DELAY-TIME time from now"
-  (make-run-request (wrap body ...) (tdelta delay-time)))
+  (make-run-request (wrap body ...) (delayed-time delay-time)))
 
 
 
@@ -468,26 +400,33 @@ forge ahead in our current function!"
              (wrap (kont #f)) #f)
             (make-run-request (lambda () body ...) #f))))))
 
+(define (delayed-time in-secs)
+  "Calculate a cons of '(sec . usec) of IN-SECS from current time"
+  (define cur-time (gettimeofday))
+  (define cur-secs (car cur-time))
+  (define cur-usecs (cdr cur-time))
+  (define (convert-non-integer)
+    (define next-time-in-usecs
+      (+ (* (+ in-secs cur-secs) ; add our seconds to current seconds
+            1000000)             ; and turn into usecs
+         cur-usecs))             ; then add in current usecs
+    ;; convert into sec / usec pair
+    (receive (secs usecs)
+        (floor/ next-time-in-usecs 1000000)
+      (cons secs (floor usecs))))
+  (define (convert-integer)
+    (cons (+ in-secs cur-secs) cur-usecs))
+  (if (integer? in-secs)
+      (convert-integer)
+      (convert-non-integer)))
+
 ;; TODO: Rewrite when we move to this being just `sleep'.
 (define (8sleep secs)
   "Like sleep, but asynchronous."
   (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
-      (make-run-request (lambda () (kont #f)) (tdelta secs))))))
-
-(define (8usleep usecs)
-  "Like usleep, but asynchronous."
-  (define (usecs->time-pair)
-    (if (< 1000000)
-        (cons 0 usecs)
-        (let* ((sec (floor (/ usecs 1000000)))
-               (msec (- usecs (* sec 1000000))))
-          (cons sec msec))))
-  (8sync-abort-to-prompt
-   (make-async-request
-    (lambda (kont)
-      (make-run-request (lambda () (kont #f)) (tdelta usecs->time-pair))))))
+      (make-run-request (lambda () (kont #f)) (delayed-time secs))))))
 
 ;; Voluntarily yield execution
 (define (yield)  ; @@: should this be define-inlinable?
@@ -517,7 +456,7 @@ Also handles sleeping when all we have to do is wait on the schedule."
        ((not (q-empty? (agenda-queue agenda)))
         (cons 0 0))
        (soonest-time    ; ie, the agenda is non-empty
-        (let* ((current-time (agenda-time agenda)))
+        (let* ((current-time (gettimeofday)))
           (if (time<= soonest-time current-time)
               ;; Well there's something due so let's select
               ;; (this avoids a (possible?) race condition chance)
@@ -617,47 +556,23 @@ on suspendable ports."
 
 
 (define* (start-agenda agenda
-                       #:key
-                       ;; @@: Should we make stop-on-nothing-to-do
-                       ;;   the default stop-condition?
-                       (stop-condition stop-on-nothing-to-do)
-                       (get-time gettimeofday)
-                       (handle-ports update-agenda-from-select!)
+                       #:key (stop-condition stop-on-nothing-to-do)
                        ;; For live hacking madness, etc
                        (post-run-hook #f))
   ;; TODO: Document fields
   "Start up the AGENDA"
   (install-suspendable-ports!)
-  (let loop ((agenda agenda))
-    (let ((agenda   
-           ;; @@: Hm, maybe here would be a great place to handle
-           ;;   select'ing on ports.
-           ;;   We could compose over agenda-run-once and agenda-read-ports
-           (agenda-run-once agenda)))
-      ;; @@: This relies on mutation at present on the queue, in the rare
-      ;;   event it's used.  If we ever switch to something more immutable,
-      ;;   it should return a new modified agenda instead.
-      (if post-run-hook
-          (post-run-hook agenda))
-      (if (and stop-condition (stop-condition agenda))
-          'done
-          (let* ((agenda
-                  ;; We have to update the time after ports handled, too
-                  ;; because it may have changed after a select
-                  (set-field
-                   (handle-ports
-                    ;; Adjust the agenda's time just in time
-                    ;; We do this here rather than in agenda-run-once to make
-                    ;; agenda-run-once's behavior fairly predictable
-                    (set-field agenda (agenda-time) (get-time)))
-                   (agenda-time) (get-time))))
-            ;; Update the agenda's current queue based on
-            ;; currently applicable time segments
-            (add-segments-contents-to-queue!
-             (schedule-extract-until! (agenda-schedule agenda) (agenda-time agenda))
-             (agenda-queue agenda))
-            (loop agenda))))))
-
+  (while (not (stop-condition agenda))
+    (agenda-run-once! agenda)
+    (update-agenda-from-select! agenda)
+    ;; Update the agenda's current queue based on
+    ;; currently applicable time segments
+    (add-segments-contents-to-queue!
+     (schedule-extract-until! (agenda-schedule agenda) (gettimeofday))
+     (agenda-queue agenda))
+    (if post-run-hook
+        (post-run-hook agenda)))
+  'done)
 
 (define (print-error-and-continue key . args)
   "Frequently used as pre-unwind-handler for agenda"
@@ -706,7 +621,7 @@ on suspendable ports."
     (lambda (kont)
       (make-write-request port (wrap (kont #f)))))))
 
-(define (agenda-run-once agenda)
+(define (agenda-run-once! agenda)
   "Run once through the agenda, and produce a new agenda
 based on the results"
   (define (call-proc proc)
@@ -732,21 +647,11 @@ based on the results"
              (proc-result (call-proc proc))
              (enqueue
               (lambda (run-request)
-                (define (schedule-at! time proc)
-                  (schedule-add! (agenda-schedule agenda) time proc))
                 (let ((request-time (run-request-when run-request)))
-                  (match request-time
-                    ((? time-delta? time-delta)
-                     (let ((time (time-delta+ (agenda-time agenda)
-                                              time-delta)))
-                       (schedule-at! time (run-request-proc run-request))))
-                    ((? integer? sec)
-                     (let ((time (cons sec 0)))
-                       (schedule-at! time (run-request-proc run-request))))
-                    (((? integer? sec) . (? integer? usec))
-                     (schedule-at! request-time (run-request-proc run-request)))
-                    (#f
-                     (enq! next-queue (run-request-proc run-request))))))))
+                  (if request-time
+                      (schedule-add! (agenda-schedule agenda) request-time
+                                     (run-request-proc run-request))
+                      (enq! next-queue (run-request-proc run-request)))))))
         (define (handle-individual result)
           ;; @@: Could maybe optimize by switching to an explicit cond...
           (match result
@@ -770,4 +675,4 @@ based on the results"
     ;; TODO: Alternately, we could return the next-queue
     ;;   along with changes to be added to the schedule here?
     ;; Return new agenda, with next queue set
-    (set-field agenda (agenda-queue) next-queue)))
+    (set-agenda-queue! agenda next-queue)))

@@ -26,6 +26,10 @@
 
 (test-begin "test-agenda")
 
+(define-syntax-rule (%import var)
+  (define var
+    (@@ (8sync agenda) var)))
+
 
 
 ;;; Helpers
@@ -58,6 +62,11 @@
 ;;; Timer tests
 ;;; ===========
 
+(%import time=)
+(%import time<)
+(%import time-minus)
+(%import time-plus)
+
 (test-assert (time= '(1 . 1) '(1 . 1)))
 (test-assert (not (time= '(1 . 1) '(1 . 0))))
 (test-assert (not (time= '(0 . 1) '(1 . 1))))
@@ -67,22 +76,6 @@
 (test-assert (not (time< '(7 . 2) '(7 . 2))))
 (test-assert (not (time< '(7 . 8) '(7 . 2))))
 (test-assert (not (time< '(8 . 2) '(7 . 2))))
-
-(let ((tdelta (make-time-delta 8)))
-  (test-assert (time-delta? tdelta))
-  (test-eqv (time-delta-sec tdelta) 8)
-  (test-eqv (time-delta-usec tdelta) 0)
-  (test-equal
-      (time-delta+ '(2 . 3) tdelta)
-    '(10 . 3)))
-
-(let ((tdelta (make-time-delta '(10 . 1))))
-  (test-assert (time-delta? tdelta))
-  (test-eqv (time-delta-sec tdelta) 10)
-  (test-eqv (time-delta-usec tdelta) 1)
-  (test-equal
-      (time-delta+ '(2 . 3) tdelta)
-    '(12 . 4)))
 
 (test-equal (time-minus '(100 . 100) '(50 . 66))
             '(50 . 34))
@@ -98,6 +91,9 @@
 
 ;;; Schedule tests
 ;;; ==============
+
+(%import time-segment-time)
+(%import time-segment-queue)
 
 ;; helpers
 (define (assert-times-expected time-segments expected-times)
@@ -115,7 +111,7 @@
 (test-assert (schedule-empty? sched))
 
 ;; Add a segment at (10 . 0)
-(schedule-add! sched 10 a-proc)
+(schedule-add! sched '(10 . 0) a-proc)
 (test-assert (not (schedule-empty? sched)))
 (test-equal (length (schedule-segments sched)) 1)
 (test-equal (time-segment-time (car (schedule-segments sched)))
@@ -147,7 +143,7 @@
                        '((10 . 0)))
 
 ;; Add a segment to (11 . 0), (8 . 1) and (10 . 10)
-(schedule-add! sched 11 c-proc)
+(schedule-add! sched '(11 . 0) c-proc)
 (schedule-add! sched '(8 . 1) d-proc)
 (schedule-add! sched '(10 . 10) e-proc)
 (test-assert (not (schedule-empty? sched)))
@@ -162,7 +158,7 @@
     (assert-times-expected segments-before expected-before)
     (assert-times-expected segments-after expected-after)))
 
-(test-split-at sched 0
+(test-split-at sched '(0 . 0)
                '()
                '((8 . 1) (10 . 0) (10 . 10) (11 . 0)))
 (test-split-at sched '(8 . 0)
@@ -171,13 +167,13 @@
 (test-split-at sched '(8 . 1)
                '((8 . 1))
                '((10 . 0) (10 . 10) (11 . 0)))
-(test-split-at sched 9
+(test-split-at sched '(9 . 0)
                '((8 . 1))
                '((10 . 0) (10 . 10) (11 . 0)))
-(test-split-at sched 10
+(test-split-at sched '(10 . 0)
                '((8 . 1) (10 . 0))
                '((10 . 10) (11 . 0)))
-(test-split-at sched 9000
+(test-split-at sched '(9000 . 0)
                '((8 . 1) (10 . 0) (10 . 10) (11 . 0))
                '())
 (test-split-at sched '(9000 . 1)    ; over nine thousaaaaaaand
@@ -186,7 +182,7 @@
 
 ;; Break off half of those and do some tests on them
 (define some-extracted
-  (schedule-extract-until! sched 10))
+  (schedule-extract-until! sched '(10 . 0)))
 (assert-times-expected some-extracted '((8 . 1) (10 . 0)))
 (assert-times-expected (schedule-segments sched) '((10 . 10) (11 . 0)))
 (define first-extracted-queue
@@ -267,8 +263,10 @@
 (define (true-after-n-times n)
   (let ((count 0))
     (lambda _
+      (define ans
+        (if (>= count n) #t #f))
       (set! count (+ count 1))
-      (if (>= count n) #t #f))))
+      ans)))
 
 ;; the dummy test
 
