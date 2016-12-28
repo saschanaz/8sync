@@ -62,7 +62,7 @@
             stop-on-nothing-to-do
 
             %current-agenda-prompt
-            start-agenda agenda-run-once))
+            start-agenda agenda-run-once!))
 
 
 ;;; Agenda definition
@@ -350,6 +350,16 @@ Will produce (0 . 0) instead of a negative number, if needed."
   "Run BODY at DELAY-TIME time from now"
   (make-run-request (wrap body ...) (delayed-time delay-time)))
 
+;;; Procedures that are delimited continuations being resumed are
+;;; wrapped in a <kontinue>.  This is so that we don't accidentally
+;;; wrap in another catch statement every time we resume them, which
+;;; would be a drag.
+
+(define-record-type <kontinue>
+  (kontinue kont)
+  kontinue?
+  (kont kontinue-kont))
+
 
 
 ;;; Asynchronous escape to run things
@@ -385,10 +395,7 @@ forge ahead in our current function!"
    (make-async-request
     (lambda (kont)
       (list (make-run-request
-             ;; What's with returning #f to kont?
-             ;; Otherwise we sometimes get errors like
-             ;; "Zero values returned to single-valued continuation""
-             (wrap (kont #f)) #f)
+             (kontinue kont) #f)
             (make-run-request (lambda () body ...) #f))))))
 
 (define (delayed-time in-secs)
@@ -417,7 +424,7 @@ forge ahead in our current function!"
   (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
-      (make-run-request (lambda () (kont #f)) (delayed-time secs))))))
+      (make-run-request (kontinue kont) (delayed-time secs))))))
 
 ;; Voluntarily yield execution
 (define (8yield)
@@ -425,7 +432,7 @@ forge ahead in our current function!"
   (8sync-abort-to-prompt
    (make-async-request
     (lambda (kont)
-      (make-run-request (lambda () (kont #f)) #f)))))
+      (make-run-request (kontinue kont) #f)))))
 
 
 ;;; Execution of agenda, and current agenda
@@ -618,14 +625,21 @@ on suspendable ports."
 (define (agenda-run-once! agenda)
   "Run once through the agenda, and produce a new agenda
 based on the results"
+  ;; @@: Maybe rename proc -> run-this ?
   (define (call-proc proc)
     (call-with-prompt
      (agenda-prompt-tag agenda)
      (lambda ()
-       (maybe-catch-all
-        ((agenda-catch-handler agenda)
-         (agenda-pre-unwind-handler agenda))
-        (proc)))
+       (if (kontinue? proc)
+           ;; Resume continuation.
+           ;; We need to pass in #f, otherwise we sometimes get errors like
+           ;; "Zero values returned to single-valued continuation""
+           ((kontinue-kont proc) #f)
+           ;; Otherwise call the procedure and set up error catching.
+           (maybe-catch-all
+            ((agenda-catch-handler agenda)
+             (agenda-pre-unwind-handler agenda))
+            (proc))))
      (lambda (kont async-request)
        (setup-async-request kont async-request))))
 
