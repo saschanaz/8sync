@@ -49,7 +49,7 @@
             run-it wrap wrap-apply run run-at run-delay
 
             8sync
-            8sleep 8usleep
+            8sleep 8yield
             
             ;; used for introspecting the error, but a method for making
             ;; is not exposed
@@ -429,7 +429,7 @@ forge ahead in our current function!"
       (make-run-request (lambda () (kont #f)) (delayed-time secs))))))
 
 ;; Voluntarily yield execution
-(define (yield)  ; @@: should this be define-inlinable?
+(define (8yield)
   "Voluntarily yield execution to the scheduler."
   (8sync-abort-to-prompt
    (make-async-request
