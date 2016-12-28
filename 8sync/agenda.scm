@@ -61,7 +61,7 @@
 
             stop-on-nothing-to-do
 
-            %current-agenda
+            %current-agenda-prompt
             start-agenda agenda-run-once))
 
 
@@ -117,15 +117,6 @@ Generally done automatically for the user through (make-agenda)."
   (make-agenda-intern queue prompt
                       read-port-map write-port-map
                       schedule catch-handler pre-unwind-handler))
-
-(define (current-agenda-prompt)
-  "Get the prompt for the current agenda; signal an error if there isn't one."
-  (let ((current-agenda (%current-agenda)))
-    (if (not current-agenda)
-        (throw
-         'no-current-agenda
-         "Can't get current agenda prompt if there's no current agenda!")
-        (agenda-prompt-tag current-agenda))))
 
 ;; helper for making queues for an agenda
 (define (list->q lst)
@@ -365,7 +356,7 @@ Will produce (0 . 0) instead of a negative number, if needed."
 ;;; =================================
 
 (define-syntax-rule (8sync-abort-to-prompt async-request)
-  (abort-to-prompt (current-agenda-prompt)
+  (abort-to-prompt (%current-agenda-prompt)
                    async-request))
 
 ;; Async port request and run-request meta-requests
@@ -440,7 +431,7 @@ forge ahead in our current function!"
 ;;; Execution of agenda, and current agenda
 ;;; =======================================
 
-(define %current-agenda (make-parameter #f))
+(define %current-agenda-prompt (make-parameter #f))
 
 (define (update-agenda-from-select! agenda)
   "Potentially (select) on ports specified in agenda, adding items to queue.
@@ -562,16 +553,19 @@ on suspendable ports."
   ;; TODO: Document fields
   "Start up the AGENDA"
   (install-suspendable-ports!)
-  (while (not (stop-condition agenda))
-    (agenda-run-once! agenda)
-    (update-agenda-from-select! agenda)
-    ;; Update the agenda's current queue based on
-    ;; currently applicable time segments
-    (add-segments-contents-to-queue!
-     (schedule-extract-until! (agenda-schedule agenda) (gettimeofday))
-     (agenda-queue agenda))
-    (if post-run-hook
-        (post-run-hook agenda)))
+  (parameterize ((%current-agenda-prompt (agenda-prompt-tag agenda))
+                 ;; @@: Couldn't we just parameterize this at the start of
+                 ;;   the agenda...?
+                 (current-read-waiter wait-for-readable)
+                 (current-write-waiter wait-for-writable))
+    (while (not (stop-condition agenda))
+      (agenda-run-once! agenda)
+      (update-agenda-from-select! agenda)
+      (add-segments-contents-to-queue!
+       (schedule-extract-until! (agenda-schedule agenda) (gettimeofday))
+       (agenda-queue agenda))
+      (if post-run-hook
+          (post-run-hook agenda))))
   'done)
 
 (define (print-error-and-continue key . args)
@@ -628,15 +622,10 @@ based on the results"
     (call-with-prompt
      (agenda-prompt-tag agenda)
      (lambda ()
-       (parameterize ((%current-agenda agenda)
-                      ;; @@: Couldn't we just parameterize this at the start of
-                      ;;   the agenda...?
-                      (current-read-waiter wait-for-readable)
-                      (current-write-waiter wait-for-writable))
-         (maybe-catch-all
-          ((agenda-catch-handler agenda)
-           (agenda-pre-unwind-handler agenda))
-          (proc))))
+       (maybe-catch-all
+        ((agenda-catch-handler agenda)
+         (agenda-pre-unwind-handler agenda))
+        (proc)))
      (lambda (kont async-request)
        (setup-async-request kont async-request))))
 
@@ -672,7 +661,4 @@ based on the results"
           ((results ...)
            (for-each handle-individual results))
           (one-result (handle-individual one-result)))))
-    ;; TODO: Alternately, we could return the next-queue
-    ;;   along with changes to be added to the schedule here?
-    ;; Return new agenda, with next queue set
     (set-agenda-queue! agenda next-queue)))
