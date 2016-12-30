@@ -173,7 +173,7 @@ special kind of actor that runs all the other actors.
 Actors can spawn other actors, but before we start the hive we use
 this special "hive-create-actor*" method.
 It takes the hive as its first argument, the actor class as the second
-argument, a decoraive "cookie" as the third argument (this is
+argument, a decorative "cookie" as the third argument (this is
 optional, but it helps with debugging... you can skip it by setting it
 to #f if you prefer), and the rest are initialization arguments to the
 actor.  hive-create-actor* passes back not the actor itself (we don't
@@ -430,15 +430,67 @@ most code can be simply redefined on the fly in 8sync through Geiser
 and actors will immediately update their behavior, so you can test
 and tweak things as you go.
 
+Okay, enough talking.  Let's add it!
+Redefine run-bot like so:
 
+#+BEGIN_SRC scheme
+  (define* (run-bot #:key (username "examplebot")
+                    (server "irc.freenode.net")
+                    (channels '("##botchat"))
+                    (repl-path "/tmp/8sync-repl"))
+    (define hive (make-hive))
+    (define irc-bot
+      (hive-create-actor* hive <my-irc-bot> "irc-bot"
+                          #:username username
+                          #:server server
+                          #:channels channels))
+    (define repl-manager
+      (hive-create-actor* hive <repl-manager> "repl"
+                          #:path repl-path))
 
+    (run-hive hive (list (bootstrap-message hive irc-bot 'init)
+                         (bootstrap-message hive repl-manager 'init))))
+#+END_SRC
 
+If we put a call to run-bot at the bottom of our file we can call it,
+and the repl-manager will start something we can connect to automatically.
+Horray!
+Now when we run this it'll start up a REPL with a unix domain socket at
+the repl-path.
+We can connect to it in emacs like so:
 
-# Finally, show off pk
+: M-x geiser-connect-local <RET> guile <RET> /tmp/8sync-repl <RET>
 
+Okay, so what does this get us?
+Well, we can now live edit our program.
+Let's change how our bot behaves a bit.
+Let's change handle-line and tweak how the bot responds to a botsnack.
+Change this part:
 
+#+BEGIN_SRC scheme
+  ;; From this:
+  ("botsnack"
+   (respond "Yippie! *does a dance!*"))
+
+  ;; To this:
+  ("botsnack"
+   (respond "Yippie! *catches botsnack in midair!*"))
+#+END_SRC
+
+Okay, now let's evaluate the change of the definition.
+You can hit "C-M-x" anywhere in the definition to re-evaluate.
+(You can also position your cursor at the end of the definition and press
+"C-x C-e", but I've come to like "C-M-x" better because I can evaluate as soon
+as I'm done writing.)
+Now, on IRC, ask your bot for a botsnack.
+The bot should give the new message... with no need to stop and start the
+program!
+
+# TODO: show off pk?
 
 ** Battle bot!
+
+
 
 ** Adding a "rankings" web page
 
