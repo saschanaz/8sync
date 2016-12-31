@@ -343,14 +343,7 @@ To implement it, we're going to pull out Guile's pattern matcher.
          ;; Default
          (_
           (<- irc-bot (actor-id irc-bot) 'send-line channel
-              "*stupid puppy look*"))))
-      ;; Otherwise... just spit the output to current-output-port or whatever
-      (_
-       (if emote?
-           (format #t "~a emoted ~s in channel ~a\n"
-                   speaker line channel)
-           (format #t "~a said ~s in channel ~a\n"
-                   speaker line channel)))))
+              "*stupid puppy look*"))))))
 #+END_SRC
 
 Parsing the pattern matcher syntax is left as an exercise for the
@@ -386,14 +379,7 @@ you're right:
 
          ;; Default
          (_
-          (respond "*stupid puppy look*"))))
-      ;; Otherwise... just spit the output to current-output-port or whatever
-      (_
-       (if emote?
-           (format #t "~a emoted ~s in channel ~a\n"
-                   speaker line channel)
-           (format #t "~a said ~s in channel ~a\n"
-                   speaker line channel)))))
+          (respond "*stupid puppy look*"))))))
 #+END_SRC
 
 Okay, that looks pretty good!
@@ -486,11 +472,87 @@ Now, on IRC, ask your bot for a botsnack.
 The bot should give the new message... with no need to stop and start the
 program!
 
-# TODO: show off pk?
+Let's fix a bug live.
+Our current program works great if you talk to your bot in the same
+IRC channel, but what if you try to talk to them over private message?
+
+#+BEGIN_SRC text
+IRC> /query examplebot
+<foo-user> examplebot: hi!
+#+END_SRC
+
+Hm, we aren't seeing any response on IRC!
+Huh?  What's going on?
+It's time to do some debugging.
+There are plenty of debugging tools in Guile, but sometimes the simplest
+is the nicest, and the simplest debugging route around is good old
+fashioned print debugging.
+
+It turns out Guile has an under-advertised feature which makes print
+debugging really easy called "pk", pronounced "peek".
+What pk accepts a list of arguments, prints out the whole thing,
+but returns the last argument.
+This makes wrapping bits of our code pretty easy to see what's
+going on.
+So let's peek into our program with pk.
+Edit the respond section to see what channel it's really sending
+things to:
+
+#+BEGIN_SRC scheme
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    ;; [... snip ...]
+    (define (respond respond-line)
+      (<- irc-bot (actor-id irc-bot) 'send-line (pk 'channel channel)
+          respond-line))
+    ;; [... snip ...]
+    )
+#+END_SRC
+
+Re-evaluate.
+Now let's ping our bot in both the channel and over PM.
+
+#+BEGIN_SRC text
+;;; (channel "##botchat")
+
+;;; (channel "sinkbot")
+#+END_SRC
+
+Oh okay, this makes sense.
+When we're talking in a normal multi-user channel, the channel we see
+the message coming from is the same one we send to.
+But over PM, the channel is a username, and in this case the username
+we're sending our line of text to is ourselves.
+That isn't what we want.
+Let's edit our code so that if we see that the channel we're sending
+to looks like our own username that we respond back to the sender.
+(We can remove the pk now that we know what's going on.)
+
+#+BEGIN_SRC scheme
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    ;; [... snip ...]
+    (define (respond respond-line)
+      (<- irc-bot (actor-id irc-bot) 'send-line
+          (if (looks-like-me? channel)
+              speaker    ; PM session
+              channel)   ; normal IRC channel
+          respond-line))
+    ;; [... snip ...]
+    )
+#+END_SRC
+
+Re-evaluate and test.
+
+#+BEGIN_SRC text
+IRC> /query examplebot
+<foo-user> examplebot: hi!
+<examplebot> Oh hi foo-user!
+#+END_SRC
+
+Horray!
 
 ** Battle bot!
-
-
 
 ** Adding a "rankings" web page
 
