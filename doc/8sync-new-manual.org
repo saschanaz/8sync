@@ -552,7 +552,224 @@ IRC> /query examplebot
 
 Horray!
 
-** Battle bot!
+** Writing our own actors and sending messages between them
+
+Let's write the most basic, boring actor possible.
+How about an actor that start sleeping, and keeps sleeping?
+
+#+BEGIN_SRC scheme
+  (use-modules (oop goops)
+               (8sync))
+
+  (define-class <sleeper> (<actor>)
+    (actions #:allocation #:each-subclass
+             #:init-value (build-actions
+                           (loop sleeper-loop))))
+
+  (define (sleeper-loop actor message)
+    (while (actor-am-i-alive? actor)
+      (display "Zzzzzzzz....\n")
+      ;; Sleep for one second
+      (8sleep 1)))
+
+  (let* ((hive (make-hive))
+         (sleeper (hive-create-actor hive <sleeper>)))
+    (ez-run-hive hive (list (bootstrap-message hive sleeper 'loop))))
+#+END_SRC
+
+We see some particular things in this example.
+One thing is that our <sleeper> actor has an actions slot.
+This is used to look up what the "action handler" for a message is.
+We have to set the #:allocation to either #:each-subclass or #:class.
+(#:class should be fine, except there is [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=25211][a bug in Guile]] which keeps
+us from using it for now.)
+
+In our sleeper-loop we also see a call to "8sleep".
+"8sleep" is like Guile's "sleep" method, except it is non-blocking
+and will always yield to the scheduler.
+
+Our while loop also checks "actor-am-i-alive?" to see whether or not
+it is still registered.
+In general, if you keep a loop in your actor that regularly yields
+to the scheduler, you should check this.
+(An alternate way to handle it would be to not use a while loop at all
+but simply send a message to ourselves with "<-" to call the
+sleeper-loop handler again.
+If the actor was dead, the message simply would not be delivered and
+thus the loop would stop.)
+
+This actor is pretty lazy though.
+Time to get back to work!
+
+#+BEGIN_SRC scheme
+  (use-modules (8sync)
+               (oop goops))
+
+  (define-class <manager> (<actor>)
+    (direct-report #:init-keyword #:direct-report
+                   #:getter manager-direct-report)
+    (actions #:allocation #:each-subclass
+             #:init-value (build-actions
+                           (assign-task manager-assign-task))))
+
+  (define (manager-assign-task manager message difficulty)
+    "Delegate a task to our direct report"
+    (display "manager> Work on this task for me!\n")
+    (<- manager (manager-direct-report manager)
+        'work-on-this difficulty))
+#+END_SRC
+
+Here we're constructing a very simple manager actor.
+This manager keeps track of a direct report and tells them to start
+working on a task... simple delegation.
+Nothing here is really new, but note that our friend "<-" (which means
+"send message") is back.
+There's one difference this time... the first time we saw "<-" was in
+the handle-line procedure of the irc-bot, and in that case we explicitly
+pulled the actor-id after the actor we were sending the message to
+(ourselves), which we aren't doing here.
+But that was an unusual case, because the actor was ourself.
+In this case, and in general, actors don't have direct references to
+other actors; instead, all they have is access to identifiers which
+reference other actors.
+
+#+BEGIN_SRC scheme
+  (define-class <worker> (<actor>)
+    (task-left #:init-keyword #:task-left
+               #:accessor worker-task-left)
+    (actions #:allocation #:each-subclass
+             #:init-value (build-actions
+                           (work-on-this worker-work-on-this))))
+
+  (define (worker-work-on-this worker message difficulty)
+    ""
+    (set! (worker-task-left worker) difficulty)
+    (display "worker> Whatever you say, boss!\n")
+    (while (and (actor-am-i-alive? worker)
+                (> (worker-task-left worker) 0))
+      (display "worker> *huff puff*\n")
+      (set! (worker-task-left worker)
+            (- (worker-task-left worker) 1))
+      (8sync (/ 1 3)))
+    (display "worker> Looks like I'm done!  Can I go home yet?\n"))
+#+END_SRC
+
+The worker also contains familiar code, but we now see that we can
+call 8sync with non-integer real numbers.
+
+Looks like there's nothing left to do but run it:
+
+#+BEGIN_SRC scheme
+  (let* ((hive (make-hive))
+         (worker (hive-create-actor hive <worker>))
+         (manager (hive-create-actor hive <manager>
+                                     #:direct-report worker)))
+    (ez-run-hive hive (list (bootstrap-message hive manager 'assign-task 5))))
+#+END_SRC
+
+#+BEGIN_SRC text
+manager> Work on this task for me!
+worker> Whatever you say, boss!
+worker> *huff puff*
+worker> *huff puff*
+worker> *huff puff*
+worker> *huff puff*
+worker> *huff puff*
+worker> Looks like I'm done!  Can I go home yet?
+#+END_SRC
+
+"<-" pays no attention to what happens with the messages it has sent
+off.
+This is useful in many cases... we can blast off many messages and
+continue along without holding anything back.
+
+But sometimes we want to make sure that something completes before
+we do something else, or we want to send a message and get some sort
+of information back.
+Luckily 8sync comes with an answer to that with "<-wait", which will
+suspend the caller until the callee gives some sort of response, but
+which does not block the rest of the program from running.
+Let's try applying that to our own code by turning our manager
+into a micromanager.
+
+#+END_SRC
+#+BEGIN_SRC scheme
+  ;;; Update this method
+  (define (manager-assign-task manager message difficulty)
+    "Delegate a task to our direct report"
+    (display "manager> Work on this task for me!\n")
+    (<- manager (manager-direct-report manager)
+        'work-on-this difficulty)
+
+    ;; call the micromanagement loop
+    (manager-micromanage-loop manager))
+
+  ;;; And add the following
+  ;;;   (... Note: do not model actual employee management off this)
+  (define (manager-micromanage-loop manager)
+    "Pester direct report until they're done with their task."
+    (display "manager> Are you done yet???\n")
+    (let ((still-working
+           (msg-val (<-wait manager (manager-direct-report manager)
+                            'done-yet?))))
+      (if still-working
+          (begin (display "manager> Harumph!\n")
+                 (8sleep 1)
+                 (when (actor-am-i-alive? manager)
+                   (manager-micromanage-loop manager)))
+          (begin (display "manager> Oh!  I guess you can go home then.\n")
+                 (<- manager (manager-direct-report manager) 'go-home)))))
+#+END_SRC
+
+We've appended a micromanagement loop here... but what's going on?
+"<-wait", as it sounds, waits for a reply, and returns a reply
+message.
+In this case there's a value in the body of the message we want,
+so we pull it out with msg-val.
+(It's possible for a remote actor to return multiple values, in which
+case we'd want to use msg-receive, but that's a bit more complicated.)
+
+Of course, we need to update our worker accordingly as well.
+
+#+BEGIN_SRC scheme
+  ;;; Update the worker to add the following new actions:
+  (define-class <worker> (<actor>)
+    (task-left #:init-keyword #:task-left
+               #:accessor worker-task-left)
+    (actions #:allocation #:each-subclass
+             #:init-value (build-actions
+                           (work-on-this worker-work-on-this)
+                           ;; Add these:
+                           (done-yet? worker-done-yet?)
+                           (go-home worker-go-home))))
+
+  ;;; New procedures:
+  (define (worker-done-yet? worker message)
+    "Reply with whether or not we're done yet."
+    (<-reply worker message
+             (= (worker-task-left worker) 0)))
+
+  (define (worker-go-home worker message)
+    "It's off of work for us!"
+    (display "worker> Whew!  Free at last.")
+    (self-destruct worker))
+#+END_SRC
+
+"<-reply" is what actually returns the information to the actor
+waiting on the reply.
+It takes as an argument the actor sending the message, the message
+it is in reply to, and the rest of the arguments are the "body" of
+the message.
+(If an actor handles a message that is being "waited on" but does not
+explicitly reply to it, an auto-reply with an empty body will be
+triggered so that the waiting actor is not left waiting around.)
+
+The last thing to note is the call to "self-destruct".
+This does what you might expect: it removes the actor from the hive.
+No new messages will be sent to it.
+Ka-poof!
+
+** Extended example: an IRC bot battle
 
 ** Adding a "rankings" web page
 
