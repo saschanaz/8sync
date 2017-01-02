@@ -161,7 +161,7 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
  (let ((hive (make-hive)))
    (hive-create-actor hive <cleanly>)
    (run-hive hive '() #:clean-up #f))
- (test-equal '("Hey, I'm cleanin' up here!\n")
+ (test-equal '()
    (get-spoken)))
 
 ;; The exploder self-destructs, even though run-hive has clean-up
