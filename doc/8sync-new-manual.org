@@ -574,7 +574,7 @@ How about an actor that start sleeping, and keeps sleeping?
 
   (let* ((hive (make-hive))
          (sleeper (hive-create-actor hive <sleeper>)))
-    (ez-run-hive hive (list (bootstrap-message hive sleeper 'loop))))
+    (run-hive hive (list (bootstrap-message hive sleeper 'loop))))
 #+END_SRC
 
 We see some particular things in this example.
@@ -664,7 +664,7 @@ Looks like there's nothing left to do but run it:
          (worker (hive-create-actor hive <worker>))
          (manager (hive-create-actor hive <manager>
                                      #:direct-report worker)))
-    (ez-run-hive hive (list (bootstrap-message hive manager 'assign-task 5))))
+    (run-hive hive (list (bootstrap-message hive manager 'assign-task 5))))
 #+END_SRC
 
 #+BEGIN_SRC text
@@ -769,11 +769,11 @@ This does what you might expect: it removes the actor from the hive.
 No new messages will be sent to it.
 Ka-poof!
 
-** Extended example: an IRC bot battle
-
-** Adding a "rankings" web page
-
 ** Writing our own <irc-bot> from scratch
 
 * API reference
 
+* Systems reference
+** IRC
+** Web / HTTP
+** COMMENT Websockets
