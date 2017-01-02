@@ -143,9 +143,9 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 ;;; Cleanup tests
 
 (define-simple-actor <cleanly>
-  (*clean-up* test-call-clean-up))
+  (*cleanup* test-call-cleanup))
 
-(define (test-call-clean-up actor message)
+(define (test-call-cleanup actor message)
   (speak "Hey, I'm cleanin' up here!\n"))
 
 (with-fresh-speaker
@@ -155,29 +155,29 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
  (test-equal '("Hey, I'm cleanin' up here!\n")
    (get-spoken)))
 
-;; won't work if we turn off #:clean-up though
+;; won't work if we turn off #:cleanup though
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
    (hive-create-actor hive <cleanly>)
-   (run-hive hive '() #:clean-up #f))
+   (run-hive hive '() #:cleanup #f))
  (test-equal '()
    (get-spoken)))
 
-;; The exploder self-destructs, even though run-hive has clean-up
+;; The exploder self-destructs, even though run-hive has cleanup
 ;; disabled, because it cleans up on self-destruct.
 
 (define-simple-actor <exploder>
   (explode (lambda (exploder message)
              (speak "POOF\n")
              (self-destruct exploder)))
-  (*clean-up* (lambda _ (speak "Cleaning up post-explosion\n"))))
+  (*cleanup* (lambda _ (speak "Cleaning up post-explosion\n"))))
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
    (define exploder (hive-create-actor hive <exploder>))
    (run-hive hive (list (bootstrap-message hive exploder 'explode))
-             #:clean-up #f))
+             #:cleanup #f))
  (get-spoken))
 
 

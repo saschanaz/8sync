@@ -309,8 +309,8 @@ to come after class definition."
 
   ;; This is the default, "simple" way to inherit and process messages.
   (actions #:init-value (build-actions
-                         ;; Default clean-up method is to do nothing.
-                         (*clean-up* (const #f)))
+                         ;; Default cleanup method is to do nothing.
+                         (*cleanup* (const #f)))
            #:allocation #:each-subclass))
 
 ;;; So these are the nicer representations of addresses.
@@ -406,13 +406,13 @@ to come after class definition."
             ;; This is in the case of an ambassador failing to forward a
             ;; message... it reports it back to the hive
             (*failed-forward* hive-handle-failed-forward)
-            (*clean-up-all* hive-handle-clean-up-all))))
+            (*cleanup-all* hive-handle-cleanup-all))))
 
 (define-method (hive-handle-failed-forward (hive <hive>) message)
   "Handle an ambassador failing to forward a message"
   'TODO)
 
-(define-method (hive-handle-clean-up-all (hive <hive>) message)
+(define-method (hive-handle-cleanup-all (hive <hive>) message)
   "Send a message to all actors in our registry to clean themselves up."
   ;; Unfortunately we have to do this hack and run over the list
   ;; twice, because hash-for-each would result in an unrewindable
@@ -421,7 +421,7 @@ to come after class definition."
     (hash-map->list (lambda (actor-id actor) actor-id)
                     (hive-actor-registry hive)))
   (for-each (lambda (actor-id)
-              (<- hive actor-id '*clean-up*))
+              (<- hive actor-id '*cleanup*))
             actor-ids))
 
 (define* (make-hive #:key hive-id)
@@ -707,13 +707,13 @@ Like create-actor, but permits supplying an id-cookie."
                       init id-cookie))
 
 
-(define* (self-destruct actor #:key (clean-up #t))
+(define* (self-destruct actor #:key (cleanup #t))
   "Remove an actor from the hive.
 
-Unless #:clean-up is set to #f, this will first have the actor handle
-its '*clean-up* action handler."
-  (when clean-up
-    (<-wait actor (actor-id actor) '*clean-up*))
+Unless #:cleanup is set to #f, this will first have the actor handle
+its '*cleanup* action handler."
+  (when cleanup
+    (<-wait actor (actor-id actor) '*cleanup*))
   (hash-remove! (hive-actor-registry (actor-hive actor))
                 (actor-id actor)))
 
@@ -723,7 +723,7 @@ its '*clean-up* action handler."
 ;;; =========================
 
 (define* (run-hive hive initial-tasks
-                   #:key (clean-up #t))
+                   #:key (cleanup #t))
   "Start up an agenda and run HIVE in it with INITIAL-TASKS."
   (dynamic-wind
     (const #f)
@@ -732,14 +732,14 @@ its '*clean-up* action handler."
              (agenda (make-agenda #:pre-unwind-handler print-error-and-continue
                                   #:queue queue)))
         (start-agenda agenda)))
-    ;; Run clean-up
+    ;; Run cleanup
     (lambda ()
-      (when clean-up
-        (run-hive-clean-up hive)))))
+      (when cleanup
+        (run-hive-cleanup hive)))))
 
-(define (run-hive-clean-up hive)
+(define (run-hive-cleanup hive)
   (let ((queue (list->q (list (bootstrap-message hive (actor-id hive)
-                                                 '*clean-up-all*)))))
+                                                 '*cleanup-all*)))))
     (start-agenda
      (make-agenda #:queue queue))))
 
