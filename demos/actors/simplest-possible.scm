@@ -34,6 +34,6 @@
 (define our-emo (hive-create-actor hive <emo>))
 (define our-proog (hive-create-actor hive <proog>))
 (define (main . args)
-  (ez-run-hive hive
-               (list (bootstrap-message hive our-emo 'greet-proog
-                                        our-proog))))
+  (run-hive hive
+            (list (bootstrap-message hive our-emo 'greet-proog
+                                     our-proog))))

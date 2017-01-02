@@ -123,7 +123,7 @@
         (list (bootstrap-message hive irc-bot 'init))))
 
   ;; TODO: load REPL
-  (ez-run-hive hive initial-messages))
+  (run-hive hive initial-messages))
 
 (define (main args)
   (define parsed-args (parse-args "ircbot.scm" args))

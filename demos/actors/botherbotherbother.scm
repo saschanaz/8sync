@@ -131,4 +131,4 @@
                                #:target professor))
      students))
 
-  (ez-run-hive hive start-bothering-tasks))
+  (run-hive hive start-bothering-tasks))

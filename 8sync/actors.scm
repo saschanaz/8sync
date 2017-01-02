@@ -75,7 +75,7 @@
 
             call-with-message msg-receive msg-val
 
-            ez-run-hive
+            run-hive
             bootstrap-message
 
             serialize-message write-message
@@ -698,7 +698,7 @@ Like create-actor, but permits supplying an id-cookie."
 ;;; 8sync bootstrap utilities
 ;;; =========================
 
-(define* (ez-run-hive hive initial-tasks)
+(define* (run-hive hive initial-tasks)
   "Start up an agenda and run HIVE in it with INITIAL-TASKS."
   (let* ((queue (list->q initial-tasks))
          (agenda (make-agenda #:pre-unwind-handler print-error-and-continue

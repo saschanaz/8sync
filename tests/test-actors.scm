@@ -115,7 +115,7 @@
        (lazy-rep (hive-create-actor* hive <lazy-rep> "lazy-rep")))
   ;; * Playing a tape of a diligent service rep *
   (parameterize ((%record-out (open-output-string)))
-    (let* ((result (ez-run-hive
+    (let* ((result (run-hive
                     hive
                     (list (bootstrap-message hive customer 'pester-rep
                                              #:who-to-call diligent-rep))))
@@ -129,7 +129,7 @@ customer> Well then!  Harumph.\n"
         displayed-text)))
   ;; * Playing a tape of a lazy service rep *
   (parameterize ((%record-out (open-output-string)))
-    (let* ((result (ez-run-hive
+    (let* ((result (run-hive
                     hive
                     (list (bootstrap-message hive customer 'pester-rep
                                                   #:who-to-call lazy-rep))))
