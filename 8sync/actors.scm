@@ -47,7 +47,7 @@
             actor-id-hive
             actor-id-string
 
-            actor-am-i-alive?
+            actor-alive?
 
             build-actions
 
@@ -358,7 +358,7 @@ to come after class definition."
 (define %current-actor
   (make-parameter #f))
 
-(define (actor-am-i-alive? actor)
+(define (actor-alive? actor)
   (hive-resolve-local-actor (actor-hive actor) (actor-id actor)))
 
 

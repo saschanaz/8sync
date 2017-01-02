@@ -52,7 +52,7 @@
   (define server
     (spawn-coop-repl-server socket))
   (set! (repl-manager-socket repl-manager) socket)
-  (while (actor-am-i-alive? repl-manager)
+  (while (actor-alive? repl-manager)
     (poll-coop-repl-server server)
     (8sleep (repl-manager-poll-every repl-manager))))
 

@@ -567,7 +567,7 @@ How about an actor that start sleeping, and keeps sleeping?
                            (loop sleeper-loop))))
 
   (define (sleeper-loop actor message)
-    (while (actor-am-i-alive? actor)
+    (while (actor-alive? actor)
       (display "Zzzzzzzz....\n")
       ;; Sleep for one second
       (8sleep 1)))
@@ -588,7 +588,7 @@ In our sleeper-loop we also see a call to "8sleep".
 "8sleep" is like Guile's "sleep" method, except it is non-blocking
 and will always yield to the scheduler.
 
-Our while loop also checks "actor-am-i-alive?" to see whether or not
+Our while loop also checks "actor-alive?" to see whether or not
 it is still registered.
 In general, if you keep a loop in your actor that regularly yields
 to the scheduler, you should check this.
@@ -645,7 +645,7 @@ reference other actors.
     ""
     (set! (worker-task-left worker) difficulty)
     (display "worker> Whatever you say, boss!\n")
-    (while (and (actor-am-i-alive? worker)
+    (while (and (actor-alive? worker)
                 (> (worker-task-left worker) 0))
       (display "worker> *huff puff*\n")
       (set! (worker-task-left worker)
@@ -715,7 +715,7 @@ into a micromanager.
       (if still-working
           (begin (display "manager> Harumph!\n")
                  (8sleep 1)
-                 (when (actor-am-i-alive? manager)
+                 (when (actor-alive? manager)
                    (manager-micromanage-loop manager)))
           (begin (display "manager> Oh!  I guess you can go home then.\n")
                  (<- manager (manager-direct-report manager) 'go-home)))))
