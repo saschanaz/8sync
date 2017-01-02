@@ -731,7 +731,7 @@ its '*cleanup* action handler."
       (let* ((queue (list->q initial-tasks))
              (agenda (make-agenda #:pre-unwind-handler print-error-and-continue
                                   #:queue queue)))
-        (start-agenda agenda)))
+        (run-agenda agenda)))
     ;; Run cleanup
     (lambda ()
       (when cleanup
@@ -740,7 +740,7 @@ its '*cleanup* action handler."
 (define (run-hive-cleanup hive)
   (let ((queue (list->q (list (bootstrap-message hive (actor-id hive)
                                                  '*cleanup-all*)))))
-    (start-agenda
+    (run-agenda
      (make-agenda #:queue queue))))
 
 (define (bootstrap-message hive to-id action . message-body-args)

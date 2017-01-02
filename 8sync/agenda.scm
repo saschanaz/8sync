@@ -62,7 +62,7 @@
             stop-on-nothing-to-do
 
             %current-agenda-prompt
-            start-agenda agenda-run-once!))
+            run-agenda agenda-run-once!))
 
 
 ;;; Agenda definition
@@ -553,10 +553,10 @@ on suspendable ports."
        (= 0 (hash-count (const #t) (agenda-write-port-map agenda)))))
 
 
-(define* (start-agenda agenda
-                       #:key (stop-condition stop-on-nothing-to-do)
-                       ;; For live hacking madness, etc
-                       (post-run-hook #f))
+(define* (run-agenda agenda
+                     #:key (stop-condition stop-on-nothing-to-do)
+                     ;; For live hacking madness, etc
+                     (post-run-hook #f))
   ;; TODO: Document fields
   "Start up the AGENDA"
   (install-suspendable-ports!)

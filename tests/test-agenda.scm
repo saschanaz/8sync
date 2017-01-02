@@ -267,16 +267,16 @@
   (run-it dummy-func))
 
 (with-fresh-speaker
- (start-agenda (make-agenda #:queue (make-q* run-dummy))
-               #:stop-condition (true-after-n-times 2))
+ (run-agenda (make-agenda #:queue (make-q* run-dummy))
+             #:stop-condition (true-after-n-times 2))
  (test-equal (get-spoken)
    '("I bet I can make you say you're a dummy!\n"
      "I'm a dummy\n")))
 
 ;; should only do the first one after one round though
 (with-fresh-speaker
- (start-agenda (make-agenda #:queue (make-q* run-dummy))
-               #:stop-condition (true-after-n-times 1))
+ (run-agenda (make-agenda #:queue (make-q* run-dummy))
+             #:stop-condition (true-after-n-times 1))
  (test-equal (get-spoken)
    '("I bet I can make you say you're a dummy!\n")))
 
