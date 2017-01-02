@@ -139,7 +139,10 @@ lazy-rep> I'm not answering that.
 customer> Whaaaaat?  I can't believe I got voice mail!\n"
           displayed-text))))
 
-(define-simple-actor <foo>
+
+;;; Cleanup tests
+
+(define-simple-actor <cleanly>
   (*clean-up* test-call-clean-up))
 
 (define (test-call-clean-up actor message)
@@ -147,10 +150,30 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
-   (hive-create-actor hive <foo>)
+   (hive-create-actor hive <cleanly>)
    (run-hive hive '()))
  (test-equal '("Hey, I'm cleanin' up here!\n")
    (get-spoken)))
+
+;; won't work if we turn off #:clean-up though
+
+(with-fresh-speaker
+ (let ((hive (make-hive)))
+   (hive-create-actor hive <cleanly>)
+   (run-hive hive '() #:clean-up #f))
+ (test-equal '("Hey, I'm cleanin' up here!\n")
+   (get-spoken)))
+
+;; The exploder self-destructs, even though run-hive has clean-up
+;; disabled, because it cleans up on self-destruct.
+
+(with-fresh-speaker
+ (let ((hive (make-hive)))
+   (define exploder (hive-create-actor hive <exploder>))
+   (run-hive hive (list (bootstrap-message hive exploder 'explode))
+             #:clean-up #f))
+ (get-spoken))
+
 
 (test-end "test-actors")
 (test-exit)

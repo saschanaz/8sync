@@ -705,8 +705,13 @@ Like create-actor, but permits supplying an id-cookie."
                       init id-cookie))
 
 
-(define (self-destruct actor)
-  "Remove an actor from the hive."
+(define* (self-destruct actor #:key (clean-up #t))
+  "Remove an actor from the hive.
+
+Unless #:clean-up is set to #f, this will first have the actor handle
+its '*clean-up* action handler."
+  (when clean-up
+    (<-wait actor (actor-id actor) '*clean-up*))
   (hash-remove! (hive-actor-registry (actor-hive actor))
                 (actor-id actor)))
 
@@ -715,7 +720,8 @@ Like create-actor, but permits supplying an id-cookie."
 ;;; 8sync bootstrap utilities
 ;;; =========================
 
-(define* (run-hive hive initial-tasks)
+(define* (run-hive hive initial-tasks
+                   #:key (clean-up #t))
   "Start up an agenda and run HIVE in it with INITIAL-TASKS."
   (dynamic-wind
     (const #f)
@@ -726,7 +732,8 @@ Like create-actor, but permits supplying an id-cookie."
         (start-agenda agenda)))
     ;; Run clean-up
     (lambda ()
-      (run-hive-clean-up hive))))
+      (when clean-up
+        (run-hive-clean-up hive)))))
 
 (define (run-hive-clean-up hive)
   (let ((queue (list->q (list (bootstrap-message hive (actor-id hive)
