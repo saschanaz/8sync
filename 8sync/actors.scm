@@ -440,7 +440,7 @@ to come after class definition."
 
 (define-method (hive-gen-actor-id (hive <hive>) cookie)
   (make-address (if cookie
-                    (string-append cookie "-" (big-random-number-string))
+                    (string-append cookie ":" (big-random-number-string))
                     (big-random-number-string))
                 (hive-id hive)))
 
@@ -647,11 +647,13 @@ that method for documentation."
     actor-id))
 
 (define* (hive-create-actor hive actor-class #:rest init)
+  "Create an actor on HIVE using ACTOR-CLASS passing in INIT args"
   (%hive-create-actor hive actor-class
-                      init #f))
+                      init (symbol->string (class-name actor-class))))
 
 (define* (hive-create-actor* hive actor-class id-cookie #:rest init)
-  "Create an actor, but also add a 'cookie' to the name for debugging"
+  "Create an actor, but also allow customizing a 'cookie' added to the id
+for debugging"
   (%hive-create-actor hive actor-class
                       init id-cookie))
 
