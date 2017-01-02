@@ -283,6 +283,14 @@ raise an exception if an error."
     (call/ec find-message-handler))
   (apply method actor message (message-body message)))
 
+(define-syntax-rule (build-actions (symbol method) ...)
+  "Construct an alist of (symbol . method), where the method is wrapped
+with wrap-apply to facilitate live hacking and allow the method definition
+to come after class definition."
+  (list
+   (cons (quote symbol)
+         (wrap-apply method)) ...))
+
 (define-class <actor> ()
   ;; An address object
   (id #:init-keyword #:id
@@ -300,7 +308,9 @@ raise an exception if an error."
                    #:getter actor-message-handler)
 
   ;; This is the default, "simple" way to inherit and process messages.
-  (actions #:init-value '()
+  (actions #:init-value (build-actions
+                         ;; Default cleanup method is to do nothing.
+                         (*cleanup* (const #f)))
            #:allocation #:each-subclass))
 
 ;;; So these are the nicer representations of addresses.
@@ -356,14 +366,6 @@ raise an exception if an error."
 ;;; Actor utilities
 ;;; ===============
 
-(define-syntax-rule (build-actions (symbol method) ...)
-  "Construct an alist of (symbol . method), where the method is wrapped
-with wrap-apply to facilitate live hacking and allow the method definition
-to come after class definition."
-  (list
-   (cons (quote symbol)
-         (wrap-apply method)) ...))
-
 (define-syntax-rule (define-simple-actor class action ...)
   (define-class class (<actor>)
     (actions #:init-value (build-actions action ...)
@@ -403,11 +405,24 @@ to come after class definition."
            (build-actions
             ;; This is in the case of an ambassador failing to forward a
             ;; message... it reports it back to the hive
-            (*failed-forward* hive-handle-failed-forward))))
+            (*failed-forward* hive-handle-failed-forward)
+            (*cleanup-all* hive-handle-cleanup-all))))
 
 (define-method (hive-handle-failed-forward (hive <hive>) message)
   "Handle an ambassador failing to forward a message"
   'TODO)
+
+(define-method (hive-handle-cleanup-all (hive <hive>) message)
+  "Send a message to all actors in our registry to clean themselves up."
+  ;; Unfortunately we have to do this hack and run over the list
+  ;; twice, because hash-for-each would result in an unrewindable
+  ;; continuation.
+  (define actor-ids
+    (hash-map->list (lambda (actor-id actor) actor-id)
+                    (hive-actor-registry hive)))
+  (for-each (lambda (actor-id)
+              (<- hive actor-id '*cleanup*))
+            actor-ids))
 
 (define* (make-hive #:key hive-id)
   (let ((hive (make <hive>
@@ -416,6 +431,8 @@ to come after class definition."
                                  (big-random-number-string))))))
     ;; Set the hive's actor reference to itself
     (set! (actor-hive hive) hive)
+    ;; Register the actor with itself
+    (hive-register-actor! hive hive)
     hive))
 
 (define-method (hive-id (hive <hive>))
@@ -700,10 +717,22 @@ Like create-actor, but permits supplying an id-cookie."
 
 (define* (run-hive hive initial-tasks)
   "Start up an agenda and run HIVE in it with INITIAL-TASKS."
-  (let* ((queue (list->q initial-tasks))
-         (agenda (make-agenda #:pre-unwind-handler print-error-and-continue
-                              #:queue queue)))
-    (start-agenda agenda)))
+  (dynamic-wind
+    (const #f)
+    (lambda ()
+      (let* ((queue (list->q initial-tasks))
+             (agenda (make-agenda #:pre-unwind-handler print-error-and-continue
+                                  #:queue queue)))
+        (start-agenda agenda)))
+    ;; Run cleanup
+    (lambda ()
+      (run-hive-cleanup hive))))
+
+(define (run-hive-cleanup hive)
+  (let ((queue (list->q (list (bootstrap-message hive (actor-id hive)
+                                                 '*cleanup-all*)))))
+    (start-agenda
+     (make-agenda #:queue queue))))
 
 (define (bootstrap-message hive to-id action . message-body-args)
   (wrap

@@ -139,5 +139,18 @@ lazy-rep> I'm not answering that.
 customer> Whaaaaat?  I can't believe I got voice mail!\n"
           displayed-text))))
 
+(define-simple-actor <foo>
+  (*cleanup* test-call-cleanup))
+
+(define (test-call-cleanup actor message)
+  (speak "Hey, I'm cleanin' up here!\n"))
+
+(with-fresh-speaker
+ (let ((hive (make-hive)))
+   (hive-create-actor hive <foo>)
+   (run-hive hive '()))
+ (test-equal '("Hey, I'm cleanin' up here!\n")
+   (get-spoken)))
+
 (test-end "test-actors")
 (test-exit)
