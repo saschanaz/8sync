@@ -309,8 +309,8 @@ to come after class definition."
 
   ;; This is the default, "simple" way to inherit and process messages.
   (actions #:init-value (build-actions
-                         ;; Default cleanup method is to do nothing.
-                         (*cleanup* (const #f)))
+                         ;; Default clean-up method is to do nothing.
+                         (*clean-up* (const #f)))
            #:allocation #:each-subclass))
 
 ;;; So these are the nicer representations of addresses.
@@ -406,13 +406,13 @@ to come after class definition."
             ;; This is in the case of an ambassador failing to forward a
             ;; message... it reports it back to the hive
             (*failed-forward* hive-handle-failed-forward)
-            (*cleanup-all* hive-handle-cleanup-all))))
+            (*clean-up-all* hive-handle-clean-up-all))))
 
 (define-method (hive-handle-failed-forward (hive <hive>) message)
   "Handle an ambassador failing to forward a message"
   'TODO)
 
-(define-method (hive-handle-cleanup-all (hive <hive>) message)
+(define-method (hive-handle-clean-up-all (hive <hive>) message)
   "Send a message to all actors in our registry to clean themselves up."
   ;; Unfortunately we have to do this hack and run over the list
   ;; twice, because hash-for-each would result in an unrewindable
@@ -421,7 +421,7 @@ to come after class definition."
     (hash-map->list (lambda (actor-id actor) actor-id)
                     (hive-actor-registry hive)))
   (for-each (lambda (actor-id)
-              (<- hive actor-id '*cleanup*))
+              (<- hive actor-id '*clean-up*))
             actor-ids))
 
 (define* (make-hive #:key hive-id)
@@ -724,13 +724,13 @@ Like create-actor, but permits supplying an id-cookie."
              (agenda (make-agenda #:pre-unwind-handler print-error-and-continue
                                   #:queue queue)))
         (start-agenda agenda)))
-    ;; Run cleanup
+    ;; Run clean-up
     (lambda ()
-      (run-hive-cleanup hive))))
+      (run-hive-clean-up hive))))
 
-(define (run-hive-cleanup hive)
+(define (run-hive-clean-up hive)
   (let ((queue (list->q (list (bootstrap-message hive (actor-id hive)
-                                                 '*cleanup-all*)))))
+                                                 '*clean-up-all*)))))
     (start-agenda
      (make-agenda #:queue queue))))
 

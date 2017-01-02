@@ -140,9 +140,9 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
           displayed-text))))
 
 (define-simple-actor <foo>
-  (*cleanup* test-call-cleanup))
+  (*clean-up* test-call-clean-up))
 
-(define (test-call-cleanup actor message)
+(define (test-call-clean-up actor message)
   (speak "Hey, I'm cleanin' up here!\n"))
 
 (with-fresh-speaker
