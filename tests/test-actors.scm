@@ -167,6 +167,12 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 ;; The exploder self-destructs, even though run-hive has clean-up
 ;; disabled, because it cleans up on self-destruct.
 
+(define-simple-actor <exploder>
+  (explode (lambda (exploder message)
+             (speak "POOF\n")
+             (self-destruct exploder)))
+  (*clean-up* (lambda _ (speak "Cleaning up post-explosion\n"))))
+
 (with-fresh-speaker
  (let ((hive (make-hive)))
    (define exploder (hive-create-actor hive <exploder>))
