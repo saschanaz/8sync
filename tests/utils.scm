@@ -20,7 +20,36 @@
 
 (define-module (tests utils)
   #:use-module (srfi srfi-64)
-  #:export (test-exit))
+  #:export (test-exit
+
+            speak get-spoken with-fresh-speaker))
 
 (define (test-exit)
   (exit (= (test-runner-fail-count (test-runner-current)) 0)))
+
+
+
+
+;;; display-like helpers
+;;; ====================
+
+(define (speak-it)
+  (let ((messages '()))
+    (lambda* (#:optional message)
+      (if message (set! messages (append messages (list message))))
+      messages)))
+
+(define %speaker (make-parameter (speak-it)))
+
+(define (speak message)
+  "Speak a message into the %speaker parameter"
+  ((%speaker) message))
+
+(define (get-spoken)
+  "Get what's been spoken in the %speaker parameter"
+  ((%speaker)))
+
+(define-syntax-rule (with-fresh-speaker body ...)
+  "Run body with a fresh %speaker"
+  (parameterize ((%speaker (speak-it)))
+    body ...))
