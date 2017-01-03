@@ -64,15 +64,15 @@
            (define droid (create-actor* actor <droid> "droid"
                                         #:infected infected
                                         #:room room))
-           (<-wait actor droid 'register-with-room))
+           (<-wait droid 'register-with-room))
 
          ;; Link rooms.
          ;; Couldn't this just be folded into the warehouse room init?
          ;; I guess it stress tests more the message sending process
          (when previous-room
-           (<- actor previous-room 'set-next-room
+           (<- previous-room 'set-next-room
                #:id room)
-           (<- actor room 'set-previous-room
+           (<- room 'set-previous-room
                #:id previous-room))
 
          ;; Set up clean droids in the room
@@ -95,7 +95,7 @@
      ;; Add security robot
      (let ((security-robot
             (create-actor actor <security-robot>)))
-       (<- actor security-robot 'begin-mission
+       (<- security-robot 'begin-mission
            #:starting-room first-room
            #:overseer (actor-id actor)))))
 
@@ -128,17 +128,17 @@
     (get-next-room
      (lambda (actor message)
        "Return a reference to the link following this"
-       (<-reply actor message (slot-ref actor 'next-room))))
+       (<-reply message (slot-ref actor 'next-room))))
 
     (get-previous-room
      (lambda (actor message)
        "Return a reference to the link preceding this"
-       (<-reply actor message (slot-ref actor 'previous-room))))
+       (<-reply message (slot-ref actor 'previous-room))))
 
     (list-droids
      (lambda (actor message)
        "Return a list of all the droid ids we know of in this room"
-       (<-reply actor message
+       (<-reply message
                 #:droid-ids (slot-ref actor 'droids))))
 
     (register-droid
@@ -164,8 +164,7 @@
      (lambda (actor message)
        "Register ourselves as being in a room"
        (let ((room-id (slot-ref actor 'room)))
-         (<-wait actor room-id
-                 'register-droid
+         (<-wait room-id 'register-droid
                  #:droid-id (actor-id actor))
          (format #t "Droid ~a registered with room ~a\n"
                  (actor-id-actor actor)
@@ -174,7 +173,7 @@
     (infection-expose
      (lambda (actor message)
        "Leak whether or not we're infected to a security droid"
-       (<-reply actor message (slot-ref actor 'infected))))
+       (<-reply message (slot-ref actor 'infected))))
 
     (get-shot
      (lambda (actor message)
@@ -184,7 +183,7 @@
               (alive (> new-hp 0)))
          ;; Set our health to the new value
          (slot-set! actor 'hp new-hp)
-         (<-reply actor message
+         (<-reply message
                   #:hp-left new-hp
                   #:damage-taken damage
                   #:alive alive)
@@ -219,20 +218,20 @@
   ;; Continue this whil there's still another room to investigate.
   (define response)
   (while room
-    (<- actor overseer 'transmission
+    (<- overseer 'transmission
         #:text (format #f "Entering room ~a..."
                        (address-actor-id room)))
 
     ;; Find all droids in this room and exterminate the infected ones.
     (msg-receive (_ #:key list-droids droid-ids #:allow-other-keys)
-        (<-wait actor room 'list-droids)
+        (<-wait room 'list-droids)
       (for-each
        (lambda (droid-id)
          (cond
           ;; Looks like it's infected
-          ((msg-val (<-wait actor droid-id 'infection-expose))
+          ((msg-val (<-wait droid-id 'infection-expose))
            ;; Inform that it's infected
-           (<- actor overseer 'transmission
+           (<- overseer 'transmission
                #:text (format #f "~a found to be infected... taking out"
                               (address-actor-id droid-id)))
 
@@ -240,24 +239,24 @@
            (let ((still-alive #t))
              (while still-alive
                (msg-receive (response #:key alive #:allow-other-keys)
-                   (<-wait actor droid-id 'get-shot)
-                 (<- actor overseer 'transmission
+                   (<-wait droid-id 'get-shot)
+                 (<- overseer 'transmission
                      #:text (droid-status-format response))
                  (set! still-alive alive)))))
 
           ;; Not infected... inform and go to the next one
           (else
-           (<- actor overseer 'transmission
+           (<- overseer 'transmission
                #:text
                (format #f "~a is clean... moving on."
                        (address-actor-id droid-id))))))
        droid-ids))
 
     ;; Switch to next room, if there is one.
-    (set! room (msg-val (<-wait actor room 'get-next-room))))
+    (set! room (msg-val (<-wait room 'get-next-room))))
 
   ;; Good job everyone!  Shut down the operation.
-  (<- actor overseer 'transmission
+  (<- overseer 'transmission
       #:text "Mission accomplished."))
 
 (define (main . args)

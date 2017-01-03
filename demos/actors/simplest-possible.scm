@@ -23,7 +23,7 @@
   (greet-proog
    (lambda (actor message target)
      (display "emo> What's next, Proog?\n")
-     (<- actor target 'greet-emo))))
+     (<- target 'greet-emo))))
 
 (define-simple-actor <proog>
   (greet-emo

@@ -189,7 +189,7 @@
      (format socket "JOIN ~a~a" channel irc-eol))
    (irc-bot-channels irc-bot))
 
-  (<- irc-bot (actor-id irc-bot) 'main-loop))
+  (<- (actor-id irc-bot) 'main-loop))
 
 (define (irc-bot-main-loop irc-bot message)
   (define socket (irc-bot-socket irc-bot))
@@ -212,7 +212,7 @@
    ;;  'done)
    ;; Otherwise, let's read till the next line!
    (else
-    (<- irc-bot (actor-id irc-bot) 'main-loop))))
+    (<- (actor-id irc-bot) 'main-loop))))
 
 (define* (irc-bot-send-line-action irc-bot message
                                    channel line #:key emote?)

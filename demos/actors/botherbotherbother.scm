@@ -59,8 +59,7 @@
                (while (not (student-dead actor))
                  (format #t "~a: Bother bother bother!\n"
                          (actor-id-actor actor))
-                 (<- actor target
-                     'be-bothered
+                 (<- target 'be-bothered
                      #:noise "Bother bother bother!\n"))))
 
             (be-lambda-consvardraed
@@ -89,8 +88,7 @@
                 (actor-id actor))
         (hash-for-each
          (lambda (student _)
-           (<- actor student
-               'be-lambda-consvardraed)
+           (<- student 'be-lambda-consvardraed)
            ;; Remove student from bothering list
            (hash-remove! whos-bothering student))
          whos-bothering))

@@ -71,7 +71,7 @@
 
             message-auto-reply?
 
-            <- <-wait <-wait* <-reply <-reply-wait <-reply-wait*
+            <- <-* <-wait <-wait* <-reply <-reply* <-reply-wait <-reply-wait*
 
             call-with-message msg-receive msg-val
 
@@ -196,51 +196,78 @@
         ;;   confusing.
         (8sync (hive-process-message hive new-message)))))
 
-
-(define (<- from-actor to-id action . message-body-args)
+(define (<- to-id action . message-body-args)
   "Send a message from an actor to another actor"
-  (send-message '() from-actor to-id action
+  (send-message '() (%current-actor) to-id action
                 #f #f message-body-args))
 
-(define (<-wait* send-options from-actor to-id action . message-body-args)
+(define (<-* send-options to-id action . message-body-args)
+  "Like <-*, but allows extra parameters via send-options"
+  (define* (really-send #:key (actor (%current-actor))
+                        #:allow-other-keys)
+    (send-message send-options actor to-id action
+                  #f #f message-body-args))
+  (apply really-send send-options))
+
+(define (<-wait to-id action . message-body-args)
+  "Send a message from an actor to another, but wait until we get a response"
+  (wait-maybe-handle-errors
+   (send-message '() (%current-actor) to-id action
+                 #f #t message-body-args)))
+
+(define (<-wait* send-options to-id action . message-body-args)
   "Like <-wait, but allows extra parameters, for example whether to
 #:accept-errors"
-  (apply wait-maybe-handle-errors
-         (send-message send-options from-actor to-id action
-                       #f #t message-body-args)
-         send-options))
-
-(define (<-wait from-actor to-id action . message-body-args)
-  "Send a message from an actor to another, but wait until we get a response"
-  (apply <-wait* '() from-actor to-id action message-body-args))
+  (define* (really-send #:key (actor (%current-actor))
+                        #:allow-other-keys)
+    (apply wait-maybe-handle-errors
+           (send-message send-options actor to-id action
+                         #f #t message-body-args)
+           send-options))
+  (apply really-send send-options))
 
 ;; TODO: Intelligently ~propagate(ish) errors on -wait functions.
 ;;   We might have `send-message-wait-brazen' to allow callers to
 ;;   not have an exception thrown and instead just have a message with
 ;;   the appropriate '*error* message returned.
 
-(define (<-reply from-actor original-message . message-body-args)
+(define (<-reply original-message . message-body-args)
   "Reply to a message"
-  (send-message '() from-actor (message-from original-message) '*reply*
+  (send-message '() (%current-actor) (message-from original-message) '*reply*
                 original-message #f message-body-args))
 
-(define (<-auto-reply from-actor original-message)
+(define (<-reply* send-options original-message . message-body-args)
+  "Like <-reply, but allows extra parameters via send-options"
+  (define* (really-send #:key (actor (%current-actor))
+                        #:allow-other-keys)
+    (send-message send-options actor
+                  (message-from original-message) '*reply*
+                  original-message #f message-body-args))
+  (apply really-send send-options))
+
+(define (<-auto-reply actor original-message)
   "Auto-reply to a message.  Internal use only!"
-  (send-message '() from-actor (message-from original-message) '*auto-reply*
+  (send-message '() actor (message-from original-message) '*auto-reply*
                 original-message #f '()))
 
-(define (<-reply-wait* send-options from-actor original-message
-                       . message-body-args)
+(define (<-reply-wait original-message . message-body-args)
   "Reply to a messsage, but wait until we get a response"
-  (apply wait-maybe-handle-errors
-         (send-message send-options from-actor
-                       (message-from original-message) '*reply*
-                       original-message #t message-body-args)
-         send-options))
+  (wait-maybe-handle-errors
+   (send-message '() (%current-actor)
+                 (message-from original-message) '*reply*
+                 original-message #t message-body-args)))
 
-(define (<-reply-wait from-actor original-message . message-body-args)
-  "Reply to a messsage, but wait until we get a response"
-  (apply <-reply-wait* '() from-actor original-message message-body-args))
+(define (<-reply-wait* send-options original-message
+                       . message-body-args)
+  "Like <-reply-wait, but allows extra parameters via send-options"
+  (define* (really-send #:key (actor (%current-actor))
+                        #:allow-other-keys)
+    (apply wait-maybe-handle-errors
+           (send-message send-options actor
+                         (message-from original-message) '*reply*
+                         original-message #t message-body-args)
+           send-options))
+  (apply really-send send-options))
 
 (define* (wait-maybe-handle-errors message
                                    #:key accept-errors
@@ -421,7 +448,7 @@ to come after class definition."
     (hash-map->list (lambda (actor-id actor) actor-id)
                     (hive-actor-registry hive)))
   (for-each (lambda (actor-id)
-              (<- hive actor-id '*cleanup*))
+              (<- actor-id '*cleanup*))
             actor-ids))
 
 (define* (make-hive #:key hive-id)
@@ -713,7 +740,7 @@ Like create-actor, but permits supplying an id-cookie."
 Unless #:cleanup is set to #f, this will first have the actor handle
 its '*cleanup* action handler."
   (when cleanup
-    (<-wait actor (actor-id actor) '*cleanup*))
+    (<-wait (actor-id actor) '*cleanup*))
   (hash-remove! (hive-actor-registry (actor-hive actor))
                 (actor-id actor)))
 
@@ -745,7 +772,7 @@ its '*cleanup* action handler."
 
 (define (bootstrap-message hive to-id action . message-body-args)
   (wrap
-   (apply <- hive to-id action message-body-args)))
+   (apply <-* `(#:actor ,hive) to-id action message-body-args)))
 
 
 

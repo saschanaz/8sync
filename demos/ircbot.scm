@@ -41,19 +41,19 @@
      (match action
        ;; The classic botsnack!
        ("botsnack"
-        (<- irc-bot (actor-id irc-bot) 'send-line channel
+        (<- (actor-id irc-bot) 'send-line channel
             "Yippie! *does a dance!*"))
        ;; Return greeting
        ((or "hello" "hello!" "hello." "greetings" "greetings." "greetings!"
             "hei" "hei." "hei!" "hi" "hi!")
-        (<- irc-bot (actor-id irc-bot) 'send-line channel
+        (<- (actor-id irc-bot) 'send-line channel
             (format #f "Oh hi ~a!" speaker)))
 
        ;; --->  Add yours here <---
 
        ;; Default
        (_
-        (<- irc-bot (actor-id irc-bot) 'send-line channel
+        (<- (actor-id irc-bot) 'send-line channel
             "*stupid puppy look*"))))
     ;; Otherwise... just spit the output to current-output-port or whatever
     (_
