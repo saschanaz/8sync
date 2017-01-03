@@ -777,3 +777,38 @@ Ka-poof!
 ** IRC
 ** Web / HTTP
 ** COMMENT Websockets
+
+* Addendum
+** 8sync and Fibers
+
+One other major library for asynchronous communication in Guile-land
+is [[https://github.com/wingo/fibers/][Fibers]].
+There's a lot of overlap:
+
+ - Both use Guile's suspendable-ports facility
+ - Both communicate between asynchronous processes using message passing;
+   you don't have to squint hard to see the relationship between Fibers'
+   channels and 8sync's actor inboxes.
+
+However, there are clearly differences too.
+There's a one to one relationship between 8sync actors and an actor inbox,
+whereas each Fibers fiber may read from multiple channels, for example.
+
+Luckily, it turns out there's a clear relationship, based on real,
+actual theory!
+8sync is based on the [[https://en.wikipedia.org/wiki/Actor_model][actor model]] whereas fibers follows
+[[http://usingcsp.com/][Communicating Sequential Processes (CSP)]], which is a form of
+[[https://en.wikipedia.org/wiki/Process_calculus][process calculi]]. 
+And it turns out, the
+[[https://en.wikipedia.org/wiki/Actor_model_and_process_calculi][relationship between the actor model and process calculi]] is well documented,
+and even more precisely, the
+[[https://en.wikipedia.org/wiki/Communicating_sequential_processes#Comparison_with_the_Actor_Model][relationship between CSP and the actor model]] is well understood too.
+
+So, 8sync and Fibers do take somewhat different approaches, but both
+have a solid theoretical backing... and their theories are well
+understood in terms of each other.
+Good news for theory nerds!
+
+(Since the actors and CSP are [[https://en.wikipedia.org/wiki/Dual_%28mathematics%29][dual]], maybe eventually 8sync will be
+implemented on top of Fibers... that remains to be seen!)
+
