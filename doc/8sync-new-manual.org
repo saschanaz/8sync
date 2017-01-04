@@ -758,6 +758,10 @@ Of course, we need to update our worker accordingly as well.
     (self-destruct worker))
 #+END_SRC
 
+(As you've probably guessed, you wouldn't normally call =display=
+everywhere as we are in this program... that's just to make the
+examples more illustrative.)
+
 Running it is the same as before:
 
 #+BEGIN_SRC scheme
