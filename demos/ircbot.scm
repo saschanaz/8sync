@@ -104,17 +104,17 @@
                   (repl #f))
   (define hive (make-hive))
   (define irc-bot
-    (hive-create-actor* hive <my-irc-bot> "irc-bot"
-                        #:username username
-                        #:server server
-                        #:channels channels))
+    (bootstrap-actor* hive <my-irc-bot> "irc-bot"
+                      #:username username
+                      #:server server
+                      #:channels channels))
   (define repl-manager
     (cond
      ((string? repl)
-      (hive-create-actor* hive <repl-manager> "repl"
-                          #:path repl))
+      (bootstrap-actor* hive <repl-manager> "repl"
+                        #:path repl))
      (repl
-      (hive-create-actor* hive <repl-manager> "repl"))))
+      (bootstrap-actor* hive <repl-manager> "repl"))))
 
   (define initial-messages
     (if repl

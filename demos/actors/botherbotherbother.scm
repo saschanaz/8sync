@@ -111,14 +111,14 @@
 (define (main . args)
   (define agenda (make-agenda))
   (define hive (make-hive))
-  (define professor (hive-create-actor* hive <professor> "prof"))
+  (define professor (bootstrap-actor* hive <professor> "prof"))
   (define namegen (student-name-generator))
   (define students
     (map
      (lambda _
        (let ((name (namegen)))
-         (hive-create-actor* hive <student> name
-                             #:name name)))
+         (bootstrap-actor* hive <student> name
+                           #:name name)))
      (iota num-students)))
 
   ;; Bootstrap each student into bothering-professor mode.

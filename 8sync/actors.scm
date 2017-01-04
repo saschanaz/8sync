@@ -58,7 +58,7 @@
             ;; There are more methods for the hive, but there's
             ;; no reason for the outside world to look at them maybe?
             hive-id
-            hive-create-actor hive-create-actor*
+            bootstrap-actor bootstrap-actor*
 
             create-actor create-actor*
             self-destruct
@@ -336,6 +336,8 @@ to come after class definition."
 
   ;; This is the default, "simple" way to inherit and process messages.
   (actions #:init-value (build-actions
+                         ;; Default init method is to do nothing.
+                         (*init* (const #f))
                          ;; Default cleanup method is to do nothing.
                          (*cleanup* (const #f)))
            #:allocation #:each-subclass))
@@ -433,7 +435,25 @@ to come after class definition."
             ;; This is in the case of an ambassador failing to forward a
             ;; message... it reports it back to the hive
             (*failed-forward* hive-handle-failed-forward)
+            ;; These are called at start and end of run-hive
+            (*init-all* hive-handle-init-all)
             (*cleanup-all* hive-handle-cleanup-all))))
+
+(define-method (hive-handle-init-all (hive <hive>) message)
+  "Run *init* method on all actors in registry"
+  ;; We have to do this hack and run over the list
+  ;; twice, because hash-for-each would result in an unrewindable
+  ;; continuation, and to avoid the hash-map changing during the
+  ;; middle of this.
+  (define actor-ids
+    (hash-map->list (lambda (actor-id actor) actor-id)
+                    (hive-actor-registry hive)))
+  (for-each (lambda (actor-id)
+              ;; @@: This could maybe just be <-, but we want actors
+              ;;   to be used to the expectation in all circumstances
+              ;;   that their init method is "waited on".
+              (<-wait actor-id '*init*))
+            actor-ids))
 
 (define-method (hive-handle-failed-forward (hive <hive>) message)
   "Handle an ambassador failing to forward a message"
@@ -441,9 +461,10 @@ to come after class definition."
 
 (define-method (hive-handle-cleanup-all (hive <hive>) message)
   "Send a message to all actors in our registry to clean themselves up."
-  ;; Unfortunately we have to do this hack and run over the list
+  ;; We have to do this hack and run over the list
   ;; twice, because hash-for-each would result in an unrewindable
-  ;; continuation.
+  ;; continuation, and to avoid the hash-map changing during the
+  ;; middle of this.
   (define actor-ids
     (hash-map->list (lambda (actor-id actor) actor-id)
                     (hive-actor-registry hive)))
@@ -658,31 +679,36 @@ to come after class definition."
   (hash-set! (hive-actor-registry hive) (actor-id actor) actor))
 
 (define-method (%hive-create-actor (hive <hive>) actor-class
-                                   init id-cookie)
-  "Actual method called by hive-create-actor.
+                                   init-args id-cookie send-init?)
+  "Actual method called by bootstrap-actor / create-actor.
 
 Since this is a define-method it can't accept fancy define* arguments,
-so this gets called from the nicer hive-create-actor interface.  See
+so this gets called from the nicer bootstrap-actor interface.  See
 that method for documentation."
   (let* ((actor-id (hive-gen-actor-id hive id-cookie))
          (actor (apply make actor-class
                        #:hive hive
                        #:id actor-id
-                       init)))
+                       init-args)))
     (hive-register-actor! hive actor)
+    ;; Wait on actor to init
+    (when send-init?
+      (<-wait actor-id '*init*))
     ;; return the actor id
     actor-id))
 
-(define* (hive-create-actor hive actor-class #:rest init)
-  "Create an actor on HIVE using ACTOR-CLASS passing in INIT args"
+(define* (bootstrap-actor hive actor-class #:rest init-args)
+  "Create an actor on HIVE using ACTOR-CLASS passing in INIT-ARGS args"
   (%hive-create-actor hive actor-class
-                      init (symbol->string (class-name actor-class))))
+                    init-args (symbol->string (class-name actor-class))
+                    #f))
 
-(define* (hive-create-actor* hive actor-class id-cookie #:rest init)
+(define* (bootstrap-actor* hive actor-class id-cookie #:rest init-args)
   "Create an actor, but also allow customizing a 'cookie' added to the id
 for debugging"
   (%hive-create-actor hive actor-class
-                      init id-cookie))
+                    init-args id-cookie
+                    #f))
 
 (define (call-with-message message proc)
   "Applies message body arguments into procedure, with message as first
@@ -716,22 +742,22 @@ common case when waiting on a reply from some action invocation."
 
 ;; TODO: move send-message and friends here...?
 
-(define* (create-actor from-actor actor-class #:rest init)
+(define* (create-actor from-actor actor-class #:rest init-args)
   "Create an instance of actor-class.  Return the new actor's id.
 
 This is the method actors should call directly (unless they want
 to supply an id-cookie, in which case they should use
 create-actor*)."
   (%hive-create-actor (actor-hive from-actor) actor-class
-                      init #f))
+                      init-args #f #t))
 
 
-(define* (create-actor* from-actor actor-class id-cookie #:rest init)
+(define* (create-actor* from-actor actor-class id-cookie #:rest init-args)
   "Create an instance of actor-class.  Return the new actor's id.
 
 Like create-actor, but permits supplying an id-cookie."
   (%hive-create-actor (actor-hive from-actor) actor-class
-                      init id-cookie))
+                      init-args id-cookie #t))
 
 
 (define* (self-destruct actor #:key (cleanup #t))
@@ -755,7 +781,9 @@ its '*cleanup* action handler."
   (dynamic-wind
     (const #f)
     (lambda ()
-      (let* ((queue (list->q initial-tasks))
+      (let* ((queue (list->q
+                     (cons (bootstrap-message hive (actor-id hive) '*init-all*)
+                           initial-tasks)))
              (agenda (make-agenda #:pre-unwind-handler print-error-and-continue
                                   #:queue queue)))
         (run-agenda agenda)))

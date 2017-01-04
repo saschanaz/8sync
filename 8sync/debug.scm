@@ -22,8 +22,8 @@
   #:export (hive-resolve-local-actor
             actor-hive
 
-            hive-create-actor-gimmie
-            hive-create-actor-gimmie*))
+            bootstrap-actor-gimmie
+            bootstrap-actor-gimmie*))
 
 
 ;;; Expose not normally exposed methods
@@ -42,16 +42,16 @@
 ;;; Some utilities
 ;;; =============
 
-(define (hive-create-actor-gimmie hive actor-class . init)
+(define (bootstrap-actor-gimmie hive actor-class . init)
   "Create an actor on the hive, and give us that actor.
-Uses hive-create-actor* arguments."
-  (let ((actor-id (apply hive-create-actor hive actor-class init)))
+Uses bootstrap-actor* arguments."
+  (let ((actor-id (apply bootstrap-actor hive actor-class init)))
     (hive-resolve-local-actor hive actor-id)))
 
-(define (hive-create-actor-gimmie* hive actor-class id-cookie . init)
+(define (bootstrap-actor-gimmie* hive actor-class id-cookie . init)
   "Create an actor on the hive, and give us that actor.
-Uses hive-create-actor* arguments."
-  (let ((actor-id (apply hive-create-actor*
+Uses bootstrap-actor* arguments."
+  (let ((actor-id (apply bootstrap-actor*
                          hive actor-class id-cookie init)))
     (hive-resolve-local-actor hive actor-id)))
 

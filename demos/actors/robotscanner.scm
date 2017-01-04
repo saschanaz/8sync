@@ -261,7 +261,7 @@
 
 (define (main . args)
   (define hive (make-hive))
-  (define overseer (hive-create-actor hive <overseer>))
+  (define overseer (bootstrap-actor hive <overseer>))
   (define initial-messages
     (list (bootstrap-message hive overseer 'init-world)))
   (run-hive hive initial-messages))

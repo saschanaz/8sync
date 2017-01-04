@@ -31,8 +31,8 @@
      (display "proog> Listen, Emo!  Listen to the sounds of the machine!\n"))))
 
 (define hive (make-hive))
-(define our-emo (hive-create-actor hive <emo>))
-(define our-proog (hive-create-actor hive <proog>))
+(define our-emo (bootstrap-actor hive <emo>))
+(define our-proog (bootstrap-actor hive <proog>))
 (define (main . args)
   (run-hive hive
             (list (bootstrap-message hive our-emo 'greet-proog

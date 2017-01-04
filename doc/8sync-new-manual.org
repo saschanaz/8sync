@@ -161,22 +161,22 @@ yet.  Time to fix that!
                   (channels '("##botchat")))
   (define hive (make-hive))
   (define irc-bot
-    (hive-create-actor* hive <my-irc-bot> "irc-bot"
-                        #:username username
-                        #:server server
-                        #:channels channels))
+    (bootstrap-actor* hive <my-irc-bot> "irc-bot"
+                      #:username username
+                      #:server server
+                      #:channels channels))
   (run-hive hive (list (bootstrap-message hive irc-bot 'init))))
 #+END_SRC
 
 Actors are connected to something called a "hive", which is a
 special kind of actor that runs all the other actors.
 Actors can spawn other actors, but before we start the hive we use
-this special "hive-create-actor*" method.
+this special "bootstrap-actor*" method.
 It takes the hive as its first argument, the actor class as the second
 argument, a decorative "cookie" as the third argument (this is
 optional, but it helps with debugging... you can skip it by setting it
 to #f if you prefer), and the rest are initialization arguments to the
-actor.  hive-create-actor* passes back not the actor itself (we don't
+actor.  bootstrap-actor* passes back not the actor itself (we don't
 get access to that usually) but the *id* of the actor.
 (More on this later.)
 Finally we run the hive with run-hive and pass it a list of
@@ -426,12 +426,12 @@ Redefine run-bot like so:
                     (repl-path "/tmp/8sync-repl"))
     (define hive (make-hive))
     (define irc-bot
-      (hive-create-actor* hive <my-irc-bot> "irc-bot"
-                          #:username username
-                          #:server server
-                          #:channels channels))
+      (bootstrap-actor* hive <my-irc-bot> "irc-bot"
+                        #:username username
+                        #:server server
+                        #:channels channels))
     (define repl-manager
-      (hive-create-actor* hive <repl-manager> "repl"
+      (bootstrap-actor* hive <repl-manager> "repl"
                           #:path repl-path))
 
     (run-hive hive (list (bootstrap-message hive irc-bot 'init)
@@ -573,7 +573,7 @@ How about an actor that start sleeping, and keeps sleeping?
       (8sleep 1)))
 
   (let* ((hive (make-hive))
-         (sleeper (hive-create-actor hive <sleeper>)))
+         (sleeper (bootstrap-actor hive <sleeper>)))
     (run-hive hive (list (bootstrap-message hive sleeper 'loop))))
 #+END_SRC
 
@@ -661,9 +661,9 @@ Looks like there's nothing left to do but run it:
 
 #+BEGIN_SRC scheme
   (let* ((hive (make-hive))
-         (worker (hive-create-actor hive <worker>))
-         (manager (hive-create-actor hive <manager>
-                                     #:direct-report worker)))
+         (worker (bootstrap-actor hive <worker>))
+         (manager (bootstrap-actor hive <manager>
+                                   #:direct-report worker)))
     (run-hive hive (list (bootstrap-message hive manager 'assign-task 5))))
 #+END_SRC
 

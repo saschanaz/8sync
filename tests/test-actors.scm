@@ -108,9 +108,9 @@
      (~display "lazy-rep> I'm not answering that.\n"))))
 
 (let* ((hive (make-hive))
-       (customer (hive-create-actor* hive <antsy-caller> "antsy-caller"))
-       (diligent-rep (hive-create-actor* hive <diligent-rep> "diligent-rep"))
-       (lazy-rep (hive-create-actor* hive <lazy-rep> "lazy-rep")))
+       (customer (bootstrap-actor* hive <antsy-caller> "antsy-caller"))
+       (diligent-rep (bootstrap-actor* hive <diligent-rep> "diligent-rep"))
+       (lazy-rep (bootstrap-actor* hive <lazy-rep> "lazy-rep")))
   ;; * Playing a tape of a diligent service rep *
   (parameterize ((%record-out (open-output-string)))
     (let* ((result (run-hive
@@ -148,7 +148,7 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
-   (hive-create-actor hive <cleanly>)
+   (bootstrap-actor hive <cleanly>)
    (run-hive hive '()))
  (test-equal '("Hey, I'm cleanin' up here!\n")
    (get-spoken)))
@@ -157,7 +157,7 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
-   (hive-create-actor hive <cleanly>)
+   (bootstrap-actor hive <cleanly>)
    (run-hive hive '() #:cleanup #f))
  (test-equal '()
    (get-spoken)))
@@ -173,11 +173,35 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
-   (define exploder (hive-create-actor hive <exploder>))
+   (define exploder (bootstrap-actor hive <exploder>))
    (run-hive hive (list (bootstrap-message hive exploder 'explode))
              #:cleanup #f))
- (get-spoken))
+ (test-equal '("POOF\n" "Cleaning up post-explosion\n")
+   (get-spoken)))
 
+(define-class <hi-on-init> (<actor>)
+  (name #:init-keyword #:name)
+  (create-friend #:init-value #f
+                 #:init-keyword #:create-friend)
+  (actions #:allocation #:each-subclass
+           #:init-value (build-actions
+                         (*init* hi-on-init-init))))
+
+(define (hi-on-init-init actor message)
+  (speak (format #f "Hi! ~a inits now.\n"
+                 (slot-ref actor 'name)))
+  (and=> (slot-ref actor 'create-friend)
+         (lambda (friend-name)
+           (create-actor actor <hi-on-init> #:name friend-name))))
+
+(with-fresh-speaker
+ (let ((hive (make-hive)))
+   (define hi-on-init (bootstrap-actor hive <hi-on-init>
+                                       #:name "jack"
+                                       #:create-friend "jill"))
+   (run-hive hive '()))
+ (test-equal (get-spoken)
+   '("Hi! jack inits now.\n" "Hi! jill inits now.\n")))
 
 (test-end "test-actors")
 (test-exit)
