@@ -710,8 +710,8 @@ into a micromanager.
     "Pester direct report until they're done with their task."
     (display "manager> Are you done yet???\n")
     (let ((still-working
-           (msg-val (<-wait (manager-direct-report manager)
-                            'done-yet?))))
+           (mbody-val (<-wait (manager-direct-report manager)
+                              'done-yet?))))
       (if still-working
           (begin (display "manager> Harumph!\n")
                  (8sleep 1)
@@ -725,9 +725,10 @@ We've appended a micromanagement loop here... but what's going on?
 "<-wait", as it sounds, waits for a reply, and returns a reply
 message.
 In this case there's a value in the body of the message we want,
-so we pull it out with msg-val.
+so we pull it out with mbody-val.
 (It's possible for a remote actor to return multiple values, in which
-case we'd want to use msg-receive, but that's a bit more complicated.)
+case we'd want to use mbody-receive, but that's a bit more
+complicated.)
 
 Of course, we need to update our worker accordingly as well.
 
@@ -779,6 +780,15 @@ Ka-poof!
 ** COMMENT Websockets
 
 * Addendum
+** Recommended .emacs additions
+
+In order for =mbody-receive= to indent properly, put this in your
+.emacs:
+
+#+BEGIN_SRC emacs-lisp
+(put 'mbody-receive 'scheme-indent-function 2)
+#+END_SRC
+
 ** 8sync and Fibers
 
 One other major library for asynchronous communication in Guile-land

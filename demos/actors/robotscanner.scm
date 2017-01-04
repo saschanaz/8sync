@@ -223,13 +223,13 @@
                        (address-actor-id room)))
 
     ;; Find all droids in this room and exterminate the infected ones.
-    (msg-receive (_ #:key list-droids droid-ids #:allow-other-keys)
+    (mbody-receive (_ #:key list-droids droid-ids #:allow-other-keys)
         (<-wait room 'list-droids)
       (for-each
        (lambda (droid-id)
          (cond
           ;; Looks like it's infected
-          ((msg-val (<-wait droid-id 'infection-expose))
+          ((mbody-val (<-wait droid-id 'infection-expose))
            ;; Inform that it's infected
            (<- overseer 'transmission
                #:text (format #f "~a found to be infected... taking out"
@@ -238,7 +238,7 @@
            ;; Keep firing till it's dead.
            (let ((still-alive #t))
              (while still-alive
-               (msg-receive (response #:key alive #:allow-other-keys)
+               (mbody-receive (response #:key alive #:allow-other-keys)
                    (<-wait droid-id 'get-shot)
                  (<- overseer 'transmission
                      #:text (droid-status-format response))
@@ -253,7 +253,7 @@
        droid-ids))
 
     ;; Switch to next room, if there is one.
-    (set! room (msg-val (<-wait room 'get-next-room))))
+    (set! room (mbody-val (<-wait room 'get-next-room))))
 
   ;; Good job everyone!  Shut down the operation.
   (<- overseer 'transmission

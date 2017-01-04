@@ -73,7 +73,7 @@
 
             <- <-* <-wait <-wait* <-reply <-reply* <-reply-wait <-reply-wait*
 
-            call-with-message msg-receive msg-val
+            call-with-message mbody-receive mbody-val
 
             run-hive
             bootstrap-message
@@ -715,21 +715,21 @@ for debugging"
 argument.  Similar to call-with-values in concept."
   (apply proc message (message-body message)))
 
-;; (msg-receive (<- bar baz)
+;; (mbody-receive (<- bar baz)
 ;;     (baz)
 ;;   basil)
 
-;; Emacs: (put 'msg-receive 'scheme-indent-function 2)
+;; Emacs: (put 'mbody-receive 'scheme-indent-function 2)
 
 ;; @@: Or receive-msg or receieve-message or??
-(define-syntax-rule (msg-receive arglist message body ...)
+(define-syntax-rule (mbody-receive arglist message body ...)
   "Call body with arglist (which can accept arguments like lambda*)
 applied from the message-body of message."
   (call-with-message message
                      (lambda* arglist
                        body ...)))
 
-(define (msg-val message)
+(define (mbody-val message)
   "Retrieve the first value from the message-body of message.
 Like single value return from a procedure call.  Probably the most
 common case when waiting on a reply from some action invocation."
