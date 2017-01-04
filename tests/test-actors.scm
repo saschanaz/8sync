@@ -74,8 +74,8 @@
 ;;; Test reply / autoreply
 ;;; ======================
 
-(define-simple-actor <antsy-caller>
-  (pester-rep (wrap-apply antsy-caller-pester-rep)))
+(define-actor <antsy-caller> (<actor>)
+  ((pester-rep (wrap-apply antsy-caller-pester-rep))))
 
 (define* (antsy-caller-pester-rep actor message #:key who-to-call)
   (~display "customer> I'm calling customer service about this!\n")
@@ -92,8 +92,8 @@
                 (~display "customer> Well then!  Harumph.\n")
                 (error "Not an autoreply?  What's going on here...")))))))
 
-(define-simple-actor <diligent-rep>
-  (field-call (wrap-apply rep-field-call)))
+(define-actor <diligent-rep> (<actor>)
+  ((field-call (wrap-apply rep-field-call))))
 
 (define (rep-field-call actor message)
   (~display "good-rep> Hm, another call from a customer...\n")
@@ -102,10 +102,10 @@
     (~format "*rep hears*: ~a\n" msg)
     (~display "good-rep> I'm sorry, that's all I can do for you.\n")))
 
-(define-simple-actor <lazy-rep>
-  (field-call
-   (lambda (actor message)
-     (~display "lazy-rep> I'm not answering that.\n"))))
+(define-actor <lazy-rep> (<actor>)
+  ((field-call
+    (lambda (actor message)
+      (~display "lazy-rep> I'm not answering that.\n")))))
 
 (let* ((hive (make-hive))
        (customer (bootstrap-actor* hive <antsy-caller> "antsy-caller"))
@@ -140,8 +140,8 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 
 ;;; Cleanup tests
 
-(define-simple-actor <cleanly>
-  (*cleanup* test-call-cleanup))
+(define-actor <cleanly> (<actor>)
+  ((*cleanup* test-call-cleanup)))
 
 (define (test-call-cleanup actor message)
   (speak "Hey, I'm cleanin' up here!\n"))
@@ -165,11 +165,11 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 ;; The exploder self-destructs, even though run-hive has cleanup
 ;; disabled, because it cleans up on self-destruct.
 
-(define-simple-actor <exploder>
-  (explode (lambda (exploder message)
-             (speak "POOF\n")
-             (self-destruct exploder)))
-  (*cleanup* (lambda _ (speak "Cleaning up post-explosion\n"))))
+(define-actor <exploder> (<actor>)
+  ((explode (lambda (exploder message)
+              (speak "POOF\n")
+              (self-destruct exploder)))
+   (*cleanup* (lambda _ (speak "Cleaning up post-explosion\n")))))
 
 (with-fresh-speaker
  (let ((hive (make-hive)))

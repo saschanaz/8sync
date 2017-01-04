@@ -19,16 +19,16 @@
 (use-modules (8sync actors)
              (oop goops))
 
-(define-simple-actor <emo>
-  (greet-proog
-   (lambda (actor message target)
-     (display "emo> What's next, Proog?\n")
-     (<- target 'greet-emo))))
+(define-actor <emo> (<actor>)
+  ((greet-proog
+    (lambda (actor message target)
+      (display "emo> What's next, Proog?\n")
+      (<- target 'greet-emo)))))
 
-(define-simple-actor <proog>
-  (greet-emo
-   (lambda (actor message)
-     (display "proog> Listen, Emo!  Listen to the sounds of the machine!\n"))))
+(define-actor <proog> (<actor>)
+  ((greet-emo
+    (lambda (actor message)
+      (display "proog> Listen, Emo!  Listen to the sounds of the machine!\n")))))
 
 (define hive (make-hive))
 (define our-emo (bootstrap-actor hive <emo>))

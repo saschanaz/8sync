@@ -47,62 +47,62 @@
     (5 0)
     (2 1)))
 
-(define-simple-actor <overseer>
-  (init-world
-   (lambda (actor message)
-     ;; Porting mostly straight up from super-imperative XUDD code.
-     (define previous-room #f)
-     (define first-room #f)
+(define-actor <overseer> (<actor>)
+  ((init-world
+    (lambda (actor message)
+      ;; Porting mostly straight up from super-imperative XUDD code.
+      (define previous-room #f)
+      (define first-room #f)
 
-     ;; Set up all rooms
-     (for-each
-      (match-lambda
-        ((clean-droids infected-droids)
-         ;; Create this room
-         (define room (create-actor* actor <warehouse-room> "room"))
-         (define* (init-droid #:key infected)
-           (define droid (create-actor* actor <droid> "droid"
-                                        #:infected infected
-                                        #:room room))
-           (<-wait droid 'register-with-room))
+      ;; Set up all rooms
+      (for-each
+       (match-lambda
+         ((clean-droids infected-droids)
+          ;; Create this room
+          (define room (create-actor* actor <warehouse-room> "room"))
+          (define* (init-droid #:key infected)
+            (define droid (create-actor* actor <droid> "droid"
+                                         #:infected infected
+                                         #:room room))
+            (<-wait droid 'register-with-room))
 
-         ;; Link rooms.
-         ;; Couldn't this just be folded into the warehouse room init?
-         ;; I guess it stress tests more the message sending process
-         (when previous-room
-           (<- previous-room 'set-next-room
-               #:id room)
-           (<- room 'set-previous-room
-               #:id previous-room))
+          ;; Link rooms.
+          ;; Couldn't this just be folded into the warehouse room init?
+          ;; I guess it stress tests more the message sending process
+          (when previous-room
+            (<- previous-room 'set-next-room
+                #:id room)
+            (<- room 'set-previous-room
+                #:id previous-room))
 
-         ;; Set up clean droids in the room
-         (for-each
-          (lambda _
-            (init-droid #:infected #f))
-          (iota clean-droids))
+          ;; Set up clean droids in the room
+          (for-each
+           (lambda _
+             (init-droid #:infected #f))
+           (iota clean-droids))
 
-         ;; Set up infected droids in the room
-         (for-each
-          (lambda _
-            (init-droid #:infected #t))
-          (iota clean-droids))
+          ;; Set up infected droids in the room
+          (for-each
+           (lambda _
+             (init-droid #:infected #t))
+           (iota clean-droids))
 
-         (set! previous-room room)
-         (if (not first-room)
-             (set! first-room room))))
-      room-structure)
+          (set! previous-room room)
+          (if (not first-room)
+              (set! first-room room))))
+       room-structure)
 
-     ;; Add security robot
-     (let ((security-robot
-            (create-actor actor <security-robot>)))
-       (<- security-robot 'begin-mission
-           #:starting-room first-room
-           #:overseer (actor-id actor)))))
+      ;; Add security robot
+      (let ((security-robot
+             (create-actor actor <security-robot>)))
+        (<- security-robot 'begin-mission
+            #:starting-room first-room
+            #:overseer (actor-id actor)))))
 
-  (transmission
-   (lambda* (actor message #:key text)
-     (display text)
-     (newline))))
+   (transmission
+    (lambda* (actor message #:key text)
+      (display text)
+      (newline)))))
 
 
 ;;; A room full of robots.
@@ -206,8 +206,8 @@
 
 
 ;;; Security robot... designed to seek out and destroy infected droids.
-(define-simple-actor <security-robot>
-  (begin-mission security-robot-begin-mission))
+(define-actor <security-robot> (<actor>)
+  ((begin-mission security-robot-begin-mission)))
 
 (define* (security-robot-begin-mission actor message
                                        #:key starting-room overseer)

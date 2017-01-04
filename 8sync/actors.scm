@@ -51,7 +51,7 @@
 
             build-actions
 
-            define-simple-actor
+            define-actor
 
             <hive>
             make-hive
@@ -395,10 +395,13 @@ to come after class definition."
 ;;; Actor utilities
 ;;; ===============
 
-(define-syntax-rule (define-simple-actor class action ...)
-  (define-class class (<actor>)
+(define-syntax-rule (define-actor class inherits
+                      (action ...)
+                      slots ...)
+  (define-class class inherits
     (actions #:init-value (build-actions action ...)
-             #:allocation #:each-subclass)))
+             #:allocation #:each-subclass)
+    slots ...))
 
 
 ;;; The Hive
