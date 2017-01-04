@@ -552,7 +552,7 @@ IRC> /query examplebot
 
 Horray!
 
-** Writing our own actors and sending messages between them
+** Writing our own actors
 
 Let's write the most basic, boring actor possible.
 How about an actor that start sleeping, and keeps sleeping?
@@ -642,7 +642,7 @@ reference other actors.
                            (work-on-this worker-work-on-this))))
 
   (define (worker-work-on-this worker message difficulty)
-    ""
+    "Work on one task until done."
     (set! (worker-task-left worker) difficulty)
     (display "worker> Whatever you say, boss!\n")
     (while (and (actor-alive? worker)
@@ -650,12 +650,11 @@ reference other actors.
       (display "worker> *huff puff*\n")
       (set! (worker-task-left worker)
             (- (worker-task-left worker) 1))
-      (8sync (/ 1 3)))
-    (display "worker> Looks like I'm done!  Can I go home yet?\n"))
+      (8sleep (/ 1 3))))
 #+END_SRC
 
 The worker also contains familiar code, but we now see that we can
-call 8sync with non-integer real numbers.
+call 8sleep with non-integer real numbers.
 
 Looks like there's nothing left to do but run it:
 
@@ -675,7 +674,6 @@ worker> *huff puff*
 worker> *huff puff*
 worker> *huff puff*
 worker> *huff puff*
-worker> Looks like I'm done!  Can I go home yet?
 #+END_SRC
 
 "<-" pays no attention to what happens with the messages it has sent
@@ -701,7 +699,8 @@ into a micromanager.
     (<- (manager-direct-report manager)
         'work-on-this difficulty)
 
-    ;; call the micromanagement loop
+    ;; Wait a moment, then call the micromanagement loop
+    (8sleep (/ 1 2))
     (manager-micromanage-loop manager))
 
   ;;; And add the following
@@ -709,16 +708,16 @@ into a micromanager.
   (define (manager-micromanage-loop manager)
     "Pester direct report until they're done with their task."
     (display "manager> Are you done yet???\n")
-    (let ((still-working
+    (let ((worker-is-done
            (mbody-val (<-wait (manager-direct-report manager)
                               'done-yet?))))
-      (if still-working
-          (begin (display "manager> Harumph!\n")
-                 (8sleep 1)
-                 (when (actor-alive? manager)
-                   (manager-micromanage-loop manager)))
+      (if worker-is-done
           (begin (display "manager> Oh!  I guess you can go home then.\n")
-                 (<- (manager-direct-report manager) 'go-home)))))
+                 (<- (manager-direct-report manager) 'go-home))
+          (begin (display "manager> Harumph!\n")
+                 (8sleep (/ 1 2))
+                 (when (actor-alive? manager)
+                   (manager-micromanage-loop manager))))))
 #+END_SRC
 
 We've appended a micromanagement loop here... but what's going on?
@@ -747,13 +746,48 @@ Of course, we need to update our worker accordingly as well.
   ;;; New procedures:
   (define (worker-done-yet? worker message)
     "Reply with whether or not we're done yet."
-    (<-reply message
-             (= (worker-task-left worker) 0)))
+    (let ((am-i-done? (= (worker-task-left worker) 0)))
+      (if am-i-done?
+          (display "worker> Yes, I finished up!\n")
+          (display "worker> No... I'm still working on it...\n"))
+      (<-reply message am-i-done?)))
 
   (define (worker-go-home worker message)
     "It's off of work for us!"
-    (display "worker> Whew!  Free at last.")
+    (display "worker> Whew!  Free at last.\n")
     (self-destruct worker))
+#+END_SRC
+
+Running it is the same as before:
+
+#+BEGIN_SRC scheme
+  (let* ((hive (make-hive))
+         (worker (bootstrap-actor hive <worker>))
+         (manager (bootstrap-actor hive <manager>
+                                   #:direct-report worker)))
+    (run-hive hive (list (bootstrap-message hive manager 'assign-task 5))))
+#+END_SRC
+
+But the output is a bit different:
+
+#+BEGIN_SRC scheme
+manager> Work on this task for me!
+worker> Whatever you say, boss!
+worker> *huff puff*
+worker> *huff puff*
+manager> Are you done yet???
+worker> No... I'm still working on it...
+manager> Harumph!
+worker> *huff puff*
+manager> Are you done yet???
+worker> *huff puff*
+worker> No... I'm still working on it...
+manager> Harumph!
+worker> *huff puff*
+manager> Are you done yet???
+worker> Yes, I finished up!
+manager> Oh!  I guess you can go home then.
+worker> Whew!  Free at last.
 #+END_SRC
 
 "<-reply" is what actually returns the information to the actor
