@@ -779,17 +779,32 @@ its '*cleanup* action handler."
 ;;; =========================
 
 (define* (run-hive hive initial-tasks
-                   #:key (cleanup #t))
-  "Start up an agenda and run HIVE in it with INITIAL-TASKS."
+                   #:key (cleanup #t)
+                   (handle-signals (list SIGINT SIGTERM)))
+  "Start up an agenda and run HIVE in it with INITIAL-TASKS.
+
+Keyword arguments:
+ - #:cleanup: Whether to run *cleanup* on all actors.
+ - #:handle-sigactions: a list of signals to set up interrupt
+   handlers for, so cleanup sill still happen as expected.
+   Defaults to a list of SIGINT and SIGTERM."
   (dynamic-wind
     (const #f)
     (lambda ()
-      (let* ((queue (list->q
-                     (cons (bootstrap-message hive (actor-id hive) '*init-all*)
-                           initial-tasks)))
-             (agenda (make-agenda #:pre-unwind-handler print-error-and-continue
-                                  #:queue queue)))
-        (run-agenda agenda)))
+      (define (run-it escape)
+        (define (handle-signal signum)
+          (restore-signals)
+          (escape signum))
+        (for-each (lambda (signum)
+                    (sigaction signum handle-signal))
+                  handle-signals)
+        (let* ((queue (list->q
+                       (cons (bootstrap-message hive (actor-id hive) '*init-all*)
+                             initial-tasks)))
+               (agenda (make-agenda #:pre-unwind-handler print-error-and-continue
+                                    #:queue queue)))
+          (run-agenda agenda)))
+      (call/ec run-it))
     ;; Run cleanup
     (lambda ()
       (when cleanup
