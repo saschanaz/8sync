@@ -46,28 +46,25 @@
       (format #f "~a-~a" student current-number))))
 
 
-(define-class <student> (<actor>)
+(define-actor <student> (<actor>)
+  ((bother-professor
+    (lambda* (actor message #:key target)
+      "Go bother a professor"
+      (while (not (student-dead actor))
+        (format #t "~a: Bother bother bother!\n"
+                (actor-id-actor actor))
+        (<- target 'be-bothered
+            #:noise "Bother bother bother!\n"))))
+
+   (be-lambda-consvardraed
+    (lambda (actor message)
+      "This kills the student."
+      (format #t "~a says: AAAAAAAHHHH!!! I'm dead!\n"
+              (actor-id-actor actor))
+      (set! (student-dead actor) #t))))
   (name #:init-keyword #:name)
   (dead #:init-value #f
-        #:accessor student-dead)
-  (actions #:allocation #:each-subclass
-           #:init-value
-           (build-actions
-            (bother-professor
-             (lambda* (actor message #:key target)
-               "Go bother a professor"
-               (while (not (student-dead actor))
-                 (format #t "~a: Bother bother bother!\n"
-                         (actor-id-actor actor))
-                 (<- target 'be-bothered
-                     #:noise "Bother bother bother!\n"))))
-
-            (be-lambda-consvardraed
-             (lambda (actor message)
-               "This kills the student."
-               (format #t "~a says: AAAAAAAHHHH!!! I'm dead!\n"
-                       (actor-id-actor actor))
-               (set! (student-dead actor) #t))))))
+        #:accessor student-dead))
 
 (define complaints
   '("Hey!" "Stop that!" "Oof!"))
@@ -95,16 +92,13 @@
       ;; Otherwise, remove them from the list and carry on
       (hash-remove! whos-bothering (message-from message))))
 
-(define-class <professor> (<actor>)
+(define-actor <professor> (<actor>)
+  ((be-bothered professor-be-bothered))
   ;; This value checks whether any other actor is currently
   ;; bothering this same character.
   ;; We'll use a hash table as a fake set.
   (bothered-by #:init-thunk make-hash-table
-               #:getter professor-bothered-by)
-  (actions #:allocation #:each-subclass
-           #:init-value
-           (build-actions
-            (be-bothered professor-be-bothered))))
+               #:getter professor-bothered-by))
 
 (define num-students 10)
 
