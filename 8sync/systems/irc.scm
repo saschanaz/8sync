@@ -164,7 +164,8 @@
   (socket #:accessor irc-bot-socket)
   (actions #:allocation #:each-subclass
            #:init-value (build-actions
-                         (init irc-bot-init)
+                         (*init* irc-bot-init)
+                         (*cleanup* irc-bot-cleanup)
                          (main-loop irc-bot-main-loop)
                          (send-line irc-bot-send-line-action))))
 
@@ -190,6 +191,9 @@
    (irc-bot-channels irc-bot))
 
   (<- (actor-id irc-bot) 'main-loop))
+
+(define (irc-bot-cleanup irc-bot message)
+  (close (irc-bot-socket irc-bot)))
 
 (define (irc-bot-main-loop irc-bot message)
   (define socket (irc-bot-socket irc-bot))

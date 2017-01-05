@@ -36,7 +36,7 @@
            ;; @@: Should we add a stop action?
            #:init-value (build-actions
                          (*cleanup* repl-manager-cleanup)
-                         (init repl-manager-init))))
+                         (*init* repl-manager-init))))
 
 (define (repl-manager-cleanup repl-manager message)
   ;; Close the socket, if open
@@ -55,4 +55,3 @@
   (while (actor-alive? repl-manager)
     (poll-coop-repl-server server)
     (8sleep (repl-manager-poll-every repl-manager))))
-

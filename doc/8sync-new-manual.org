@@ -165,7 +165,7 @@ yet.  Time to fix that!
                       #:username username
                       #:server server
                       #:channels channels))
-  (run-hive hive (list (bootstrap-message hive irc-bot 'init))))
+  (run-hive hive '()))
 #+END_SRC
 
 Actors are connected to something called a "hive", which is a
@@ -434,8 +434,7 @@ Redefine run-bot like so:
       (bootstrap-actor* hive <repl-manager> "repl"
                           #:path repl-path))
 
-    (run-hive hive (list (bootstrap-message hive irc-bot 'init)
-                         (bootstrap-message hive repl-manager 'init))))
+    (run-hive hive '()))
 #+END_SRC
 
 If we put a call to run-bot at the bottom of our file we can call it,

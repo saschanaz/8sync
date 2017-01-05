@@ -116,14 +116,8 @@
      (repl
       (bootstrap-actor* hive <repl-manager> "repl"))))
 
-  (define initial-messages
-    (if repl
-        (list (bootstrap-message hive irc-bot 'init)
-              (bootstrap-message hive repl-manager 'init))
-        (list (bootstrap-message hive irc-bot 'init))))
-
   ;; TODO: load REPL
-  (run-hive hive initial-messages))
+  (run-hive hive '()))
 
 (define (main args)
   (define parsed-args (parse-args "ircbot.scm" args))
