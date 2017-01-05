@@ -78,43 +78,14 @@ Onward!
 
 * Tutorial
 
-** Intro to the tutorial
+** A silly little IRC bot
 
 IRC!  Internet Relay Chat!
 The classic chat protocol of the Internet.
 And it turns out, one of the best places to learn about networked
-programming.
-
-In the 1990s I remember stumbling into some funky IRC chat rooms and
-being astounded that people there had what they called "bots" hanging
-around.
-From then until now, I've always enjoyed encountering bots whose range
-of functionality has spanned from saying absurd things, to taking
-messages when their "owners" were offline, to reporting the weather,
-to logging meetings for participants.
-And it turns out, IRC bots are a great way to cut your teeth on
-networked programming; since IRC is a fairly simple line-delineated
-protocol, it's a great way to learn to interact with sockets.
-(My first IRC bot helped my team pick a place to go to lunch, previously
-a source of significant dispute!)
-At the time of writing, venture capital awash startups are trying to
-turn chatbots into "big business"... a strange (and perhaps absurd)
-thing given chat bots being a fairly mundane novelty amongst hackers
-and teenagers everywhere in the 1990s.
-
+programming.[fn:irc-hacking]
 We ourselves are going to explore chat bots as a basis for getting our
 feet wet in 8sync.
-We'll start from a minimalist example using an irc bot with most of
-the work done for us, then move on to constructing our own actors as
-"game pieces" which interface with our bot, then experiment with just
-how easy it is to add new networked layers by tacking on a high score
-to our game, and as a finale we'll dive into writing our own little
-irc bot framework "from scratch" on top of the 8sync actor model.
-
-Alright, let's get started.
-This should be a lot of fun!
-
-** A silly little IRC bot
 
 First of all, we're going to need to import some modules.  Put this at
 the top of your file:
@@ -169,7 +140,7 @@ yet.  Time to fix that!
 #+END_SRC
 
 Actors are connected to something called a "hive", which is a
-special kind of actor that runs all the other actors.
+special kind of actor that runs and manages all the other actors.
 Actors can spawn other actors, but before we start the hive we use
 this special "bootstrap-actor*" method.
 It takes the hive as its first argument, the actor class as the second
@@ -389,6 +360,24 @@ Take some time to experiment with extending the bot a bit before
 moving on to the next section!
 What cool commands can you add?
 
+[fn:irc-hacking]
+  In the 1990s I remember stumbling into some funky IRC chat rooms and
+  being astounded that people there had what they called "bots" hanging
+  around.
+  From then until now, I've always enjoyed encountering bots whose range
+  of functionality has spanned from saying absurd things, to taking
+  messages when their "owners" were offline, to reporting the weather,
+  to logging meetings for participants.
+  And it turns out, IRC bots are a great way to cut your teeth on
+  networked programming; since IRC is a fairly simple line-delineated
+  protocol, it's a great way to learn to interact with sockets.
+  (My first IRC bot helped my team pick a place to go to lunch, previously
+  a source of significant dispute!)
+  At the time of writing, venture capital awash startups are trying to
+  turn chatbots into "big business"... a strange (and perhaps absurd)
+  thing given chat bots being a fairly mundane novelty amongst hackers
+  and teenagers everywhere in the 1990s.
+
 ** An intermission: about live hacking
 
 This section is optional, but highly recommended.
@@ -563,17 +552,17 @@ How about an actor that start sleeping, and keeps sleeping?
   (define-class <sleeper> (<actor>)
     (actions #:allocation #:each-subclass
              #:init-value (build-actions
-                           (loop sleeper-loop))))
+                           (*init* sleeper-loop))))
 
   (define (sleeper-loop actor message)
     (while (actor-alive? actor)
       (display "Zzzzzzzz....\n")
-      ;; Sleep for one second
-      (8sleep 1)))
+      ;; Sleep for one second      
+      (8sleep (sleeper-sleep-secs actor))))
 
   (let* ((hive (make-hive))
          (sleeper (bootstrap-actor hive <sleeper>)))
-    (run-hive hive (list (bootstrap-message hive sleeper 'loop))))
+    (run-hive hive '()))
 #+END_SRC
 
 We see some particular things in this example.
@@ -582,6 +571,11 @@ This is used to look up what the "action handler" for a message is.
 We have to set the #:allocation to either #:each-subclass or #:class.
 (#:class should be fine, except there is [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=25211][a bug in Guile]] which keeps
 us from using it for now.)
+
+The only action handler we've added is for =*init*=, which is called
+implicitly when the actor first starts up.
+(This will be true whether we bootstrap the actor before the hive
+starts or create it during the hive's execution.)
 
 In our sleeper-loop we also see a call to "8sleep".
 "8sleep" is like Guile's "sleep" method, except it is non-blocking
@@ -597,19 +591,42 @@ sleeper-loop handler again.
 If the actor was dead, the message simply would not be delivered and
 thus the loop would stop.)
 
+It turns out we could have written the class for the actor much more
+simply:
+
+#+BEGIN_SRC scheme
+  ;; You could do this instead of the define-class above.
+  (define-actor <sleeper> (<actor>)
+    ((*init* sleeper-loop)))
+#+END_SRC
+
+This is sugar, and expands into exactly the same thing as the
+define-class above.
+The third argument is an argument list, the same as what's passed
+into build-actions.
+Everything after that is a slot.
+So for example, if we had added an optional slot to specify
+how many seconds to sleep, we could have done it like so:
+
+#+BEGIN_SRC scheme
+  (define-actor <sleeper> (<actor>)
+    ((*init* sleeper-loop))
+    (sleep-secs #:init-value 1
+                #:getter sleeper-sleep-secs))
+#+END_SRC
+
 This actor is pretty lazy though.
 Time to get back to work!
+Let's build a worker / manager type system.
 
 #+BEGIN_SRC scheme
   (use-modules (8sync)
                (oop goops))
 
-  (define-class <manager> (<actor>)
+  (define-actor <manager> (<actor>)
+    ((assign-task manager-assign-task))
     (direct-report #:init-keyword #:direct-report
-                   #:getter manager-direct-report)
-    (actions #:allocation #:each-subclass
-             #:init-value (build-actions
-                           (assign-task manager-assign-task))))
+                   #:getter manager-direct-report))
 
   (define (manager-assign-task manager message difficulty)
     "Delegate a task to our direct report"
@@ -618,7 +635,6 @@ Time to get back to work!
         'work-on-this difficulty))
 #+END_SRC
 
-Here we're constructing a very simple manager actor.
 This manager keeps track of a direct report and tells them to start
 working on a task... simple delegation.
 Nothing here is really new, but note that our friend "<-" (which means
@@ -633,12 +649,10 @@ other actors; instead, all they have is access to identifiers which
 reference other actors.
 
 #+BEGIN_SRC scheme
-  (define-class <worker> (<actor>)
+  (define-actor <worker> (<actor>)
+    ((work-on-this worker-work-on-this))
     (task-left #:init-keyword #:task-left
-               #:accessor worker-task-left)
-    (actions #:allocation #:each-subclass
-             #:init-value (build-actions
-                           (work-on-this worker-work-on-this))))
+               #:accessor worker-task-left))
 
   (define (worker-work-on-this worker message difficulty)
     "Work on one task until done."
@@ -655,7 +669,7 @@ reference other actors.
 The worker also contains familiar code, but we now see that we can
 call 8sleep with non-integer real numbers.
 
-Looks like there's nothing left to do but run it:
+Looks like there's nothing left to do but run it.
 
 #+BEGIN_SRC scheme
   (let* ((hive (make-hive))
@@ -664,6 +678,9 @@ Looks like there's nothing left to do but run it:
                                    #:direct-report worker)))
     (run-hive hive (list (bootstrap-message hive manager 'assign-task 5))))
 #+END_SRC
+
+Unlike the =<sleeper>=, our =<manager>= doesn't have an implicit
+=*init*= method, so we've bootstrapped the calling =assign-task= action.
 
 #+BEGIN_SRC text
 manager> Work on this task for me!
@@ -732,15 +749,13 @@ Of course, we need to update our worker accordingly as well.
 
 #+BEGIN_SRC scheme
   ;;; Update the worker to add the following new actions:
-  (define-class <worker> (<actor>)
+  (define-actor <worker> (<actor>)
+    ((work-on-this worker-work-on-this)
+     ;; Add these:
+     (done-yet? worker-done-yet?)
+     (go-home worker-go-home))
     (task-left #:init-keyword #:task-left
-               #:accessor worker-task-left)
-    (actions #:allocation #:each-subclass
-             #:init-value (build-actions
-                           (work-on-this worker-work-on-this)
-                           ;; Add these:
-                           (done-yet? worker-done-yet?)
-                           (go-home worker-go-home))))
+               #:accessor worker-task-left))
 
   ;;; New procedures:
   (define (worker-done-yet? worker message)
@@ -807,7 +822,184 @@ This does what you might expect: it removes the actor from the hive.
 No new messages will be sent to it.
 Ka-poof!
 
-** Writing our own <irc-bot> from scratch
+** Writing our own network-enabled actor
+
+So, you want to write a networked actor!
+Well, luckily that's pretty easy, especially with all you know so far.
+
+#+BEGIN_SRC scheme
+  (use-modules (oop goops)
+               (8sync)
+               (ice-9 rdelim)  ; line delineated i/o
+               (ice-9 match))  ; pattern matching
+
+  (define-actor <telcmd> (<actor>)
+    ((*init* telcmd-init)
+     (*cleanup* telcmd-cleanup)
+     (new-client telcmd-new-client))
+    (socket #:accessor telcmd-socket
+            #:init-value #f))
+#+END_SRC
+
+Nothing surprising about the actor definition, though we do see that
+it has a slot for a socket.
+Unsurprisingly, that will be set up in the =*init*= handler.
+
+#+BEGIN_SRC scheme
+  (define (set-port-nonblocking! port)
+    (let ((flags (fcntl port F_GETFL)))
+      (fcntl port F_SETFL (logior O_NONBLOCK flags))))
+
+  (define (setup-socket)
+    ;; our socket
+    (define s
+      (socket PF_INET SOCK_STREAM 0))
+    ;; reuse port even if busy
+    (setsockopt s SOL_SOCKET SO_REUSEADDR 1)
+    ;; connect to port 8889 on localhost
+    (bind s AF_INET INADDR_LOOPBACK 8889)
+    ;; make it nonblocking and start listening
+    (set-port-nonblocking! s)
+    (listen s 5)
+    s)
+
+  (define (telcmd-init telcmd message)
+    (set! (telcmd-socket telcmd) (setup-socket))
+    (display "Connect like: telnet localhost 8889\n")
+    (while (actor-alive? telcmd)
+      (let ((client-connection (accept (telcmd-socket telcmd))))
+        (<- (actor-id telcmd) 'new-client client-connection))))
+
+  (define (telcmd-cleanup telcmd message)
+    (display "Closing socket!\n")
+    (when (telcmd-socket telcmd)
+      (close (telcmd-socket telcmd))))
+#+END_SRC
+
+That =setup-socket= code looks pretty hard to read!
+But that's pretty standard code for setting up a socket.
+One special thing is done though... the call to
+=set-port-nonblocking!= sets flags on the socket port so that,
+you guessed it, will be a nonblocking port.
+
+This is put to immediate use in the telcmd-init method.
+This code looks suspiciously like it /should/ block... after
+all, it just keeps looping forever.
+But since 8sync is using Guile's suspendable ports code feature,
+so every time this loop hits the =accept= call, if that call
+/would have/ blocked, instead this whole procedure suspends
+to the scheduler... automatically!... allowing other code to run.
+
+So, as soon as we do accept a connection, we send a message to
+ourselves with the =new-client= action.
+But wait!
+Aren't actors only supposed to handle one message at a time?
+If the telcmd-init loop just keeps on looping and looping,
+when will the =new-client= message ever be handled?
+8sync actors only receive one message at a time, but by default if an
+actor's message handler suspends to the agenda for some reason (such
+as to send a message or on handling I/O), that actor may continue to
+accept other messages, but always in the same thread.[fn:queued-handler]
+
+We also see that we've established a =*cleanup*= handler.
+This is run any time either the actor dies, either through self
+destructing, because the hive completes its work, or because
+a signal was sent to interrupt or terminate our program.
+In our case, we politely close the socket when =<telcmd>= dies.
+
+#+BEGIN_SRC scheme
+  (define (telcmd-new-client telcmd message client-connection)
+    (define client (car client-connection))
+    (set-port-nonblocking! client)
+    (let loop ()
+      (let ((line (read-line client)))
+        (cond ((eof-object? line)
+               (close client))
+              (else
+               (telcmd-handle-line telcmd client
+                                   (string-trim-right line #\return))
+               (when (actor-alive? telcmd)
+                 (loop)))))))
+
+  (define (telcmd-handle-line telcmd client line)
+    (match (string-split line #\space)
+      (("") #f)  ; ignore empty lines
+      (("time" _ ...)
+       (display
+        (strftime "The time is: %c\n" (localtime (current-time)))
+        client))
+      (("echo" rest ...)
+       (format client "~a\n" (string-join rest " ")))
+      ;; default
+      (_ (display "Sorry, I don't know that command.\n" client))))
+#+END_SRC
+
+Okay, we have a client, so we handle it!
+And once again... we see this goes off on a loop of its own!
+(Also once again, we have to do the =set-port-nonblocking!= song and
+dance.)
+This loop also automatically suspends when it would otherwise block...
+as long as read-line has information to process, it'll keep going, but
+if it would have blocked waiting for input, then it would suspend the
+agenda.[fn:setvbuf]
+
+The actual method called whenever we have a "line" of input is pretty
+straightforward... in fact it looks an awful lot like the IRC bot
+handle-line procedure we used earlier.
+No surprises there!
+
+Now let's run it:
+
+#+BEGIN_SRC scheme
+  (let* ((hive (make-hive))
+         (telcmd (bootstrap-actor hive <telcmd>)))
+    (run-hive hive '()))
+#+END_SRC
+
+Open up another terminal... you can connect via telnet:
+
+#+BEGIN_SRC text
+$ telnet localhost 8889
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+time
+The time is: Thu Jan  5 03:20:17 2017
+echo this is an echo
+this is an echo
+shmmmmmmorp
+Sorry, I don't know that command.
+#+END_SRC
+
+Horray, it works!
+Type =Ctrl+] Ctrl+d= to exit telnet.
+
+Not so bad!
+There's more that could be optimized, but we'll consider that to be
+advanced topics of discussion.
+
+So that's a pretty solid intro to how 8sync works!
+Now that you've gone through this introduction, we hope you'll have fun
+writing and hooking together your own actors.
+Since actors are so modular, it's easy to have a program that has
+multiple subystems working together.
+You could build a worker queue system that displayed a web interface
+and spat out notifications about when tasks finish to IRC, and making
+all those actors talk to each other should be a piece of cake.
+The sky's the limit!
+
+Happy hacking!
+
+[fn:setvbuf]
+  If there's a lot of data coming in and you don't want your I/O loop
+  to become too "greedy", take a look at =setvbuf=.
+
+[fn:queued-handler]
+  This is customizable: an actor can be set up to queue messages so
+  that absolutely no messages are handled until the actor completely
+  finishes handling one message.
+  Our loop couldn't look quite like this though!
+
 
 * API reference
 
