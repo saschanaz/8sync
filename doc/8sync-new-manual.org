@@ -378,168 +378,6 @@ What cool commands can you add?
   thing given chat bots being a fairly mundane novelty amongst hackers
   and teenagers everywhere in the 1990s.
 
-** An intermission: about live hacking
-
-This section is optional, but highly recommended.
-It requires that you're a user of GNU Emacs.
-If you aren't, don't worry... you can forge ahead and come back in case
-you ever do become an Emacs user.
-(If you're more familiar with Vi/Vim style editing, I hear good things
-about Spacemacs...)
-
-So you may have noticed while updating the last section that the
-start/stop cycle of hacking isn't really ideal.
-You might either edit a file in your editor, then run it, or
-type the whole program into the REPL, but then you'll have to spend
-extra time copying it to a file.
-Wouldn't it be nice if it were possible to both write code in a
-file and try it as you go?
-And wouldn't it be even better if you could live edit a program
-while it's running?
-
-Luckily, there's a great Emacs mode called Geiser which makes
-editing and hacking and experimenting all happen in harmony.
-And even better, 8sync is optimized for this experience.
-8sync provides easy drop-in "cooperative REPL" support, and
-most code can be simply redefined on the fly in 8sync through Geiser
-and actors will immediately update their behavior, so you can test
-and tweak things as you go.
-
-Okay, enough talking.  Let's add it!
-Redefine run-bot like so:
-
-#+BEGIN_SRC scheme
-  (define* (run-bot #:key (username "examplebot")
-                    (server "irc.freenode.net")
-                    (channels '("##botchat"))
-                    (repl-path "/tmp/8sync-repl"))
-    (define hive (make-hive))
-    (define irc-bot
-      (bootstrap-actor* hive <my-irc-bot> "irc-bot"
-                        #:username username
-                        #:server server
-                        #:channels channels))
-    (define repl-manager
-      (bootstrap-actor* hive <repl-manager> "repl"
-                          #:path repl-path))
-
-    (run-hive hive '()))
-#+END_SRC
-
-If we put a call to run-bot at the bottom of our file we can call it,
-and the repl-manager will start something we can connect to automatically.
-Horray!
-Now when we run this it'll start up a REPL with a unix domain socket at
-the repl-path.
-We can connect to it in emacs like so:
-
-: M-x geiser-connect-local <RET> guile <RET> /tmp/8sync-repl <RET>
-
-Okay, so what does this get us?
-Well, we can now live edit our program.
-Let's change how our bot behaves a bit.
-Let's change handle-line and tweak how the bot responds to a botsnack.
-Change this part:
-
-#+BEGIN_SRC scheme
-  ;; From this:
-  ("botsnack"
-   (respond "Yippie! *does a dance!*"))
-
-  ;; To this:
-  ("botsnack"
-   (respond "Yippie! *catches botsnack in midair!*"))
-#+END_SRC
-
-Okay, now let's evaluate the change of the definition.
-You can hit "C-M-x" anywhere in the definition to re-evaluate.
-(You can also position your cursor at the end of the definition and press
-"C-x C-e", but I've come to like "C-M-x" better because I can evaluate as soon
-as I'm done writing.)
-Now, on IRC, ask your bot for a botsnack.
-The bot should give the new message... with no need to stop and start the
-program!
-
-Let's fix a bug live.
-Our current program works great if you talk to your bot in the same
-IRC channel, but what if you try to talk to them over private message?
-
-#+BEGIN_SRC text
-IRC> /query examplebot
-<foo-user> examplebot: hi!
-#+END_SRC
-
-Hm, we aren't seeing any response on IRC!
-Huh?  What's going on?
-It's time to do some debugging.
-There are plenty of debugging tools in Guile, but sometimes the simplest
-is the nicest, and the simplest debugging route around is good old
-fashioned print debugging.
-
-It turns out Guile has an under-advertised feature which makes print
-debugging really easy called "pk", pronounced "peek".
-What pk accepts a list of arguments, prints out the whole thing,
-but returns the last argument.
-This makes wrapping bits of our code pretty easy to see what's
-going on.
-So let's peek into our program with pk.
-Edit the respond section to see what channel it's really sending
-things to:
-
-#+BEGIN_SRC scheme
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
-    ;; [... snip ...]
-    (define (respond respond-line)
-      (<- (actor-id irc-bot) 'send-line (pk 'channel channel)
-          respond-line))
-    ;; [... snip ...]
-    )
-#+END_SRC
-
-Re-evaluate.
-Now let's ping our bot in both the channel and over PM.
-
-#+BEGIN_SRC text
-;;; (channel "##botchat")
-
-;;; (channel "sinkbot")
-#+END_SRC
-
-Oh okay, this makes sense.
-When we're talking in a normal multi-user channel, the channel we see
-the message coming from is the same one we send to.
-But over PM, the channel is a username, and in this case the username
-we're sending our line of text to is ourselves.
-That isn't what we want.
-Let's edit our code so that if we see that the channel we're sending
-to looks like our own username that we respond back to the sender.
-(We can remove the pk now that we know what's going on.)
-
-#+BEGIN_SRC scheme
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
-    ;; [... snip ...]
-    (define (respond respond-line)
-      (<- (actor-id irc-bot) 'send-line
-          (if (looks-like-me? channel)
-              speaker    ; PM session
-              channel)   ; normal IRC channel
-          respond-line))
-    ;; [... snip ...]
-    )
-#+END_SRC
-
-Re-evaluate and test.
-
-#+BEGIN_SRC text
-IRC> /query examplebot
-<foo-user> examplebot: hi!
-<examplebot> Oh hi foo-user!
-#+END_SRC
-
-Horray!
-
 ** Writing our own actors
 
 Let's write the most basic, boring actor possible.
@@ -999,6 +837,169 @@ Happy hacking!
   that absolutely no messages are handled until the actor completely
   finishes handling one message.
   Our loop couldn't look quite like this though!
+
+** An intermission: about live hacking
+
+This section is optional, but highly recommended.
+It requires that you're a user of GNU Emacs.
+If you aren't, don't worry... you can forge ahead and come back in case
+you ever do become an Emacs user.
+(If you're more familiar with Vi/Vim style editing, I hear good things
+about Spacemacs...)
+
+Remember all the way back when we were working on the IRC bot?
+So you may have noticed while updating that section that the
+start/stop cycle of hacking isn't really ideal.
+You might either edit a file in your editor, then run it, or
+type the whole program into the REPL, but then you'll have to spend
+extra time copying it to a file.
+Wouldn't it be nice if it were possible to both write code in a
+file and try it as you go?
+And wouldn't it be even better if you could live edit a program
+while it's running?
+
+Luckily, there's a great Emacs mode called Geiser which makes
+editing and hacking and experimenting all happen in harmony.
+And even better, 8sync is optimized for this experience.
+8sync provides easy drop-in "cooperative REPL" support, and
+most code can be simply redefined on the fly in 8sync through Geiser
+and actors will immediately update their behavior, so you can test
+and tweak things as you go.
+
+Okay, enough talking.  Let's add it!
+Redefine run-bot like so:
+
+#+BEGIN_SRC scheme
+  (define* (run-bot #:key (username "examplebot")
+                    (server "irc.freenode.net")
+                    (channels '("##botchat"))
+                    (repl-path "/tmp/8sync-repl"))
+    (define hive (make-hive))
+    (define irc-bot
+      (bootstrap-actor* hive <my-irc-bot> "irc-bot"
+                        #:username username
+                        #:server server
+                        #:channels channels))
+    (define repl-manager
+      (bootstrap-actor* hive <repl-manager> "repl"
+                          #:path repl-path))
+
+    (run-hive hive '()))
+#+END_SRC
+
+If we put a call to run-bot at the bottom of our file we can call it,
+and the repl-manager will start something we can connect to automatically.
+Horray!
+Now when we run this it'll start up a REPL with a unix domain socket at
+the repl-path.
+We can connect to it in emacs like so:
+
+: M-x geiser-connect-local <RET> guile <RET> /tmp/8sync-repl <RET>
+
+Okay, so what does this get us?
+Well, we can now live edit our program.
+Let's change how our bot behaves a bit.
+Let's change handle-line and tweak how the bot responds to a botsnack.
+Change this part:
+
+#+BEGIN_SRC scheme
+  ;; From this:
+  ("botsnack"
+   (respond "Yippie! *does a dance!*"))
+
+  ;; To this:
+  ("botsnack"
+   (respond "Yippie! *catches botsnack in midair!*"))
+#+END_SRC
+
+Okay, now let's evaluate the change of the definition.
+You can hit "C-M-x" anywhere in the definition to re-evaluate.
+(You can also position your cursor at the end of the definition and press
+"C-x C-e", but I've come to like "C-M-x" better because I can evaluate as soon
+as I'm done writing.)
+Now, on IRC, ask your bot for a botsnack.
+The bot should give the new message... with no need to stop and start the
+program!
+
+Let's fix a bug live.
+Our current program works great if you talk to your bot in the same
+IRC channel, but what if you try to talk to them over private message?
+
+#+BEGIN_SRC text
+IRC> /query examplebot
+<foo-user> examplebot: hi!
+#+END_SRC
+
+Hm, we aren't seeing any response on IRC!
+Huh?  What's going on?
+It's time to do some debugging.
+There are plenty of debugging tools in Guile, but sometimes the simplest
+is the nicest, and the simplest debugging route around is good old
+fashioned print debugging.
+
+It turns out Guile has an under-advertised feature which makes print
+debugging really easy called "pk", pronounced "peek".
+What pk accepts a list of arguments, prints out the whole thing,
+but returns the last argument.
+This makes wrapping bits of our code pretty easy to see what's
+going on.
+So let's peek into our program with pk.
+Edit the respond section to see what channel it's really sending
+things to:
+
+#+BEGIN_SRC scheme
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    ;; [... snip ...]
+    (define (respond respond-line)
+      (<- (actor-id irc-bot) 'send-line (pk 'channel channel)
+          respond-line))
+    ;; [... snip ...]
+    )
+#+END_SRC
+
+Re-evaluate.
+Now let's ping our bot in both the channel and over PM.
+
+#+BEGIN_SRC text
+;;; (channel "##botchat")
+
+;;; (channel "sinkbot")
+#+END_SRC
+
+Oh okay, this makes sense.
+When we're talking in a normal multi-user channel, the channel we see
+the message coming from is the same one we send to.
+But over PM, the channel is a username, and in this case the username
+we're sending our line of text to is ourselves.
+That isn't what we want.
+Let's edit our code so that if we see that the channel we're sending
+to looks like our own username that we respond back to the sender.
+(We can remove the pk now that we know what's going on.)
+
+#+BEGIN_SRC scheme
+  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
+                              line emote?)
+    ;; [... snip ...]
+    (define (respond respond-line)
+      (<- (actor-id irc-bot) 'send-line
+          (if (looks-like-me? channel)
+              speaker    ; PM session
+              channel)   ; normal IRC channel
+          respond-line))
+    ;; [... snip ...]
+    )
+#+END_SRC
+
+Re-evaluate and test.
+
+#+BEGIN_SRC text
+IRC> /query examplebot
+<foo-user> examplebot: hi!
+<examplebot> Oh hi foo-user!
+#+END_SRC
+
+Horray!
 
 
 * API reference
