@@ -103,8 +103,8 @@ Now we need to add our bot.  Initially, it won't do much.
 #+BEGIN_SRC scheme
   (define-class <my-irc-bot> (<irc-bot>))
 
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
+  (define-method (handle-line (irc-bot <my-irc-bot>) message
+                              speaker channel line emote?)
     (if emote?
         (format #t "~a emoted ~s in channel ~a\n"
                 speaker line channel)
@@ -117,6 +117,11 @@ This is an 8sync actor.
 (8sync uses GOOPS to define actors.)
 We extended the handle-line generic method, so this is the code that
 will be called whenever the IRC bot "hears" anything.
+This method is itself an action handler, hence the second argument
+for =message=, which we can ignore for now.
+Pleasantly, the message's argument body is passed in as the rest of
+the arguments.
+
 For now the code is pretty basic: it just outputs whatever it "hears"
 from a user in a channel to the current output port.
 Pretty boring!
@@ -174,8 +179,8 @@ Let's get it to echo whatever we say back to us.
 Change handle-line to this:
 
 #+BEGIN_SRC scheme
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
+  (define-method (handle-line (irc-bot <my-irc-bot>) message
+                              speaker channel line emote?)
     (<- (actor-id irc-bot) 'send-line channel
         (format #f "Bawwwwk! ~a says: ~a" speaker line)))
 #+END_SRC
@@ -241,8 +246,8 @@ Indeed, we do have such a method, so we /could/ rewrite handle-line
 like so:
 
 #+BEGIN_SRC scheme
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
+  (define-method (handle-line (irc-bot <my-irc-bot>) message
+                              speaker channel line emote?)
     (irc-bot-send-line irc-bot channel
                        (format #f "Bawwwwk! ~a says: ~a" speaker line)))
 #+END_SRC
@@ -269,8 +274,8 @@ Whee, that looks like fun!
 To implement it, we're going to pull out Guile's pattern matcher.
 
 #+BEGIN_SRC scheme
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
+  (define-method (handle-line (irc-bot <my-irc-bot>) message
+                              speaker channel line emote?)
     (define my-name (irc-bot-username irc-bot))
     (define (looks-like-me? str)
       (or (equal? str my-name)
@@ -306,8 +311,8 @@ If you're getting the sense that we could make this a bit less wordy,
 you're right:
 
 #+BEGIN_SRC scheme
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
+  (define-method (handle-line (irc-bot <my-irc-bot>) message
+                              speaker channel line emote?)
     (define my-name (irc-bot-username irc-bot))
     (define (looks-like-me? str)
       (or (equal? str my-name)
@@ -929,8 +934,8 @@ Edit the respond section to see what channel it's really sending
 things to:
 
 #+BEGIN_SRC scheme
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
+  (define-method (handle-line (irc-bot <my-irc-bot>) message
+                              speaker channel line emote?)
     ;; [... snip ...]
     (define (respond respond-line)
       (<- (actor-id irc-bot) 'send-line (pk 'channel channel)
@@ -959,8 +964,8 @@ to looks like our own username that we respond back to the sender.
 (We can remove the pk now that we know what's going on.)
 
 #+BEGIN_SRC scheme
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
+  (define-method (handle-line (irc-bot <my-irc-bot>) message
+                              speaker channel line emote?)
     ;; [... snip ...]
     (define (respond respond-line)
       (<- (actor-id irc-bot) 'send-line

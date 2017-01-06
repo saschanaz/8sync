@@ -167,6 +167,7 @@
                          (*init* irc-bot-init)
                          (*cleanup* irc-bot-cleanup)
                          (main-loop irc-bot-main-loop)
+                         (handle-line handle-line)
                          (send-line irc-bot-send-line-action))))
 
 (define (irc-bot-realname irc-bot)
@@ -244,12 +245,13 @@ irc-bot-send-line."
        (receive (channel-name line-text emote?)
            (condense-privmsg-line line-params)
          (let ((username (irc-line-username line-prefix)))
-           (handle-line irc-bot username channel-name
-                        line-text emote?))))
+           (<- (actor-id irc-bot) 'handle-line
+               username channel-name
+               line-text emote?))))
       (_ (handle-misc-input irc-bot raw-line)))))
 
-(define-method (handle-line (irc-bot <irc-bot>) username channel-name
-                                    line-text emote?)
+(define-method (handle-line (irc-bot <irc-bot>) message
+                            username channel-name line-text emote?)
   (echo-message irc-bot username channel-name line-text emote?))
 
 (define-method (handle-misc-input (irc-bot <irc-bot>) raw-line)
