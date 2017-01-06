@@ -526,7 +526,6 @@ which does not block the rest of the program from running.
 Let's try applying that to our own code by turning our manager
 into a micromanager.
 
-#+END_SRC
 #+BEGIN_SRC scheme
   ;;; Update this method
   (define (manager-assign-task manager message difficulty)
