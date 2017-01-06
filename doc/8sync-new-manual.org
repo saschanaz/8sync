@@ -8,7 +8,7 @@
 # A copy of the license is also available from the Free Software
 # Foundation Web site at http://www.gnu.org/licenses/fdl.html
 # 
-# Altenately, this document is also available under the Lesser General
+# Alternately, this document is also available under the Lesser General
 # Public License, version 3 or later, as published by the Free Software
 # Foundation.
 # 
@@ -137,22 +137,21 @@ yet.  Time to fix that!
                   (channels '("##botchat")))
   (define hive (make-hive))
   (define irc-bot
-    (bootstrap-actor* hive <my-irc-bot> "irc-bot"
-                      #:username username
-                      #:server server
-                      #:channels channels))
+    (bootstrap-actor hive <my-irc-bot>
+                     #:username username
+                     #:server server
+                     #:channels channels))
   (run-hive hive '()))
 #+END_SRC
 
 Actors are connected to something called a "hive", which is a
 special kind of actor that runs and manages all the other actors.
 Actors can spawn other actors, but before we start the hive we use
-this special "bootstrap-actor*" method.
+this special =bootstrap-actor= method.
 It takes the hive as its first argument, the actor class as the second
-argument, a decorative "cookie" as the third argument (this is
-optional, but it helps with debugging... you can skip it by setting it
-to #f if you prefer), and the rest are initialization arguments to the
-actor.  bootstrap-actor* passes back not the actor itself (we don't
+argument, and the rest are initialization arguments to the
+actor.
+=bootstrap-actor= passes back not the actor itself (we don't
 get access to that usually) but the *id* of the actor.
 (More on this later.)
 Finally we run the hive with run-hive and pass it a list of
@@ -200,20 +199,7 @@ the id of the actor the message is being sent to, the "action" we
 want to invoke (a symbol), and the rest are arguments to the
 "action handler" which is in this case send-line (with itself takes
 two arguments: the channel our bot should send a message to, and
-the line we want it to spit out to the channel).
-
-(Footnote: 8sync's name for sending a message, "<-", comes from older,
-early lisp object oriented systems which were, as it turned out,
-inspired by the actor model!
-Eventually message passing was dropped in favor of something called
-"generic functions" or "generic methods"
-(you may observe we made use of such a thing in extending
-handle-line).
-Many lispers believe that there is no need for message passing
-with generic methods and some advanced functional techniques,
-but in a concurrent environment message passing becomes useful
-again, especially when the communicating objects / actors are not
-in the same address space.)
+the line we want it to spit out to the channel).[fn:send-message-provenance]
 
 Normally in the actor model, we don't have direct references to
 an actor, only an identifier.
@@ -365,6 +351,20 @@ What cool commands can you add?
   thing given chat bots being a fairly mundane novelty amongst hackers
   and teenagers everywhere a few decades ago.
 
+[fn:send-message-provenance]
+  8sync's name for sending a message, "<-", comes from older,
+  early lisp object oriented systems which were, as it turned out,
+  inspired by the actor model!
+  Eventually message passing was dropped in favor of something called
+  "generic functions" or "generic methods"
+  (you may observe we made use of such a thing in extending
+  handle-line).
+  Many lispers believe that there is no need for message passing
+  with generic methods and some advanced functional techniques,
+  but in a concurrent environment message passing becomes useful
+  again, especially when the communicating objects / actors are not
+  in the same address space.
+
 ** Writing our own actors
 
 Let's write the most basic, boring actor possible.
@@ -391,11 +391,10 @@ How about an actor that start sleeping, and keeps sleeping?
 #+END_SRC
 
 We see some particular things in this example.
-One thing is that our <sleeper> actor has an actions slot.
+One thing is that our =<sleeper>= actor has an actions slot.
 This is used to look up what the "action handler" for a message is.
-We have to set the #:allocation to either #:each-subclass or #:class.
-(#:class should be fine, except there is [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=25211][a bug in Guile]] which keeps
-us from using it for now.)
+We have to set the #:allocation to either =#:each-subclass= or
+=#:class=.[fn:class-bug]
 
 The only action handler we've added is for =*init*=, which is called
 implicitly when the actor first starts up.
@@ -646,6 +645,10 @@ manager> Oh!  I guess you can go home then.
 worker> Whew!  Free at last.
 #+END_SRC
 
+[fn:class-bug]
+  #:class should be fine, except there is [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=25211][a bug in Guile]] which keeps
+  us from using it for now.
+
 [fn:actor-alive-deprecated-soon]
   Or rather, for now you should call =actor-alive?= if your code
   is looping like this.
@@ -832,7 +835,7 @@ Happy hacking!
   Our loop couldn't look quite like this though!
 
 [fn:why-send-a-message-to-handle-line]
-  Well, there may be one surprise to the astute observer.
+  Well, there may be one surprise to a careful observer.
   Why are we sending a message to ourselves?
   Couldn't we have just dropped the argument of "message" to
   telcmd-handle-line and just called it like any other procedure?
@@ -845,7 +848,7 @@ Happy hacking!
   chug along accepting another command from the user while we try
   to figure out what happened to the last one.
 
-** An intermission: about live hacking
+** An intermission on live hacking
 
 This section is optional, but highly recommended.
 It requires that you're a user of GNU Emacs.
@@ -883,13 +886,13 @@ Redefine run-bot like so:
                     (repl-path "/tmp/8sync-repl"))
     (define hive (make-hive))
     (define irc-bot
-      (bootstrap-actor* hive <my-irc-bot> "irc-bot"
-                        #:username username
-                        #:server server
-                        #:channels channels))
+      (bootstrap-actor hive <my-irc-bot>
+                       #:username username
+                       #:server server
+                       #:channels channels))
     (define repl-manager
-      (bootstrap-actor* hive <repl-manager> "repl"
-                          #:path repl-path))
+      (bootstrap-actor hive <repl-manager>
+                       #:path repl-path))
 
     (run-hive hive '()))
 #+END_SRC
