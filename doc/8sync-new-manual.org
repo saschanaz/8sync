@@ -4,14 +4,14 @@
 # with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
 # A copy of the license is included in the section entitled ``GNU
 # Free Documentation License''.
-# 
+#
 # A copy of the license is also available from the Free Software
 # Foundation Web site at http://www.gnu.org/licenses/fdl.html
-# 
+#
 # Alternately, this document is also available under the Lesser General
 # Public License, version 3 or later, as published by the Free Software
 # Foundation.
-# 
+#
 # A copy of the license is also available from the Free Software
 # Foundation Web site at http://www.gnu.org/licenses/lgpl.html
 
@@ -382,7 +382,7 @@ How about an actor that start sleeping, and keeps sleeping?
   (define (sleeper-loop actor message)
     (while (actor-alive? actor)
       (display "Zzzzzzzz....\n")
-      ;; Sleep for one second      
+      ;; Sleep for one second
       (8sleep (sleeper-sleep-secs actor))))
 
   (let* ((hive (make-hive))
@@ -1048,7 +1048,7 @@ Luckily, it turns out there's a clear relationship, based on real,
 actual theory!
 8sync is based on the [[https://en.wikipedia.org/wiki/Actor_model][actor model]] whereas fibers follows
 [[http://usingcsp.com/][Communicating Sequential Processes (CSP)]], which is a form of
-[[https://en.wikipedia.org/wiki/Process_calculus][process calculi]]. 
+[[https://en.wikipedia.org/wiki/Process_calculus][process calculi]].
 And it turns out, the
 [[https://en.wikipedia.org/wiki/Actor_model_and_process_calculi][relationship between the actor model and process calculi]] is well documented,
 and even more precisely, the
