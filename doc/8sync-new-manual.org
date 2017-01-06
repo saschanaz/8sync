@@ -595,6 +595,20 @@ Of course, we need to update our worker accordingly as well.
 everywhere as we are in this program... that's just to make the
 examples more illustrative.)
 
+"<-reply" is what actually returns the information to the actor
+waiting on the reply.
+It takes as an argument the actor sending the message, the message
+it is in reply to, and the rest of the arguments are the "body" of
+the message.
+(If an actor handles a message that is being "waited on" but does not
+explicitly reply to it, an auto-reply with an empty body will be
+triggered so that the waiting actor is not left waiting around.)
+
+The last thing to note is the call to "self-destruct".
+This does what you might expect: it removes the actor from the hive.
+No new messages will be sent to it.
+Ka-poof!
+
 Running it is the same as before:
 
 #+BEGIN_SRC scheme
@@ -626,20 +640,6 @@ worker> Yes, I finished up!
 manager> Oh!  I guess you can go home then.
 worker> Whew!  Free at last.
 #+END_SRC
-
-"<-reply" is what actually returns the information to the actor
-waiting on the reply.
-It takes as an argument the actor sending the message, the message
-it is in reply to, and the rest of the arguments are the "body" of
-the message.
-(If an actor handles a message that is being "waited on" but does not
-explicitly reply to it, an auto-reply with an empty body will be
-triggered so that the waiting actor is not left waiting around.)
-
-The last thing to note is the call to "self-destruct".
-This does what you might expect: it removes the actor from the hive.
-No new messages will be sent to it.
-Ka-poof!
 
 ** Writing our own network-enabled actor
 
