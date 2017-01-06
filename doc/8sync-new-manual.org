@@ -660,7 +660,8 @@ Well, luckily that's pretty easy, especially with all you know so far.
   (define-actor <telcmd> (<actor>)
     ((*init* telcmd-init)
      (*cleanup* telcmd-cleanup)
-     (new-client telcmd-new-client))
+     (new-client telcmd-new-client)
+     (handle-line telcmd-handle-line))
     (socket #:accessor telcmd-socket
             #:init-value #f))
 #+END_SRC
@@ -740,12 +741,12 @@ In our case, we politely close the socket when =<telcmd>= dies.
         (cond ((eof-object? line)
                (close client))
               (else
-               (telcmd-handle-line telcmd client
-                                   (string-trim-right line #\return))
+               (<- (actor-id telcmd) 'handle-line
+                   client (string-trim-right line #\return))
                (when (actor-alive? telcmd)
                  (loop)))))))
 
-  (define (telcmd-handle-line telcmd client line)
+  (define (telcmd-handle-line telcmd message client line)
     (match (string-split line #\space)
       (("") #f)  ; ignore empty lines
       (("time" _ ...)
@@ -770,7 +771,7 @@ agenda.[fn:setvbuf]
 The actual method called whenever we have a "line" of input is pretty
 straightforward... in fact it looks an awful lot like the IRC bot
 handle-line procedure we used earlier.
-No surprises there!
+No surprises there![fn:why-send-a-message-to-handle-line]
 
 Now let's run it:
 
@@ -823,6 +824,20 @@ Happy hacking!
   that absolutely no messages are handled until the actor completely
   finishes handling one message.
   Our loop couldn't look quite like this though!
+
+[fn:why-send-a-message-to-handle-line]
+  Well, there may be one surprise to the astute observer.
+  Why are we sending a message to ourselves?
+  Couldn't we have just dropped the argument of "message" to
+  telcmd-handle-line and just called it like any other procedure?
+  Indeed, we /could/ do that, but sending a message to ourself has
+  an added advantage: if we accidentally "break" the
+  telcmd-handle-line procedure in some way (say we add a fun new
+  command we're playing with it), raising an exception won't break
+  and disconnect the client's main loop, it'll just break the
+  message handler for that one line, and our telcmd will happily
+  chug along accepting another command from the user while we try
+  to figure out what happened to the last one.
 
 ** An intermission: about live hacking
 
