@@ -561,8 +561,6 @@ on suspendable ports."
   "Start up the AGENDA"
   (install-suspendable-ports!)
   (parameterize ((%current-agenda-prompt (agenda-prompt-tag agenda))
-                 ;; @@: Couldn't we just parameterize this at the start of
-                 ;;   the agenda...?
                  (current-read-waiter wait-for-readable)
                  (current-write-waiter wait-for-writable))
     (while (not (stop-condition agenda))
