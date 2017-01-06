@@ -159,7 +159,7 @@ nothing is going to happen.
 We can run it like:
 
 #+BEGIN_SRC scheme
-(run-bot #:username "some-bot-username") ; be creative!
+(run-bot #:username "some-bot-name") ; be creative!
 #+END_SRC
 
 Assuming all the tubes on the internet are properly connected, you
@@ -253,24 +253,6 @@ so that /other/ actors may participate in communicating with IRC
 through our IRC bot.
 
 Anyway, our current message handler is simply too annoying.
-What would be much more interesting is if we could recognize
-when an actor could repeat messages /only/ when someone is speaking
-to it directly.
-Luckily this is an easy adjustment to make.
-
-#+BEGIN_SRC scheme
-  (define-method (handle-line (irc-bot <my-irc-bot>) speaker channel
-                              line emote?)
-    (define my-name (irc-bot-username irc-bot))
-    (define (looks-like-me? str)
-      (or (equal? str my-name)
-          (equal? str (string-concatenate (list my-name ":")))))
-    (when (looks-like-me?)
-      (<- (actor-id irc-bot) 'send-line channel
-          (format #f "Bawwwwk! ~a says: ~a" speaker line))))
-#+END_SRC
-
-This is relatively straightforward, but it isn't very interesting.
 What we would really like to do is have our bot respond to individual
 "commands" like this:
 
@@ -376,7 +358,7 @@ What cool commands can you add?
   At the time of writing, venture capital awash startups are trying to
   turn chatbots into "big business"... a strange (and perhaps absurd)
   thing given chat bots being a fairly mundane novelty amongst hackers
-  and teenagers everywhere in the 1990s.
+  and teenagers everywhere a few decades ago.
 
 ** Writing our own actors
 
