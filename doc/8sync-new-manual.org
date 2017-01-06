@@ -409,7 +409,7 @@ and will always yield to the scheduler.
 Our while loop also checks "actor-alive?" to see whether or not
 it is still registered.
 In general, if you keep a loop in your actor that regularly yields
-to the scheduler, you should check this.
+to the scheduler, you should check this.[fn:actor-alive-deprecated-soon]
 (An alternate way to handle it would be to not use a while loop at all
 but simply send a message to ourselves with "<-" to call the
 sleeper-loop handler again.
@@ -645,6 +645,12 @@ worker> Yes, I finished up!
 manager> Oh!  I guess you can go home then.
 worker> Whew!  Free at last.
 #+END_SRC
+
+[fn:actor-alive-deprecated-soon]
+  Or rather, for now you should call =actor-alive?= if your code
+  is looping like this.
+  In the future, after an actor dies, its coroutines will
+  automatically be "canceled".
 
 ** Writing our own network-enabled actor
 
