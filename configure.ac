@@ -1,4 +1,4 @@
-AC_INIT([8sync], [0.4.0], [cwebber@dustycloud.org])
+AC_INIT([8sync], [0.4.1], [cwebber@dustycloud.org])
 
 PKG_CHECK_MODULES([GUILE], [guile-2.2])
 
