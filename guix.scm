@@ -49,9 +49,11 @@
               (method url-fetch)
               (uri (string-append "mirror://gnu/guile/8sync-" version
                                   ".tar.gz"))
+              ;; This will be wrong by time of release.
+              ;; Oh well... a better guix.scm at next release :)
               (sha256
                (base32
-                "1playdk7k0rsbp5iryv1i88gkm97xzvsrkyw10k6hs5z6zl28j19"))))
+                "08w163k8qv28d8zixbl0rh98d4b3hk0ksh8nlr4xaj58291aijlh"))))
   (build-system gnu-build-system)
   (native-inputs `(("autoconf" ,autoconf)
                    ("automake" ,automake)
