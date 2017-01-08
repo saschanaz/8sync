@@ -20,15 +20,15 @@
 ;;
 ;; GNU Guix development package.  To build and install, run:
 ;;
-;;   guix package -f package.scm
+;;   guix package -f guix.scm
 ;;
 ;; To build it, but not install it, run:
 ;;
-;;   guix build -f package.scm
+;;   guix build -f guix.scm
 ;;
 ;; To use as the basis for a development environment, run:
 ;;
-;;   guix environment -l package.scm
+;;   guix environment -l guix.scm
 ;;
 ;;; Code:
 
@@ -44,16 +44,14 @@
 
 (package
   (name "8sync")
-  (version "0.0")
+  (version "0.4.0")
   (source (origin
-            (method git-fetch)
-            (uri (git-reference
-                  (url "https://notabug.org/cwebber/8sync")
-                  (commit "b02ef57")))
-            (sha256
-             (base32
-              "1sfy72q35dhqkfq2k3fi7a10grx3ll2kblpjivdai2jn61fki6wm"))
-            (modules '((guix build utils)))))
+              (method url-fetch)
+              (uri (string-append "mirror://gnu/guile/8sync-" version
+                                  ".tar.gz"))
+              (sha256
+               (base32
+                "1playdk7k0rsbp5iryv1i88gkm97xzvsrkyw10k6hs5z6zl28j19"))))
   (build-system gnu-build-system)
   (native-inputs `(("autoconf" ,autoconf)
                    ("automake" ,automake)
@@ -68,12 +66,9 @@
                 (add-before 'configure 'setenv
                             (lambda _
                               (setenv "GUILE_AUTO_COMPILE" "0"))))))
-  (home-page "https://notabug.org/cwebber/8sync")
-  (synopsis "An asynchronous programming library for GNU Guile")
+  (home-page "https://gnu.org/s/8sync/")
+  (synopsis "Asynchronous actor model library for Guile")
   (description
    "GNU 8sync (pronounced \"eight-sync\") is an asynchronous programming
-library for GNU Guile.
-
-Be warned: it is early days for the 8sync project.  New contributors and users
-are more than welcome, but beware API instability.")
+library for GNU Guile based on the actor model.")
   (license lgpl3+))
