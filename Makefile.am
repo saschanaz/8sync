@@ -74,6 +74,7 @@ EXTRA_DIST = 						\
 	COPYING-gplv3.txt				\
 	pre-inst-env.in					\
 	bootstrap.sh					\
+	guix.scm					\
 	tests/utils.scm					\
 	demos/run-demo.sh				\
 	demos/ircbot.scm				\
