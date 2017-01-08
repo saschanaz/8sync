@@ -8,6 +8,66 @@
 : permitted in any medium without royalty provided the copyright notice
 : and this notice are preserved.
 
+* 8sync 0.4
+** Actors are now "center stage"
+
+You can now import a toplevel (8sync) module, and this module includes
+the full actor model system.  The actor model is now *the* way to
+handle concurrent synchronization in 8sync.  So, 8sync is officially
+less about its event loop, and more about the actor model.  (It is
+even possible that in the future, 8sync's actor model will be able to
+run on another event loop.)
+
+** New 8sync tutorial
+
+The manual as been expanded with a full tutorial, walking from
+extending an existing actor by writing an irc bot, to writing your own
+basic actors, to writing network actors.
+
+** Better error propagation
+
+When actors wait on other procedures, the "wait" handling code happens
+within the actor's message handler, rather than skipping execution
+from the outside.  This means it's possible to catch a general purpose
+error named 'hive-unresumable-coroutine within the message handler
+itself.
+
+(The name of the symbol in the thrown exception may change in a future
+release.)
+
+** IRC bot is now an actor
+
+The irc bot code officially has become actor'ified, under the
+<irc-bot> class.
+
+** REPL handling via an actor
+
+The cooperative REPL code now also is handled via an actor.  See
+<repl-manager>.
+
+** Major simplifications/cleanup of the agenda
+
+The agenda is significantly less bloated than it was; with actors
+taking center stage, many previous (and somewhat wonkily written)
+chunks of code have been removed or simplified.
+
+** "from" actor is now implicit in sending a message in <-foo procedures
+
+For the various <- style procedures, the actor is now explicitly
+gathered from a parameter managed via the Hive.
+
+** New procedures: <-*, <-reply*
+
+<-* and <-reply* have been added, which like <-wait* and <-reply-wait*
+are like their non-starred equivalents, except they can take some
+additional options.
+
+** New implicit '*init* and '*cleanup* action handlers.
+
+There are now action handlers for '*init* and '*cleanup* which are
+automatically invoked on actor initialization and destruction.
+
+
 * 8sync 0.3
 
 ** 8sync now targets Guile 2.2, Guile 2.0 dropped
