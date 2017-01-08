@@ -1,20 +1,28 @@
 ;;; 8sync --- Asynchronous programming for Guile
 ;;; Copyright (C) 2016 Jan Nieuwenhuizen <janneke@gnu.org>
+;;; Copyright (C) 2017 Christopher Allan Webber <cwebber@dustycloud.org>
+;;;
+;;; Also borrowing code from:
+;;; guile-sdl2 --- FFI bindings for SDL2
+;;; Copyright © 2015 David Thompson <davet@gnu.org>
 ;;;
 ;;; This file is part of 8sync.
+;;; However, unlike most of 8sync, which is under the LGPLv3+, this
+;;; file in particular is licensed under GPLv3+.
+;;; Guix is also licensed under GPLv3+.
 ;;;
-;;; 8sync is free software: you can redistribute it and/or modify it
-;;; under the terms of the GNU Lesser General Public License as
-;;; published by the Free Software Foundation, either version 3 of the
-;;; License, or (at your option) any later version.
+;;; This program is free software: you can redistribute it and/or modify
+;;; it under the terms of the GNU General Public License as published by
+;;; the Free Software Foundation, either version 3 of the License, or
+;;; (at your option) any later version.
 ;;;
-;;; 8sync is distributed in the hope that it will be useful,
+;;; This program is distributed in the hope that it will be useful,
 ;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;;; GNU Lesser General Public License for more details.
-;;;
-;;; You should have received a copy of the GNU Lesser General Public
-;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
+;;; GNU General Public License for more details.
+;;; 
+;;; You should have received a copy of the GNU General Public License
+;;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;
@@ -32,28 +40,46 @@
 ;;
 ;;; Code:
 
-(use-modules (guix packages)
+(use-modules (srfi srfi-1)
+             (srfi srfi-26)
+             (ice-9 popen)
+             (ice-9 match)
+             (ice-9 rdelim)
+             (guix packages)
              (guix licenses)
+             (guix gexp)
              (guix git-download)
              (guix build-system gnu)
+             ((guix build utils) #:select (with-directory-excursion))
              (gnu packages)
              (gnu packages autotools)
              (gnu packages guile)
              (gnu packages pkg-config)
              (gnu packages texinfo))
 
+(define %source-dir (dirname (current-filename)))
+
+(define git-file?
+  (let* ((pipe (with-directory-excursion %source-dir
+                 (open-pipe* OPEN_READ "git" "ls-files")))
+         (files (let loop ((lines '()))
+                  (match (read-line pipe)
+                    ((? eof-object?)
+                     (reverse lines))
+                    (line
+                     (loop (cons line lines))))))
+         (status (close-pipe pipe)))
+    (lambda (file stat)
+      (match (stat:type stat)
+        ('directory #t)
+        ((or 'regular 'symlink)
+         (any (cut string-suffix? <> file) files))
+        (_ #f)))))
+
 (package
-  (name "8sync")
-  (version "0.4.0")
-  (source (origin
-              (method url-fetch)
-              (uri (string-append "mirror://gnu/guile/8sync-" version
-                                  ".tar.gz"))
-              ;; This will be wrong by time of release.
-              ;; Oh well... a better guix.scm at next release :)
-              (sha256
-               (base32
-                "08w163k8qv28d8zixbl0rh98d4b3hk0ksh8nlr4xaj58291aijlh"))))
+  (name "guile-8sync")
+  (version "git")
+  (source (local-file %source-dir #:recursive? #t #:select? git-file?))
   (build-system gnu-build-system)
   (native-inputs `(("autoconf" ,autoconf)
                    ("automake" ,automake)
