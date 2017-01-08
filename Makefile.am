@@ -73,6 +73,7 @@ EXTRA_DIST = 						\
 	$(NOCOMP_SOURCES)				\
 	COPYING-gplv3.txt				\
 	pre-inst-env.in					\
+	bootstrap.sh					\
 	tests/utils.scm					\
 	demos/run-demo.sh				\
 	demos/ircbot.scm				\
