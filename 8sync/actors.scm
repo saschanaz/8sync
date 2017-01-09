@@ -342,22 +342,9 @@ to come after class definition."
                          (*cleanup* (const #f)))
            #:allocation #:each-subclass))
 
-;;; So these are the nicer representations of addresses.
-;;; However, they don't serialize so easily with scheme read/write, so we're
-;;; using the simpler cons cell version below for now.
-
-;; (define-record-type <address>
-;;   (make-address actor-id hive-id)  ; @@: Do we want the trailing -id?
-;;   address?
-;;   (actor-id address-actor-id)
-;;   (hive-id address-hive-id))
-;;
-;; (set-record-type-printer!
-;;  <address>
-;;  (lambda (record port)
-;;    (format port "<address: ~s@~s>"
-;;            (address-actor-id record) (address-hive-id record))))
-;;
+;;; Addresses are vectors where the first part is the actor-id and
+;;; the second part is the hive-id.  This works well enough... they
+;;; look decent being pretty-printed.
 
 (define (make-address actor-id hive-id)
   (vector actor-id hive-id))
