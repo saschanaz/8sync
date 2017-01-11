@@ -1,10 +1,10 @@
 ;;; 8sync --- Asynchronous programming for Guile
-;;; Copyright (C) 2017 Christopher Allan Webber <cwebber@dustycloud.org>
+;;; Copyright © 2017 Christopher Allan Webber <cwebber@dustycloud.org>
 ;;;
 ;;; Code (also under the LGPL) borrowed from fibers:
-;;;   Copyright (C) 2016 Andy Wingo <wingo@pobox.com>
+;;;   Copyright © 2016 Andy Wingo <wingo@pobox.com>
 ;;; and Guile:
-;;;   Copyright (C)  2010, 2011, 2012, 2015 Free Software Foundation, Inc.
+;;;   Copyright © 2010, 2011, 2012, 2015 Free Software Foundation, Inc.
 ;;;
 ;;; This file is part of 8sync.
 ;;;

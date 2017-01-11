@@ -1,4 +1,4 @@
-## Copyright (C) 2015 Christopher Allan Webber <cwebber@dustycloud.org>
+## Copyright © 2015, 2016, 2017 Christopher Allan Webber <cwebber@dustycloud.org>
 
 ## parts of this automake recipe borrowed from:
 
