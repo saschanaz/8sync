@@ -54,8 +54,10 @@
         #:accessor web-server-addr)
   (socket #:init-value #f
           #:accessor web-server-socket)
-  (handler #:init-keyword #:handler
-           #:getter web-server-handler))
+  (upgrade #:init-value '()
+           #:allocation #:each-subclass)
+  (http-handler #:init-keyword #:http-handler
+                #:getter web-server-http-handler))
 
 (define-method (initialize (web-server <web-server>) init-args)
   (next-method)
@@ -171,7 +173,7 @@ as we're alive."
 (define (web-server-handle-request web-server message
                                    request body)
   (receive (response body)
-      ((web-server-handler web-server) request body)
+      ((web-server-http-handler web-server) request body)
     (receive (response body)
         (sanitize-response request response body)
       (<-reply message response body))))
