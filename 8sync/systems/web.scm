@@ -43,37 +43,37 @@
 
   (host #:init-value #f
         #:init-keyword #:host
-        #:getter web-server-host)
+        #:getter .host)
   (family #:init-value AF_INET
           #:init-keyword #:family
-          #:getter web-server-family)
+          #:getter .family)
   (port-num #:init-value 8080
             #:init-keyword #:port
-            #:getter web-server-port-num)
+            #:getter .port-num)
   (addr #:init-keyword #:addr
-        #:accessor web-server-addr)
+        #:accessor .addr)
   (socket #:init-value #f
-          #:accessor web-server-socket)
+          #:accessor .socket)
   (upgrade #:init-value '()
            #:allocation #:each-subclass)
   (http-handler #:init-keyword #:http-handler
-                #:getter web-server-http-handler))
+                #:getter .http-handler))
 
 (define-method (initialize (web-server <web-server>) init-args)
   (next-method)
   ;; Make sure the addr is set up
   (when (not (slot-bound? web-server 'addr))
-    (set! (web-server-addr web-server)
-          (if (web-server-host web-server)
-              (inet-pton (web-server-family web-server)
-                         (web-server-host web-server))
+    (set! (.addr web-server)
+          (if (.host web-server)
+              (inet-pton (.family web-server)
+                         (.host web-server))
               INADDR_LOOPBACK)))
 
   ;; Set up the socket
-  (set! (web-server-socket web-server)
-        (make-default-socket (web-server-family web-server)
-                             (web-server-addr web-server)
-                             (web-server-port-num web-server)))
+  (set! (.socket web-server)
+        (make-default-socket (.family web-server)
+                             (.addr web-server)
+                             (.port-num web-server)))
 
   ;; This is borrowed from Guile's web server.
   ;; Andy Wingo added the line with this commit:
@@ -104,7 +104,7 @@
   "The main loop on our socket.  Keep accepting new clients as long
 as we're alive."
   (while #t
-    (match (accept (web-server-socket web-server))
+    (match (accept (.socket web-server))
       ((client . sockaddr)
        ;; From "HOP, A Fast Server for the Diffuse Web", Serrano.
        (setsockopt client SOL_SOCKET SO_SNDBUF (* 12 1024))
@@ -173,14 +173,14 @@ as we're alive."
 (define (web-server-handle-request web-server message
                                    request body)
   (receive (response body)
-      ((web-server-http-handler web-server) request body)
+      ((.http-handler web-server) request body)
     (receive (response body)
         (sanitize-response request response body)
       (<-reply message response body))))
 
 (define (web-server-cleanup web-server message)
   ;; @@: Should we close any pending requests too?
-  (close (web-server-socket web-server)))
+  (close (.socket web-server)))
 
 (define (web-server-shutdown web-server message)
   (self-destruct web-server))
