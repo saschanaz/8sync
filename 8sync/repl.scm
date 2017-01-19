@@ -19,39 +19,60 @@
 (define-module (8sync repl)
   #:use-module (oop goops)
   #:use-module (8sync)
+  #:use-module (srfi srfi-1)
   #:use-module (system repl server)
   #:use-module (system repl coop-server)
   #:export (<repl-manager>))
 
-(define-class <repl-manager> (<actor>)
+(define-actor <repl-manager> (<actor>)
+  ((*cleanup* repl-manager-cleanup)
+   (*init* repl-manager-init)
+   (add-subscriber repl-manager-add-subscriber)
+   (remove-subscriber repl-manager-remove-subscriber))
   (path #:init-keyword #:path
         #:init-value "/tmp/8sync-socket"
-        #:getter repl-manager-path)
+        #:getter .path)
   (socket #:init-value #f
-          #:accessor repl-manager-socket)
+          #:accessor .socket)
   (poll-every #:init-keyword #:poll-every
               #:init-value (/ 1 30)
-              #:getter repl-manager-poll-every)
-  (actions #:allocation #:each-subclass
-           ;; @@: Should we add a stop action?
-           #:init-value (build-actions
-                         (*cleanup* repl-manager-cleanup)
-                         (*init* repl-manager-init))))
+              #:getter .poll-every)
+  (subscribers #:init-keyword #:subscribers
+               #:init-value '()
+               #:accessor .subscribers))
 
 (define (repl-manager-cleanup repl-manager message)
   ;; Close the socket, if open
-  (and=> (repl-manager-socket repl-manager)
+  (and=> (.socket repl-manager)
          close)
   ;; Delete the file, if it exists
-  (when (file-exists? (repl-manager-path repl-manager))
-    (delete-file (repl-manager-path repl-manager))))
+  (when (file-exists? (.path repl-manager))
+    (delete-file (.path repl-manager))))
 
 (define (repl-manager-init repl-manager message)
   (define socket
-    (make-unix-domain-server-socket #:path (repl-manager-path repl-manager)))
+    (make-unix-domain-server-socket #:path (.path repl-manager)))
   (define server
     (spawn-coop-repl-server socket))
-  (set! (repl-manager-socket repl-manager) socket)
+  (define (inform-subscribers)
+    (for-each
+     (lambda (subscriber)
+       (<- subscriber 'repl-update))
+     (.subscribers repl-manager)))
+  (set! (.socket repl-manager) socket)
   (while (actor-alive? repl-manager)
     (poll-coop-repl-server server)
-    (8sleep (repl-manager-poll-every repl-manager))))
+    (inform-subscribers)
+    (8sleep (.poll-every repl-manager))))
+
+(define (repl-manager-add-subscriber repl-manager message)
+  (define from (message-from message))
+  (unless (member from (.subscribers repl-manager))
+    (set! (.subscribers repl-manager)
+          (cons from (.subscribers repl-manager)))))
+
+(define (repl-manager-remove-subscriber repl-manager message)
+  (define from (message-from message))
+  (set! (.subscribers repl-manager)
+        (remove (lambda (x) (equal? x (message-from message)))
+                (.subscribers repl-manager))))
