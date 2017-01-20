@@ -233,8 +233,9 @@
 
 (define (<-reply original-message . message-body-args)
   "Reply to a message"
-  (send-message '() (%current-actor) (message-from original-message) '*reply*
-                original-message #f message-body-args))
+  (when (message-needs-reply? original-message)
+    (send-message '() (%current-actor) (message-from original-message) '*reply*
+                  original-message #f message-body-args)))
 
 (define (<-reply* send-options original-message . message-body-args)
   "Like <-reply, but allows extra parameters via send-options"
@@ -243,7 +244,8 @@
     (send-message send-options actor
                   (message-from original-message) '*reply*
                   original-message #f message-body-args))
-  (apply really-send send-options))
+  (when (message-needs-reply? original-message)
+    (apply really-send send-options)))
 
 (define (<-auto-reply actor original-message)
   "Auto-reply to a message.  Internal use only!"
@@ -252,10 +254,12 @@
 
 (define (<-reply-wait original-message . message-body-args)
   "Reply to a messsage, but wait until we get a response"
-  (wait-maybe-handle-errors
-   (send-message '() (%current-actor)
-                 (message-from original-message) '*reply*
-                 original-message #t message-body-args)))
+  (if (message-needs-reply? original-message)
+      (wait-maybe-handle-errors
+       (send-message '() (%current-actor)
+                     (message-from original-message) '*reply*
+                     original-message #t message-body-args))
+      #f))
 
 (define (<-reply-wait* send-options original-message
                        . message-body-args)
@@ -267,7 +271,8 @@
                          (message-from original-message) '*reply*
                          original-message #t message-body-args)
            send-options))
-  (apply really-send send-options))
+  (when (message-needs-reply? original-message)
+    (apply really-send send-options)))
 
 (define* (wait-maybe-handle-errors message
                                    #:key accept-errors
