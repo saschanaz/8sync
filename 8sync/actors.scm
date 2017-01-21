@@ -339,6 +339,13 @@ to come after class definition."
                    #:allocation #:each-subclass
                    #:getter actor-message-handler)
 
+  ;; valid values are:
+  ;;  - #t as in, send the init message, but don't wait (default)
+  ;;  - 'wait, as in wait on the init message
+  ;;  - #f as in don't bother to init
+  (should-init #:init-value #t
+               #:allocation #:each-subclass)
+
   ;; This is the default, "simple" way to inherit and process messages.
   (actions #:init-value (build-actions
                          ;; Default init method is to do nothing.
@@ -444,10 +451,14 @@ to come after class definition."
     (hash-map->list (lambda (actor-id actor) actor-id)
                     (hive-actor-registry hive)))
   (for-each (lambda (actor-id)
-              ;; @@: This could maybe just be <-, but we want actors
-              ;;   to be used to the expectation in all circumstances
-              ;;   that their init method is "waited on".
-              (<-wait actor-id '*init*))
+              (let* ((actor (hash-ref (hive-actor-registry hive)
+                                      actor-id)))
+                (match (slot-ref actor 'should-init)
+                  (#f #f)
+                  ('wait
+                   (<-wait actor-id '*init*))
+                  (_
+                   (<- actor-id '*init*)))))
             actor-ids))
 
 (define-method (hive-handle-failed-forward (hive <hive>) message)
@@ -684,11 +695,15 @@ that method for documentation."
          (actor (apply make actor-class
                        #:hive hive
                        #:id actor-id
-                       init-args)))
+                       init-args))
+         (actor-should-init (slot-ref actor 'should-init)))
     (hive-register-actor! hive actor)
-    ;; Wait on actor to init
-    (when send-init?
-      (<-wait actor-id '*init*))
+    ;; Maybe run actor init method
+    (when (and send-init? actor-should-init)
+      (let ((send-method
+             (if (eq? actor-should-init 'wait)
+                 <-wait <-)))
+        (send-method actor-id '*init*)))
     ;; return the actor id
     actor-id))
 
