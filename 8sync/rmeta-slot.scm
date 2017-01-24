@@ -101,9 +101,9 @@
     (set-rmeta-slot-cache! rmeta-slot (build-cache))))
 
 (define* (class-rmeta-ref class slot-name key
-                          #:key (equals? eq?)
-                          (cache-set! hashq-set!)
-                          (cache-ref hashq-ref)
+                          #:key (equals? equal?)
+                          (cache-set! hash-set!)
+                          (cache-ref hash-ref)
                           dflt)
   "Search heirarchy of CLASS through the rmeta-slot named SLOT-NAME for
 value matching KEY.  This also calls maybe-build-rmeta-slot-cache! as a side
