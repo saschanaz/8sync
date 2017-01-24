@@ -51,6 +51,7 @@ SOURCES =  \
 	8sync/actors.scm				\
 	8sync/debug.scm					\
 	8sync/ports.scm					\
+	8sync/rmeta-slot.scm				\
 	8sync/contrib/base64.scm			\
 	8sync/contrib/sha-1.scm				\
 	8sync/systems/irc.scm				\
@@ -63,7 +64,8 @@ SOURCES =  \
 
 TESTS =							\
 	tests/test-agenda.scm				\
-	tests/test-actors.scm
+	tests/test-actors.scm				\
+	tests/test-rmeta-slot.scm
 
 TEST_EXTENSIONS = .scm
 
