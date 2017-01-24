@@ -1,5 +1,6 @@
 ;;; guile-websocket --- WebSocket client/server
 ;;; Copyright © 2015 David Thompson <davet@gnu.org>
+;;; Copyright © 2017 Christopher Allan Webber <cwebber@dustycloud.org>
 ;;;
 ;;; This file is part of guile-websocket.
 ;;;
