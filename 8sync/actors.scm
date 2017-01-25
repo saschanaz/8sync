@@ -25,6 +25,7 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
   #:use-module (8sync agenda)
+  #:use-module (8sync rmeta-slot)
   #:export (;; utilities... ought to go in their own module
             big-random-number
             big-random-number-string
@@ -294,34 +295,25 @@ raise an exception if an error."
 
 (define (actor-inheritable-message-handler actor message)
   (define action (message-action message))
-  (define (find-message-handler return)
-    (for-each (lambda (this-class)
-                (define actions
-                  (or (and (class-slot-definition this-class 'actions)
-                           (class-slot-ref this-class 'actions))
-                      '()))
-                (for-each (match-lambda
-                            ((action-name . method)
-                             (when (eq? action-name action)
-                               (return method))))
-                          actions))
-              (class-precedence-list (class-of actor)))
+  (define method
+    (class-rmeta-ref (class-of actor) 'actions action
+                     #:equals? eq? #:cache-set! hashq-set!
+                     #:cache-ref hashq-ref))
+  (unless method
     (throw 'action-not-found
            "No appropriate action handler found for actor"
            #:action action
            #:actor actor
            #:message message))
-  (define method
-    (call/ec find-message-handler))
   (apply method actor message (message-body message)))
 
 (define-syntax-rule (build-actions (symbol method) ...)
   "Construct an alist of (symbol . method), where the method is wrapped
 with wrap-apply to facilitate live hacking and allow the method definition
 to come after class definition."
-  (list
-   (cons (quote symbol)
-         (wrap-apply method)) ...))
+  (make-rmeta-slot
+   (list (cons (quote symbol)
+               (wrap-apply method)) ...)))
 
 (define-class <actor> ()
   ;; An address object
