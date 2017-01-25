@@ -184,7 +184,7 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
   (create-friend #:init-value #f
                  #:init-keyword #:create-friend)
   (actions #:allocation #:each-subclass
-           #:init-value (build-actions
+           #:init-thunk (build-actions
                          (*init* hi-on-init-init))))
 
 (define (hi-on-init-init actor message)

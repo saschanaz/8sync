@@ -159,7 +159,7 @@
         #:getter irc-bot-port)
   (socket #:accessor irc-bot-socket)
   (actions #:allocation #:each-subclass
-           #:init-value (build-actions
+           #:init-thunk (build-actions
                          (*init* irc-bot-init)
                          (*cleanup* irc-bot-cleanup)
                          (main-loop irc-bot-main-loop)

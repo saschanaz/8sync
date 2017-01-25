@@ -440,7 +440,7 @@ How about an actor that start sleeping, and keeps sleeping?
 
 (define-class <sleeper> (<actor>)
   (actions #:allocation #:each-subclass
-           #:init-value (build-actions
+           #:init-thunk (build-actions
                          (*init* sleeper-loop))))
 
 (define (sleeper-loop actor message)
@@ -457,9 +457,12 @@ How about an actor that start sleeping, and keeps sleeping?
 We see some particular things in this example.
 One thing is that our @verb{~<sleeper>~} actor has an actions slot.
 This is used to look up what the "action handler" for a message is.
-We have to set the #:allocation to either @verb{~#:each-subclass~} or
-@verb{~#:class~}.@footnote{#:class should be fine, except there is @uref{https://debbugs.gnu.org/cgi/bugreport.cgi?bug=25211,a bug in Guile} which keeps
-us from using it for now.}
+We have to set the #:allocation to either @verb{~#:each-subclass~}
+and use @verb{~#:init-thunk~}.@footnote{@verb{~build-subclass~} returns
+a thunk to be called later so that each subclass may correctly build
+its own instance.  This is important because the structure returned
+contains a cache, which may vary from subclass to subclass based on
+its inheritance structure.}
 
 The only action handler we've added is for @verb{~*init*~}, which is called
 implicitly when the actor first starts up.

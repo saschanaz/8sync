@@ -311,7 +311,7 @@ raise an exception if an error."
   "Construct an alist of (symbol . method), where the method is wrapped
 with wrap-apply to facilitate live hacking and allow the method definition
 to come after class definition."
-  (make-rmeta-slot
+  (wrap-rmeta-slot
    (list (cons (quote symbol)
                (wrap-apply method)) ...)))
 
@@ -339,7 +339,7 @@ to come after class definition."
                #:allocation #:each-subclass)
 
   ;; This is the default, "simple" way to inherit and process messages.
-  (actions #:init-value (build-actions
+  (actions #:init-thunk (build-actions
                          ;; Default init method is to do nothing.
                          (*init* (const #f))
                          ;; Default cleanup method is to do nothing.
@@ -390,7 +390,7 @@ to come after class definition."
                       (action ...)
                       slots ...)
   (define-class class inherits
-    (actions #:init-value (build-actions action ...)
+    (actions #:init-thunk (build-actions action ...)
              #:allocation #:each-subclass)
     slots ...))
 
@@ -424,7 +424,7 @@ to come after class definition."
   (prompt #:init-thunk make-prompt-tag
           #:getter hive-prompt)
   (actions #:allocation #:each-subclass
-           #:init-value
+           #:init-thunk
            (build-actions
             ;; This is in the case of an ambassador failing to forward a
             ;; message... it reports it back to the hive

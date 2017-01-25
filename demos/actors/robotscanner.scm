@@ -113,7 +113,7 @@
 
   (actions
    #:allocation #:each-subclass
-   #:init-value
+   #:init-thunk
    (build-actions
     (set-next-room
      (lambda* (actor message #:key id)
@@ -158,7 +158,7 @@
 
   (actions
    #:allocation #:each-subclass
-   #:init-value
+   #:init-thunk
    (build-actions
     (register-with-room
      (lambda (actor message)

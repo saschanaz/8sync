@@ -27,8 +27,8 @@
 ;; Define a class
 (define-class <kah-lassy> ()
   (entries #:allocation #:each-subclass
-           #:init-value
-           (make-rmeta-slot
+           #:init-thunk
+           (wrap-rmeta-slot
             `((foo . "bar")
               (baz . "basil")))))
 
@@ -41,8 +41,8 @@
 
 (define-class <sub-lassy> (<kah-lassy>)
   (entries #:allocation #:each-subclass
-           #:init-value
-           (make-rmeta-slot
+           #:init-thunk
+           (wrap-rmeta-slot
             `((foo . "foo2")
               (peanut . "gallery")))))
 
