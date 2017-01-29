@@ -311,7 +311,7 @@ raise an exception if an error."
   "Construct an alist of (symbol . method), where the method is wrapped
 with wrap-apply to facilitate live hacking and allow the method definition
 to come after class definition."
-  (wrap-rmeta-slot
+  (build-rmeta-slot
    (list (cons (quote symbol)
                (wrap-apply method)) ...)))
 

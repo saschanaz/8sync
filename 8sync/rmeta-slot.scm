@@ -21,7 +21,7 @@
   #:use-module (srfi srfi-9)
   #:use-module (ice-9 match)
 
-  #:export (wrap-rmeta-slot
+  #:export (build-rmeta-slot
             rmeta-slot-table rmeta-slot-cache
             maybe-build-rmeta-slot-cache!
             class-rmeta-ref))
@@ -42,7 +42,7 @@
 ;;;   (define-class <kah-lassy> ()
 ;;;     (entries #:allocation #:each-subclass
 ;;;              #:init-thunk
-;;;              (wrap-rmeta-slot
+;;;              (build-rmeta-slot
 ;;;               `((foo . "bar")
 ;;;                 (baz . "basil")))))
 ;;;
@@ -54,7 +54,7 @@
 ;;;   (define-class <sub-lassy> (<kah-lassy>)
 ;;;     (entries #:allocation #:each-subclass
 ;;;              #:init-thunk
-;;;              (wrap-rmeta-slot
+;;;              (build-rmeta-slot
 ;;;               `((foo . "foo2")
 ;;;                 (peanut . "gallery")))))
 ;;;
@@ -69,13 +69,9 @@
   (table rmeta-slot-table)
   (cache rmeta-slot-cache set-rmeta-slot-cache!))
 
-(define (make-rmeta-slot table)
-  (%make-rmeta-slot table #f))
-
-(define (wrap-rmeta-slot table)
-  "In general, using wrap-rmeta-slot in combination with "
+(define (build-rmeta-slot table)
   (lambda ()
-    (make-rmeta-slot table)))
+    (%make-rmeta-slot table #f)))
 
 ;; Immutable and unique
 (define %the-nothing (cons '*the* '*nothing*))
