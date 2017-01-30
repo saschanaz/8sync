@@ -411,7 +411,8 @@ forge ahead in our current function!"
     ;; convert into sec / usec pair
     (receive (secs usecs)
         (floor/ next-time-in-usecs 1000000)
-      (cons secs (floor usecs))))
+      (cons (inexact->exact secs)
+            (inexact->exact (floor usecs)))))
   (define (convert-integer)
     (cons (+ in-secs cur-secs) cur-usecs))
   (if (integer? in-secs)
