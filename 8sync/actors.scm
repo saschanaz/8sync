@@ -562,7 +562,9 @@ to come after class definition."
                  message))
       actor))
 
-  (define (call-catching-coroutine thunk)
+  ;; TODO: I'm pretty sure we're building up another stack of prompts here
+  ;;   with the way we're doing this.  That's a real problem.
+  (define* (call-catching-coroutine thunk #:optional (catch-errors #t))
     (define queued-error-handling-thunk #f)
     (define (call-catching-errors)
       ;; TODO: maybe parameterize (or attach to hive) and use
@@ -591,7 +593,9 @@ to come after class definition."
       (if queued-error-handling-thunk
           (8sync (queued-error-handling-thunk))))
     (call-with-prompt (hive-prompt hive)
-      call-catching-errors
+      (if catch-errors
+          call-catching-errors
+          thunk)
       (lambda (kont actor message send-options)
         ;; Register the coroutine
         (hash-set! (hive-waiting-coroutines hive)
@@ -641,7 +645,9 @@ to come after class definition."
                result))
             (#f (throw 'no-waiting-coroutine
                        "message in-reply-to tries to resume nonexistent coroutine"
-                       message))))))
+                       message))))
+        ;; no need to catch errors here, there's already an error handler
+        #f))
       ;; Unhandled action for a reply!
       (else
        (throw 'hive-unresumable-coroutine
