@@ -134,7 +134,9 @@ called for each complete message that is received."
       (let ((frame (read-frame-maybe)))
         (cond
          ;; EOF - port is closed.
-         ((not frame)
+         ;; @@: Sometimes the eof object appears here as opposed to
+         ;;   at lookahead, but I'm not sure why
+         ((or (not frame) (eof-object? frame))
           (close-down))
          ;; Per section 5.4, control frames may appear interspersed
          ;; along with a fragmented message.
