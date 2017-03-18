@@ -2,11 +2,34 @@
 
 #+TITLE: 8sync NEWS
 
-: Copyright (C) 2015-2016  Christopher Allan Webber
+: Copyright (C) 2015-2017  Christopher Allan Webber
 : 
 : Copying and distribution of this file, with or without modification, are
 : permitted in any medium without royalty provided the copyright notice
 : and this notice are preserved.
+
+* 8sync 0.4.2
+
+AKA, 8sync FOSDEM edition!  Contains all the code necessary to run
+Mudsync, as demonstrated at FOSDEM 2017.
+
+** Web server actor
+
+The old webserver code has been converted to being wrapped in an
+actor.
+
+** Websocket server actor
+
+New websocket code, courtesy David Thompson's work on guile-websocket.
+Currently this code is snarfed straight into 8sync; in the future
+8sync may use guile-websocket as an independent library.
+
+** REPL can notify subscribers
+
+Subscribers can be notified to run after every tick of the REPL loop.
+This way other actors who are looking for particular commands entered
+at the REPL triggering something (for instance, inject-gameobj! in
+Mudsync) have a chance to run.
 
 * 8sync 0.4
 ** Actors are now "center stage"
