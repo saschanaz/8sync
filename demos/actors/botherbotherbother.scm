@@ -22,8 +22,7 @@
 
 ;; Puppet show simulator.
 
-(use-modules (8sync agenda)
-             (8sync actors)
+(use-modules (8sync actors)
              (oop goops)
              (ice-9 hash-table)
              (ice-9 format))
@@ -103,24 +102,26 @@
 (define num-students 10)
 
 (define (main . args)
-  (define agenda (make-agenda))
-  (define hive (make-hive))
-  (define professor (bootstrap-actor* hive <professor> "prof"))
-  (define namegen (student-name-generator))
-  (define students
-    (map
-     (lambda _
-       (let ((name (namegen)))
-         (bootstrap-actor* hive <student> name
-                           #:name name)))
-     (iota num-students)))
+  (run-hive
+   (lambda (hive)
+     (define professor (bootstrap-actor* hive <professor> "prof"))
+     (define namegen (student-name-generator))
+     (define students
+       (map
+        (lambda _
+          (let ((name (namegen)))
+            (bootstrap-actor* hive <student> name
+                              #:name name)))
+        (iota num-students)))
 
-  ;; Bootstrap each student into bothering-professor mode.
-  (define start-bothering-tasks
-    (map
-     (lambda (student)
-       (bootstrap-message hive student 'bother-professor
-                               #:target professor))
-     students))
+     ;; Bootstrap each student into bothering-professor mode.
+     (define start-bothering-tasks
+       (map
+        (lambda (student)
+          (<- student 'bother-professor
+              #:target professor))
+        students))
 
-  (run-hive hive start-bothering-tasks))
+     (run-hive hive start-bothering-tasks)
+     ;; in other words, this program doesn't really halt
+     (wait (make-condition)))))

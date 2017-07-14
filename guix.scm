@@ -64,9 +64,10 @@
   (build-system gnu-build-system)
   (native-inputs `(("autoconf" ,autoconf)
                    ("automake" ,automake)
-                   ("guile" ,guile-next)
+                   ("guile" ,guile-2.2)
                    ("pkg-config" ,pkg-config)
                    ("texinfo" ,texinfo)))
+  (propagated-inputs `(("guile-fibers" ,guile-fibers)))
   (arguments
    `(#:phases (modify-phases %standard-phases
                 (add-before 'configure 'bootstrap

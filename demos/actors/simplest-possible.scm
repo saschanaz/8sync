@@ -17,7 +17,8 @@
 ;;; License along with 8sync.  If not, see <http://www.gnu.org/licenses/>.
 
 (use-modules (8sync actors)
-             (oop goops))
+             (oop goops)
+             (fibers conditions))
 
 (define-actor <emo> (<actor>)
   ((greet-proog
@@ -28,12 +29,17 @@
 (define-actor <proog> (<actor>)
   ((greet-emo
     (lambda (actor message)
-      (display "proog> Listen, Emo!  Listen to the sounds of the machine!\n")))))
+      (display "proog> Listen, Emo!  Listen to the sounds of the machine!\n")
+      (signal-condition! (.done? actor)))))
+  (done? #:init-keyword #:done?
+         #:accessor .done?))
 
-(define hive (make-hive))
-(define our-emo (bootstrap-actor hive <emo>))
-(define our-proog (bootstrap-actor hive <proog>))
 (define (main . args)
-  (run-hive hive
-            (list (bootstrap-message hive our-emo 'greet-proog
-                                     our-proog))))
+  (run-hive
+   (lambda (hive)
+     (define done? (make-condition))
+     (define our-emo (bootstrap-actor hive <emo>))
+     (define our-proog (bootstrap-actor hive <proog>
+                                        #:done? done?))
+     (<- our-emo 'greet-proog our-proog)
+     (wait done?))))

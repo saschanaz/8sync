@@ -35,7 +35,8 @@
 
 (use-modules (8sync actors)
              (oop goops)
-             (ice-9 match))
+             (ice-9 match)
+             (fibers conditions))
 
 (set! *random-state* (random-state-from-platform))
 
@@ -102,7 +103,12 @@
    (transmission
     (lambda* (actor message #:key text)
       (display text)
-      (newline)))))
+      (newline)))
+   (done!
+    (lambda* (actor message)
+      (signal-condition! (.done? actor)))))
+  (done? #:init-keyword #:done?
+         #:accessor .done?))
 
 
 ;;; A room full of robots.
@@ -128,18 +134,17 @@
     (get-next-room
      (lambda (actor message)
        "Return a reference to the link following this"
-       (<-reply message (slot-ref actor 'next-room))))
+       (slot-ref actor 'next-room)))
 
     (get-previous-room
      (lambda (actor message)
        "Return a reference to the link preceding this"
-       (<-reply message (slot-ref actor 'previous-room))))
+       (slot-ref actor 'previous-room)))
 
     (list-droids
      (lambda (actor message)
        "Return a list of all the droid ids we know of in this room"
-       (<-reply message
-                #:droid-ids (slot-ref actor 'droids))))
+       (slot-ref actor 'droids)))
 
     (register-droid
      (lambda* (actor message #:key droid-id)
@@ -173,7 +178,7 @@
     (infection-expose
      (lambda (actor message)
        "Leak whether or not we're infected to a security droid"
-       (<-reply message (slot-ref actor 'infected))))
+       (slot-ref actor 'infected)))
 
     (get-shot
      (lambda (actor message)
@@ -183,26 +188,22 @@
               (alive (> new-hp 0)))
          ;; Set our health to the new value
          (slot-set! actor 'hp new-hp)
-         (<-reply message
-                  #:hp-left new-hp
-                  #:damage-taken damage
-                  #:alive alive)
          (when (not alive)
            (format #t "~a: *Kaboom!*\n" (actor-id-actor actor))
-           (self-destruct actor))))))))
+           (self-destruct actor))
+         (values #:hp-left new-hp
+                 #:damage-taken damage
+                 #:alive alive)))))))
 
 
-(define (droid-status-format shot-response)
-  (call-with-message
-   shot-response
-   (lambda* (_ #:key alive damage-taken hp-left)
-     (if alive
-         (format #f "Droid ~a shot; taken ~a damage. Still alive... ~a hp left."
-                 (address-actor-id (message-from shot-response))
-                 damage-taken hp-left)
-         (format #f "Droid ~a shot; taken ~a damage. Terminated."
-                 (address-actor-id (message-from shot-response))
-                 damage-taken)))))
+(define* (droid-status-format droid-id alive damage-taken hp-left)
+  (if alive
+      (format #f "Droid ~a shot; taken ~a damage. Still alive... ~a hp left."
+              (address-actor-id droid-id)
+              damage-taken hp-left)
+      (format #f "Droid ~a shot; taken ~a damage. Terminated."
+              (address-actor-id droid-id)
+              damage-taken)))
 
 
 ;;; Security robot... designed to seek out and destroy infected droids.
@@ -223,13 +224,12 @@
                        (address-actor-id room)))
 
     ;; Find all droids in this room and exterminate the infected ones.
-    (mbody-receive (_ #:key list-droids droid-ids #:allow-other-keys)
-        (<-wait room 'list-droids)
+    (let ((droid-ids (<-wait room 'list-droids)))
       (for-each
        (lambda (droid-id)
          (cond
           ;; Looks like it's infected
-          ((mbody-val (<-wait droid-id 'infection-expose))
+          ((<-wait droid-id 'infection-expose)
            ;; Inform that it's infected
            (<- overseer 'transmission
                #:text (format #f "~a found to be infected... taking out"
@@ -238,11 +238,12 @@
            ;; Keep firing till it's dead.
            (let ((still-alive #t))
              (while still-alive
-               (mbody-receive (response #:key alive #:allow-other-keys)
-                   (<-wait droid-id 'get-shot)
-                 (<- overseer 'transmission
-                     #:text (droid-status-format response))
-                 (set! still-alive alive)))))
+               (call-with-values
+                   (lambda () (<-wait droid-id 'get-shot))
+                 (lambda* (#:key hp-left damage-taken alive)
+                   (<- overseer 'transmission
+                       #:text (droid-status-format droid-id alive damage-taken hp-left))
+                   (set! still-alive alive))))))
 
           ;; Not infected... inform and go to the next one
           (else
@@ -253,15 +254,18 @@
        droid-ids))
 
     ;; Switch to next room, if there is one.
-    (set! room (mbody-val (<-wait room 'get-next-room))))
+    (set! room (<-wait room 'get-next-room)))
 
   ;; Good job everyone!  Shut down the operation.
-  (<- overseer 'transmission
-      #:text "Mission accomplished."))
+  (<-wait overseer 'transmission
+          #:text "Mission accomplished.")
+  (<- overseer 'done!))
 
 (define (main . args)
-  (define hive (make-hive))
-  (define overseer (bootstrap-actor hive <overseer>))
-  (define initial-messages
-    (list (bootstrap-message hive overseer 'init-world)))
-  (run-hive hive initial-messages))
+  (run-hive
+   (lambda (hive)
+     (define done? (make-condition))
+     (define overseer (bootstrap-actor hive <overseer>
+                                       #:done? done?))
+     (<- overseer 'init-world)
+     (wait done?))))

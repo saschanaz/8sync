@@ -160,8 +160,6 @@
   (socket #:accessor irc-bot-socket)
   (actions #:allocation #:each-subclass
            #:init-thunk (build-actions
-                         (*init* irc-bot-init)
-                         (*cleanup* irc-bot-cleanup)
                          (main-loop irc-bot-main-loop)
                          (handle-line handle-line)
                          (send-line irc-bot-send-line-action))))
@@ -170,11 +168,12 @@
   (or (slot-ref irc-bot 'realname)
       (irc-bot-username irc-bot)))
 
-(define (irc-bot-init irc-bot message)
+(define-method (actor-init! (irc-bot <irc-bot>))
   "Initialize the IRC bot"
   (define socket
     (irc-socket-setup (irc-bot-server irc-bot)
                       (irc-bot-port irc-bot)))
+  (pk 'initing-irc)
   (set! (irc-bot-socket irc-bot) socket)
   (format socket "USER ~a ~a ~a :~a~a"
           (irc-bot-username irc-bot)
@@ -189,7 +188,7 @@
 
   (<- (actor-id irc-bot) 'main-loop))
 
-(define (irc-bot-cleanup irc-bot message)
+(define-method (actor-cleanup! (irc-bot <irc-bot>))
   (close (irc-bot-socket irc-bot)))
 
 (define (irc-bot-main-loop irc-bot message)
@@ -205,13 +204,6 @@
    ((eof-object? (peek-char socket))
     (close socket)
     'done)
-   ;; ;; Looks like we've been killed somehow... well, stop running
-   ;; ;; then!
-   ;; ((actor-am-i-dead? irc-bot)
-   ;;  (if (not (port-closed? socket))
-   ;;      (close socket))
-   ;;  'done)
-   ;; Otherwise, let's read till the next line!
    (else
     (<- (actor-id irc-bot) 'main-loop))))
 
