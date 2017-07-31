@@ -43,15 +43,15 @@
             ;;; Commenting out the <address> type for now;
             ;;; it may be back when we have better serializers
             ;; <address>
-            make-address address?
+            make-address
             address-actor-id address-hive-id
-
-            actor-init! actor-cleanup!
 
             address->string
             actor-id-actor
             actor-id-hive
             actor-id-string
+
+            actor-init! actor-cleanup!
 
             actor-alive?
 
@@ -74,8 +74,6 @@
             message-to message-action message-from
             message-id message-body message-in-reply-to
             message-wants-reply
-
-            message-auto-reply?
 
             <- <-wait
 
