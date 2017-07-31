@@ -29,7 +29,6 @@
   #:use-module (fibers channels)
   #:use-module (fibers conditions)
   #:use-module (fibers operations)
-  #:use-module (8sync agenda)
   #:use-module (8sync inbox)
   #:use-module (8sync rmeta-slot)
   #:export (;; utilities... ought to go in their own module
@@ -214,6 +213,11 @@
            #:actor actor
            #:message message))
   (apply method actor message (message-body message)))
+
+(define-syntax-rule (wrap-apply body)
+  "Wrap possibly multi-value function in a procedure, applies all arguments"
+  (lambda args
+    (apply body args)))
 
 (define-syntax-rule (build-actions (symbol method) ...)
   "Construct an alist of (symbol . method), where the method is wrapped
