@@ -194,18 +194,20 @@
 (define (irc-bot-main-loop irc-bot message)
   (define socket (irc-bot-socket irc-bot))
   (define line (string-trim-right (read-line socket) #\return))
-  (dispatch-raw-line irc-bot line)
-  (cond
-   ;; The port's been closed for some reason, so stop looping
-   ((port-closed? socket)
-    'done)
-   ;; We've reached the EOF object, which means we should close
-   ;; the port ourselves and stop looping
-   ((eof-object? (peek-char socket))
-    (close socket)
-    'done)
-   (else
-    (<- (actor-id irc-bot) 'main-loop))))
+  (with-actor-nonblocking-ports
+   (lambda ()
+     (dispatch-raw-line irc-bot line)
+     (cond
+      ;; The port's been closed for some reason, so stop looping
+      ((port-closed? socket)
+       'done)
+      ;; We've reached the EOF object, which means we should close
+      ;; the port ourselves and stop looping
+      ((eof-object? (peek-char socket))
+       (close socket)
+       'done)
+      (else
+       (<- (actor-id irc-bot) 'main-loop))))))
 
 (define* (irc-bot-send-line-action irc-bot message
                                    channel line #:key emote?)
