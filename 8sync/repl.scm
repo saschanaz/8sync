@@ -19,16 +19,16 @@
 (define-module (8sync repl)
   #:use-module (oop goops)
   #:use-module (8sync)
+  #:use-module (8sync daydream)
   #:use-module (srfi srfi-1)
   #:use-module (system repl server)
   #:use-module (system repl coop-server)
   #:export (<repl-manager>))
 
 (define-actor <repl-manager> (<actor>)
-  ((*cleanup* repl-manager-cleanup)
-   (*init* repl-manager-init)
-   (add-subscriber repl-manager-add-subscriber)
-   (remove-subscriber repl-manager-remove-subscriber))
+  ((add-subscriber repl-manager-add-subscriber)
+   (remove-subscriber repl-manager-remove-subscriber)
+   (main-loop repl-manager-main-loop))
   (path #:init-keyword #:path
         #:init-value "/tmp/8sync-socket"
         #:getter .path)
@@ -41,7 +41,7 @@
                #:init-value '()
                #:accessor .subscribers))
 
-(define (repl-manager-cleanup repl-manager message)
+(define-method (actor-cleanup! (repl-manager <repl-manager>))
   ;; Close the socket, if open
   (and=> (.socket repl-manager)
          close)
@@ -49,7 +49,10 @@
   (when (file-exists? (.path repl-manager))
     (delete-file (.path repl-manager))))
 
-(define (repl-manager-init repl-manager message)
+(define-method (actor-init! (repl-manager <repl-manager>))
+  (<- (actor-id repl-manager) 'main-loop))
+
+(define-method (repl-manager-main-loop repl-manager message)
   (define socket
     (make-unix-domain-server-socket #:path (.path repl-manager)))
   (define server
@@ -61,9 +64,9 @@
      (.subscribers repl-manager)))
   (set! (.socket repl-manager) socket)
   (while (actor-alive? repl-manager)
+    (daydream (.poll-every repl-manager))
     (poll-coop-repl-server server)
-    (inform-subscribers)
-    (8sleep (.poll-every repl-manager))))
+    (inform-subscribers)))
 
 (define (repl-manager-add-subscriber repl-manager message)
   (define from (message-from message))
