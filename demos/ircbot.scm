@@ -26,7 +26,8 @@
              (oop goops)
              (srfi srfi-37)
              (ice-9 format)
-             (ice-9 match))
+             (ice-9 match)
+             (fibers conditions))
 
 (define-class <my-irc-bot> (<irc-bot>))
 
@@ -102,22 +103,22 @@
                   (server "irc.freenode.net")
                   (channels '("##botchat"))
                   (repl #f))
-  (define hive (make-hive))
-  (define irc-bot
-    (bootstrap-actor* hive <my-irc-bot> "irc-bot"
-                      #:username username
-                      #:server server
-                      #:channels channels))
-  (define repl-manager
-    (cond
-     ((string? repl)
-      (bootstrap-actor* hive <repl-manager> "repl"
-                        #:path repl))
-     (repl
-      (bootstrap-actor* hive <repl-manager> "repl"))))
+  (run-hive
+   (lambda (hive)
+     (define irc-bot
+       (bootstrap-actor* hive <my-irc-bot> "irc-bot"
+                         #:username username
+                         #:server server
+                         #:channels channels))
+     (define repl-manager
+       (cond
+        ((string? repl)
+         (bootstrap-actor* hive <repl-manager> "repl"
+                           #:path repl))
+        (repl
+         (bootstrap-actor* hive <repl-manager> "repl"))))
 
-  ;; TODO: load REPL
-  (run-hive hive '()))
+     (wait (make-condition)))))
 
 (define (main args)
   (define parsed-args (parse-args "ircbot.scm" args))
