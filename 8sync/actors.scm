@@ -71,8 +71,6 @@
             ;; ;; There are more methods for the hive, but there's
             ;; ;; no reason for the outside world to look at them maybe?
             ;; hive-id
-            bootstrap-actor bootstrap-actor*
-
             create-actor create-actor*
             self-destruct
 
@@ -242,9 +240,6 @@ to come after class definition."
   ;;    kicks the bucket
   (id #:init-keyword #:address
       #:getter actor-id)
-  ;; The connection to the hive we're connected to.
-  (hive-channel #:init-keyword #:hive-channel
-                #:accessor actor-hive-channel)
 
   ;; Our queue to send/receive messages on
   (inbox-deq #:init-thunk make-channel
@@ -525,6 +520,7 @@ dynamic context."
 ;;;   Every actor has a hive, which keeps track of other actors, manages
 ;;;   cleanup, and performs inter-hive communication.
 
+;; TODO: Make this a srfi-9 record type
 (define-class <hive> ()
   (id #:init-keyword #:id
       #:getter hive-id)
@@ -588,12 +584,17 @@ values, the first value being a symbol"
     (and (perform-operation halt-or-handle)
          (lp))))
 
-(define *current-hive* (make-parameter #f))
+(define *hive-id* (make-parameter #f))
+(define *hive-channel* (make-parameter #f))
 
+;; @@: Should we halt the hive either at the end of spawn-hive or run-hive?
 (define* (spawn-hive proc #:key (hive (make-hive)))
-  "Spawn a hive in a fiber running PROC, passing it the fresh hive"
+  "Spawn a hive and run PROC, passing it the fresh hive and establishing
+a dynamic context surrounding the hive."
   (spawn-fiber (lambda () (hive-main-loop hive)))
-  (proc hive))
+  (parameterize ((*hive-id* (hive-id hive))
+                 (*hive-channel* (hive-channel hive)))
+    (proc hive)))
 
 (define (run-hive proc . args)
   "Spawn a hive and run it in run-fibers.  Takes a PROC as would be passed
@@ -603,15 +604,15 @@ to spawn-hive... all remaining arguments passed to run-fibers."
            (spawn-hive proc))
          args))
 
-(define (%create-actor hive-channel hive-id
-                       actor-class init-args id-cookie send-init?)
-  (let* ((actor-id (gen-actor-id id-cookie))
+(define (%create-actor actor-class init-args id-cookie send-init?)
+  (let* ((hive-channel (*hive-channel*))
+         (hive-id (*hive-id*))
+         (actor-id (gen-actor-id id-cookie))
          (dead? (make-condition))
          (inbox-enq (make-channel))
          (address (make-address actor-id hive-id
                                 inbox-enq dead?))
          (actor (apply make actor-class
-                       #:hive-channel hive-channel
                        #:address address
                        init-args))
          (should-init (actor-should-init actor)))
@@ -635,35 +636,20 @@ to spawn-hive... all remaining arguments passed to run-fibers."
     ;; return the address
     address))
 
-(define* (bootstrap-actor hive actor-class #:rest init-args)
-  "Create an actor on HIVE using ACTOR-CLASS passing in INIT-ARGS args"
-  (%create-actor (hive-channel hive) (hive-id hive) actor-class
-                 init-args (symbol->string (class-name actor-class))
-                 #f))
-
-(define* (bootstrap-actor* hive actor-class id-cookie #:rest init-args)
-  "Create an actor, but also allow customizing a 'cookie' added to the id
-for debugging"
-  (%create-actor (hive-channel hive) (hive-id hive) actor-class
-                 init-args id-cookie
-                 #f))
-
-(define* (create-actor from-actor actor-class #:rest init-args)
+(define* (create-actor actor-class #:rest init-args)
   "Create an instance of actor-class.  Return the new actor's id.
 
 This is the method actors should call directly (unless they want
 to supply an id-cookie, in which case they should use
 create-actor*)."
-  (%create-actor (actor-hive-channel from-actor) (actor-id-hive from-actor)
-                 actor-class init-args #f #t))
+  (%create-actor actor-class init-args #f #t))
 
 
-(define* (create-actor* from-actor actor-class id-cookie #:rest init-args)
+(define* (create-actor* actor-class id-cookie #:rest init-args)
   "Create an instance of actor-class.  Return the new actor's id.
 
 Like create-actor, but permits supplying an id-cookie."
-  (%create-actor (actor-hive-channel from-actor) (actor-id-hive from-actor)
-                 actor-class init-args id-cookie #t))
+  (%create-actor actor-class init-args id-cookie #t))
 
 (define* (self-destruct actor #:key (cleanup #t))
   "Remove an actor from the hive.
@@ -671,7 +657,7 @@ Like create-actor, but permits supplying an id-cookie."
 Unless #:cleanup is set to #f, this will first have the actor handle
 its '*cleanup* action handler."
   (signal-condition! (address-dead? (actor-id actor)))
-  (put-message (actor-hive-channel actor) (list 'remove-actor (actor-id-actor actor)))
+  (put-message (*hive-channel*) (list 'remove-actor (actor-id-actor actor)))
   ;; Set *actor-prompt* to nothing to prevent actor-cleanup! from sending
   ;; a message with <-wait
   (*actor-prompt* #f)

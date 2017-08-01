@@ -60,9 +60,9 @@
        (match-lambda
          ((clean-droids infected-droids)
           ;; Create this room
-          (define room (create-actor* actor <warehouse-room> "room"))
+          (define room (create-actor* <warehouse-room> "room"))
           (define* (init-droid #:key infected)
-            (define droid (create-actor* actor <droid> "droid"
+            (define droid (create-actor* <droid> "droid"
                                          #:infected infected
                                          #:room room))
             (<-wait droid 'register-with-room))
@@ -95,7 +95,7 @@
 
       ;; Add security robot
       (let ((security-robot
-             (create-actor actor <security-robot>)))
+             (create-actor <security-robot>)))
         (<- security-robot 'begin-mission
             #:starting-room first-room
             #:overseer (actor-id actor)))))
@@ -265,7 +265,6 @@
   (run-hive
    (lambda (hive)
      (define done? (make-condition))
-     (define overseer (bootstrap-actor hive <overseer>
-                                       #:done? done?))
+     (define overseer (create-actor <overseer> #:done? done?))
      (<- overseer 'init-world)
      (wait done?))))

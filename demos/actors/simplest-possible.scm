@@ -38,8 +38,7 @@
   (run-hive
    (lambda (hive)
      (define done? (make-condition))
-     (define our-emo (bootstrap-actor hive <emo>))
-     (define our-proog (bootstrap-actor hive <proog>
-                                        #:done? done?))
+     (define our-emo (create-actor <emo>))
+     (define our-proog (create-actor <proog> #:done? done?))
      (<- our-emo 'greet-proog our-proog)
      (wait done?))))

@@ -25,7 +25,8 @@
 (use-modules (8sync actors)
              (oop goops)
              (ice-9 hash-table)
-             (ice-9 format))
+             (ice-9 format)
+             (fibers conditions))
 
 (set! *random-state* (random-state-from-platform))
 (define (random-choice lst)
@@ -104,14 +105,14 @@
 (define (main . args)
   (run-hive
    (lambda (hive)
-     (define professor (bootstrap-actor* hive <professor> "prof"))
+     (define professor (create-actor* <professor> "prof"))
      (define namegen (student-name-generator))
      (define students
        (map
         (lambda _
           (let ((name (namegen)))
-            (bootstrap-actor* hive <student> name
-                              #:name name)))
+            (create-actor* <student> name
+                           #:name name)))
         (iota num-students)))
 
      ;; Bootstrap each student into bothering-professor mode.
