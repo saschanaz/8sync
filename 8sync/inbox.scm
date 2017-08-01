@@ -27,6 +27,7 @@
   #:use-module (ice-9 atomic)
   #:export (delivery-agent))
 
+;; TODO: Add backpressure limit
 (define (delivery-agent inbox-enq inbox-deq stop?)
   "This starts up a loop doing delivery receiving from INBOX-ENQ and
 delivering to INBOX-DEQ, actually managing an (ice-9 q) object QUEUE.
