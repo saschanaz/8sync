@@ -25,26 +25,8 @@
   #:use-module (ice-9 q)
   #:use-module (srfi srfi-9)
   #:use-module (ice-9 atomic)
-  #:export (spawn-inbox
-            delivery-agent))
+  #:export (delivery-agent))
 
-(define* (spawn-inbox)
-  "Spawn an inbox fiber which manages a a buffered queue.
-
-Returns three values to its continuation: a INBOX-ENQ channel to send
-messages to, an INBOX-DEQ channel which is what the actor doing the
-reading should read from, and a STOP? atomic box which can be set to #t
-to stop delivery."
-  (let ((inbox-enq (make-channel))
-        (inbox-deq (make-channel))
-        (stop? (make-atomic-box #f)))
-    (spawn-fiber (lambda ()
-                   ;; From the perspective of the delivery-agent,
-                   ;; deliver-to
-                   (delivery-agent inbox-enq inbox-deq stop?)))
-    (values inbox-enq inbox-deq stop?)))
-
-;; @@: Do we want to add a stop condition?
 (define (delivery-agent inbox-enq inbox-deq stop?)
   "This starts up a loop doing delivery receiving from INBOX-ENQ and
 delivering to INBOX-DEQ, actually managing an (ice-9 q) object QUEUE.
