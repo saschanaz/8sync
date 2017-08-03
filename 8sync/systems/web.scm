@@ -43,8 +43,7 @@
             .upgrade-paths .http-handler))
 
 (define-actor <web-server> (<actor>)
-  ((*init* web-server-socket-loop)
-   (*cleanup* web-server-cleanup)
+  ((main-loop web-server-socket-loop)
    (shutdown web-server-shutdown)
    (new-client web-server-client-loop)
    (handle-request web-server-handle-request))
@@ -112,21 +111,31 @@
     (listen sock 1024)
     sock))
 
+(define-method (actor-init! (web-server <web-server>))
+  (<- (actor-id web-server) 'main-loop))
+
+(define-method (actor-cleanup! (web-server <web-server>))
+  ;; @@: Should we close any pending requests too?
+  (close (.socket web-server)))
+
 (define (web-server-socket-loop web-server message)
   "The main loop on our socket.  Keep accepting new clients as long
 as we're alive."
-  (while #t
-    (match (accept (.socket web-server))
-      ((client . sockaddr)
-       ;; From "HOP, A Fast Server for the Diffuse Web", Serrano.
-       (setsockopt client SOL_SOCKET SO_SNDBUF (* 12 1024))
-       (set-nonblocking! client)
-       ;; Always disable Nagle's algorithm, as we handle buffering
-       ;; ourselves.  Ignore exceptions if it's not a TCP port, or
-       ;; TCP_NODELAY is not defined on this platform.
-       (false-if-exception
-        (setsockopt client IPPROTO_TCP TCP_NODELAY 0))
-       (<- (actor-id web-server) 'new-client client)))))
+  (with-actor-nonblocking-ports
+   (lambda ()
+     (while #t
+       (match (accept (.socket web-server))
+         ((client . sockaddr)
+          (pk 'a-client client sockaddr)
+          ;; From "HOP, A Fast Server for the Diffuse Web", Serrano.
+          (setsockopt client SOL_SOCKET SO_SNDBUF (* 12 1024))
+          (set-nonblocking! client)
+          ;; Always disable Nagle's algorithm, as we handle buffering
+          ;; ourselves.  Ignore exceptions if it's not a TCP port, or
+          ;; TCP_NODELAY is not defined on this platform.
+          (false-if-exception
+           (setsockopt client IPPROTO_TCP TCP_NODELAY 0))
+          (<- (actor-id web-server) 'new-client client)))))))
 
 (define (keep-alive? response)
   (let ((v (response-version response)))
@@ -158,56 +167,58 @@ as we're alive."
 
 (define (web-server-client-loop web-server message client)
   "Read request(s) from a client and pass off to the handler."
-  (with-throw-handler #t
-    (lambda ()
-      (let loop ()
-        (define (respond-and-maybe-continue _ response body)
-          (write-response response client)
-          (when body
-            (put-bytevector client body))
-          (force-output client)
-          (if (and (keep-alive? response)
-                   (not (eof-object? (peek-char client))))
-              (loop)
-              (close-port client)))
-        (cond
-         ((eof-object? (lookahead-u8 client))
-          (close-port client))
-         (else
-          (catch #t
-            (lambda ()
-              (let* ((request (read-request client))
-                     (body (read-request-body request)))
-                (cond
-                 ;; Should we "upgrade" the protocol?
-                 ;; Doing so "breaks out" of this loop, possibly into a new one
-                 ((maybe-upgrade-request web-server request body) =>
-                  (lambda (upgrade)
-                    ;; TODO: this isn't great because we're in this catch,
-                    ;;   which doesn't make sense once we've "upgraded"
-                    ;;   since we might not "respond" in the same way anymore.
-                    (upgrade web-server client request body)))
-                 (else
-                  (call-with-message
-                   ;; TODO: Add error handling in case we get an error
-                   ;;   response
-                   (<-wait (actor-id web-server) 'handle-request
-                           request body)
-                   respond-and-maybe-continue)))))
-            (lambda (key . args)
-              (display "While reading request:\n" (current-error-port))
-              (print-exception (current-error-port) #f key args)
-              (respond-and-maybe-continue
-               #f ;; ignored, there is no message
-               (build-response #:version '(1 . 0) #:code 400
-                               #:headers '((content-length . 0)))
-               #vu8())))))))
-    (lambda (k . args)
-      (catch #t
-        (lambda () (close-port client))
-        (lambda (k . args)
-          (display "While closing port:\n" (current-error-port))
-          (print-exception (current-error-port) #f k args))))))
+  (with-actor-nonblocking-ports
+   (lambda ()
+     (with-throw-handler #t
+       (lambda ()
+         (let loop ()
+           (define (respond-and-maybe-continue response body)
+             (write-response response client)
+             (when body
+               (put-bytevector client body))
+             (force-output client)
+             (if (and (keep-alive? response)
+                      (not (eof-object? (peek-char client))))
+                 (loop)
+                 (close-port client)))
+           (cond
+            ((eof-object? (lookahead-u8 client))
+             (close-port client))
+            (else
+             (catch #t
+               (lambda ()
+                 (let* ((request (read-request client))
+                        (body (read-request-body request)))
+                   (cond
+                    ;; Should we "upgrade" the protocol?
+                    ;; Doing so "breaks out" of this loop, possibly into a new one
+                    ((maybe-upgrade-request web-server request body) =>
+                     (lambda (upgrade)
+                       ;; TODO: this isn't great because we're in this catch,
+                       ;;   which doesn't make sense once we've "upgraded"
+                       ;;   since we might not "respond" in the same way anymore.
+                       (upgrade web-server client request body)))
+                    (else
+                     (call-with-values
+                         (lambda ()
+                           ;; TODO: Add error handling in case we get an error
+                           ;;   response
+                           (<-wait (actor-id web-server) 'handle-request
+                                   request body))
+                       respond-and-maybe-continue)))))
+               (lambda (key . args)
+                 (display "While reading request:\n" (current-error-port))
+                 (print-exception (current-error-port) #f key args)
+                 (respond-and-maybe-continue
+                  (build-response #:version '(1 . 0) #:code 400
+                                  #:headers '((content-length . 0)))
+                  #vu8())))))))
+       (lambda (k . args)
+         (catch #t
+           (lambda () (close-port client))
+           (lambda (k . args)
+             (display "While closing port:\n" (current-error-port))
+             (print-exception (current-error-port) #f k args))))))))
 
 (define (web-server-handle-request web-server message
                                    request body)
@@ -215,11 +226,7 @@ as we're alive."
       ((.http-handler web-server) request body)
     (receive (response body)
         (sanitize-response request response body)
-      (<-reply message response body))))
-
-(define (web-server-cleanup web-server message)
-  ;; @@: Should we close any pending requests too?
-  (close (.socket web-server)))
+      (values response body))))
 
 (define (web-server-shutdown web-server message)
   (self-destruct web-server))
