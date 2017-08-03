@@ -397,6 +397,21 @@ and handling them."
               "Tried to resume nonexistant message: ~a\n"
               (message-id message)))))
 
+  (define (call-with-actor-prompt thunk)
+    (call-with-prompt prompt
+      thunk
+      ;; Here's where we abort to if we're doing <-wait
+      ;; @@: maybe use match-lambda if we're going to end up
+      ;;   handling multiple ~commands
+      (match-lambda*
+        ((kont '<-wait to action message-args)
+         (define message-id
+           ((actor-msg-id-generator actor)))
+         (hash-set! waiting message-id kont)
+         (%<- #t actor to action message-args message-id #f))
+        ((kont 'run-me proc)
+         (proc kont)))))
+
   (define halt-or-handle-message
     ;; It would be nice if we could give priorities to certain operations.
     ;; halt should always win over getting a message...
@@ -405,29 +420,20 @@ and handling them."
                      (const #f))  ; halt and return
      (wrap-operation (get-operation (actor-inbox-deq actor))
                      (lambda (message)
-                       (call-with-prompt prompt
-                         (lambda ()
-                           (if (message-in-reply-to message)
-                               ;; resume a continuation which was waiting on a reply
-                               (resume-handler message)
-                               ;; start handling a new message
-                               (handle-message message)))
-                         ;; Here's where we abort to if we're doing <-wait
-                         ;; @@: maybe use match-lambda if we're going to end up
-                         ;;   handling multiple ~commands
-                         (match-lambda*
-                           ((kont '<-wait to action message-args)
-                            (define message-id
-                              ((actor-msg-id-generator actor)))
-                            (hash-set! waiting message-id kont)
-                            (%<- #t actor to action message-args message-id #f))
-                           ((kont 'run-me proc)
-                            (proc kont))))
+                       (call-with-actor-prompt
+                        (lambda ()
+                          (if (message-in-reply-to message)
+                              ;; resume a continuation which was waiting on a reply
+                              (resume-handler message)
+                              ;; start handling a new message
+                              (handle-message message))))
                        #t))   ; loop again
      (wrap-operation (get-operation resume-io-channel)
                      (lambda (thunk)
-                       (thunk
-                        #t)))))
+                       (call-with-actor-prompt
+                        (lambda ()
+                          (thunk)))
+                       #t))))
 
   ;; Mutate the parameter; this should be fine since each fiber
   ;; runs in its own dynamic state with with-dynamic-state.
