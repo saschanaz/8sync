@@ -108,9 +108,9 @@
       (~display "lazy-rep> I'm not answering that.\n")))))
 
 (let* ((hive (make-hive))
-       (customer (bootstrap-actor* hive <antsy-caller> "antsy-caller"))
-       (diligent-rep (bootstrap-actor* hive <diligent-rep> "diligent-rep"))
-       (lazy-rep (bootstrap-actor* hive <lazy-rep> "lazy-rep")))
+       (customer (create-actor* <antsy-caller> "antsy-caller"))
+       (diligent-rep (create-actor* <diligent-rep> "diligent-rep"))
+       (lazy-rep (create-actor* <lazy-rep> "lazy-rep")))
   ;; * Playing a tape of a diligent service rep *
   (parameterize ((%record-out (open-output-string)))
     (let* ((result (run-hive
@@ -148,7 +148,7 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
-   (bootstrap-actor hive <cleanly>)
+   (create-actor <cleanly>)
    (run-hive hive '()))
  (test-equal '("Hey, I'm cleanin' up here!\n")
    (get-spoken)))
@@ -157,7 +157,7 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
-   (bootstrap-actor hive <cleanly>)
+   (create-actor <cleanly>)
    (run-hive hive '() #:cleanup #f))
  (test-equal '()
    (get-spoken)))
@@ -173,7 +173,7 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
-   (define exploder (bootstrap-actor hive <exploder>))
+   (define exploder (create-actor <exploder>))
    (run-hive hive (list (bootstrap-message hive exploder 'explode))
              #:cleanup #f))
  (test-equal '("POOF\n" "Cleaning up post-explosion\n")
@@ -192,13 +192,13 @@ customer> Whaaaaat?  I can't believe I got voice mail!\n"
                  (slot-ref actor 'name)))
   (and=> (slot-ref actor 'create-friend)
          (lambda (friend-name)
-           (create-actor actor <hi-on-init> #:name friend-name))))
+           (create-actor <hi-on-init> #:name friend-name))))
 
 (with-fresh-speaker
  (let ((hive (make-hive)))
-   (define hi-on-init (bootstrap-actor hive <hi-on-init>
-                                       #:name "jack"
-                                       #:create-friend "jill"))
+   (define hi-on-init (create-actor <hi-on-init>
+                                    #:name "jack"
+                                    #:create-friend "jill"))
    (run-hive hive '()))
  (test-equal (get-spoken)
    '("Hi! jack inits now.\n" "Hi! jill inits now.\n")))

@@ -106,17 +106,17 @@
   (run-hive
    (lambda (hive)
      (define irc-bot
-       (bootstrap-actor* hive <my-irc-bot> "irc-bot"
-                         #:username username
-                         #:server server
-                         #:channels channels))
+       (create-actor* <my-irc-bot> "irc-bot"
+                      #:username username
+                      #:server server
+                      #:channels channels))
      (define repl-manager
        (cond
         ((string? repl)
-         (bootstrap-actor* hive <repl-manager> "repl"
-                           #:path repl))
+         (create-actor* <repl-manager> "repl"
+                        #:path repl))
         (repl
-         (bootstrap-actor* hive <repl-manager> "repl"))))
+         (create-actor* <repl-manager> "repl"))))
 
      (wait (make-condition)))))
 

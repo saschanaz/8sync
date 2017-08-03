@@ -35,9 +35,7 @@
   ;; Now reply to the actor's continuation
   'wake-up)
 
-;; TODO: don't require the actor here
 (define (daydream secs)
   (define dreamer
-    (create-actor ((@@ (8sync actors) *current-actor*))
-                  <daydreamer>))
+    (create-actor <daydreamer>))
   (<-wait dreamer 'dream secs))
