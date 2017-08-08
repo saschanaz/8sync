@@ -21,7 +21,7 @@
 (eval-when (eval load compile)
   (begin
     (define %public-modules
-      '(agenda actors))
+      '(actors))
     (for-each (lambda (m)
                 (module-use! (module-public-interface (current-module))
                              (resolve-interface `(8sync ,m))))
