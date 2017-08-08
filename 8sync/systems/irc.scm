@@ -18,7 +18,6 @@
 
 (define-module (8sync systems irc)
   #:use-module (8sync repl)
-  #:use-module (8sync agenda)
   #:use-module (8sync actors)
   #:use-module (srfi srfi-9)
   #:use-module (ice-9 getopt-long)
