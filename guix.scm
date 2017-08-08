@@ -49,11 +49,44 @@
              ((guix build utils) #:select (with-directory-excursion))
              (gnu packages)
              (gnu packages autotools)
+             (gnu packages gettext)
              (gnu packages guile)
              (gnu packages pkg-config)
              (gnu packages texinfo))
 
 (define %source-dir (dirname (current-filename)))
+
+(define guile-fibers-git
+  (package
+    (inherit guile-fibers)
+    (name "guile-fibers")
+    (version "git")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                    (url "https://github.com/wingo/fibers.git")
+                    (commit "eb2fdb99713ed95422e21ef4c457e91e1d1b23df")))
+              (sha256
+               (base32
+                "08f6brg75g6mmhq3bjfghmz0f74jf6crakm7jbdyabzm4s0bdc0s"))))
+    (arguments
+     `(#:phases (modify-phases %standard-phases
+                  (add-before 'configure 'bootstrap
+                    (lambda _
+                      (zero? (system* "./autogen.sh"))))
+                  (add-before 'configure 'setenv
+                    (lambda _
+                      (setenv "GUILE_AUTO_COMPILE" "0"))))
+       ;; We wouldn't want this in the upstream fibers package, but gosh
+       ;; running tests takes forever and is painful
+       #:tests? #f))
+    (native-inputs
+     `(("autoconf" ,autoconf)
+       ("automake" ,automake)
+       ("libtool" ,libtool)
+       ("texinfo" ,texinfo)
+       ("gettext" ,gettext-minimal)
+       ,@(package-native-inputs guile-2.2)))))
 
 (package
   (name "guile-8sync")
@@ -67,7 +100,7 @@
                    ("guile" ,guile-2.2)
                    ("pkg-config" ,pkg-config)
                    ("texinfo" ,texinfo)))
-  (propagated-inputs `(("guile-fibers" ,guile-fibers)))
+  (propagated-inputs `(("guile-fibers" ,guile-fibers-git)))
   (arguments
    `(#:phases (modify-phases %standard-phases
                 (add-before 'configure 'bootstrap
