@@ -85,7 +85,7 @@
 
             ;; Maybe the wrong place for this, or for it to be exported.
             ;; But it's used in websockets' server implementation at least...
-            wrap))
+            live-wrap))
 
 ;; For ids
 (set! *random-state* (random-state-from-platform))
@@ -223,18 +223,18 @@
            #:message message))
   (apply method actor message (message-body message)))
 
-(define-syntax-rule (wrap body)
+(define-syntax-rule (live-wrap body)
   "Wrap possibly multi-value function in a procedure, applies all arguments"
   (lambda args
     (apply body args)))
 
 (define-syntax-rule (build-actions (symbol method) ...)
   "Construct an alist of (symbol . method), where the method is wrapped
-with `wrap' to facilitate live hacking and allow the method definition
+with `live-wrap' to facilitate live hacking and allow the method definition
 to come after class definition."
   (build-rmeta-slot
    (list (cons (quote symbol)
-               (wrap method)) ...)))
+               (live-wrap method)) ...)))
 
 (define-class <actor> ()
   ;; An address object... a vector of #(actor-id hive-id inbox-channel dead?)

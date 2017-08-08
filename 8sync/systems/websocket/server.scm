@@ -68,7 +68,8 @@ string."
 
 (define-actor <websocket-server> (<web-server>)
   ((ws-send websocket-server-send))
-  (upgrade-paths #:init-value `(("websocket" . ,websocket-client-loop))
+  (upgrade-paths #:init-value `(("websocket" .
+                                 ,(live-wrap websocket-client-loop)))
                  #:allocation #:each-subclass
                  #:accessor .upgrade-paths)
 
