@@ -32,7 +32,6 @@
   #:use-module (fibers channels)
   #:use-module (fibers conditions)
   #:use-module (fibers operations)
-  #:use-module (fibers internal)
   #:use-module (8sync inbox)
   #:use-module (8sync rmeta-slot)
 
@@ -459,16 +458,14 @@ and handling them."
 ;; spawn a fiber that wakes up a thunk on the actor when its port is
 ;; available.  Funky...
 
-(define (%suspend-io-to-actor resume-method get-wait-fd-method)
+(define (%suspend-io-to-actor wait-for-read/write)
   (lambda (port)
     (define prompt (*actor-prompt*))
     (define resume-channel (*resume-io-channel*))
     (define (run-at-prompt k)
       (spawn-fiber
        (lambda ()
-         (suspend-current-fiber
-          (lambda (fiber)
-            (resume-on-readable-fd (port-read-wait-fd port) fiber)))
+         (wait-for-read/write port)
          ;; okay, we're awake again, tell the actor to resume this
          ;; continuation
          (put-message resume-channel k))
@@ -479,10 +476,10 @@ and handling them."
                      'run-me run-at-prompt)))
 
 (define suspend-read-to-actor
-  (%suspend-io-to-actor resume-on-readable-fd port-read-wait-fd))
+  (%suspend-io-to-actor (@@ (fibers) wait-for-readable)))
 
 (define suspend-write-to-actor
-  (%suspend-io-to-actor resume-on-writable-fd port-write-wait-fd))
+  (%suspend-io-to-actor (@@ (fibers) wait-for-writable)))
 
 (define (with-actor-nonblocking-ports thunk)
   "Runs THUNK in dynamic context in which attempting to read/write
