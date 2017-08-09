@@ -58,8 +58,6 @@
 
             actor-init! actor-cleanup!
 
-            actor-alive?
-
             build-actions
 
             define-actor
@@ -672,14 +670,3 @@ its '*cleanup* action handler."
   (*actor-prompt* #f)
   (actor-cleanup! actor))
 
-;; From a patch I sent to Fibers...
-(define (condition-signalled? cvar)
-  "Return @code{#t} if @var{cvar} has already been signalled.
-
-In general you will want to use @code{wait} or @code{wait-operation} to
-wait on a condition.  However, sometimes it is useful to see whether or
-not a condition has already been signalled without blocking."
-  (atomic-box-ref ((@@ (fibers conditions) condition-signalled?) cvar)))
-
-(define (actor-alive? actor)
-  (condition-signalled? (address-dead? (actor-id actor))))

@@ -63,7 +63,7 @@
        (<- subscriber 'repl-update))
      (.subscribers repl-manager)))
   (set! (.socket repl-manager) socket)
-  (while (actor-alive? repl-manager)
+  (while #t
     (daydream (.poll-every repl-manager))
     (poll-coop-repl-server server)
     (inform-subscribers)))
