@@ -43,6 +43,8 @@
             actor-id
             actor-message-handler
 
+            *current-actor*
+
             ;;; Commenting out the <address> type for now;
             ;;; it may be back when we have better serializers
             ;; <address>
