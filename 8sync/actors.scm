@@ -156,7 +156,7 @@
 ;; This is the internal, generalized message sending method.
 ;; Users shouldn't use it!  Use the <-foo forms instead.
 
-(define-inlinable (%<- wants-reply from-actor to action args message-id in-reply-to)
+(define (%<- wants-reply from-actor to action args message-id in-reply-to)
   ;; Okay, we need to deal with message ids.
   ;; Could we get rid of them? :\
   ;; It seems if we can use eq? and have messages be immutable then
@@ -180,7 +180,13 @@
      'TODO)
     ;; A message sent to nobody goes nowhere.
     ;; TODO: Should we display a warning here, probably?
-    (#f #f)))
+    (#f #f)
+    ;; We shouldn't technically be passing in actors but rather their
+    ;; addresses, but often actors want to message themselves and
+    ;; this makes that slightly easier.
+    ((? (lambda (x) (is-a? x <actor>)) actor)
+     (%<- wants-reply from-actor (actor-id actor) action
+          args message-id in-reply-to))))
 
 (define (<- to action . args)
   (define from-actor (*current-actor*))
