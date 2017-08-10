@@ -372,10 +372,9 @@ and handling them."
           (lambda vals
             ;; Return reply if necessary
             (when (message-wants-reply message)
-              (when (message-wants-reply message)
-                (%<- #f actor (message-from message) '*reply*
-                     vals ((actor-msg-id-generator actor))
-                     (message-id message)))))))
+              (%<- #f actor (message-from message) '*reply*
+                   vals ((actor-msg-id-generator actor))
+                   (message-id message))))))
       (const #t)
       (let ((err (current-error-port)))
         (lambda (key . args)
