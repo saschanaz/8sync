@@ -126,7 +126,6 @@ as we're alive."
      (while #t
        (match (accept (.socket web-server))
          ((client . sockaddr)
-          (pk 'a-client client sockaddr)
           ;; From "HOP, A Fast Server for the Diffuse Web", Serrano.
           (setsockopt client SOL_SOCKET SO_SNDBUF (* 12 1024))
           (set-nonblocking! client)
