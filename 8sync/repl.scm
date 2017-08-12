@@ -19,11 +19,14 @@
 (define-module (8sync repl)
   #:use-module (oop goops)
   #:use-module (8sync)
+  #:use-module (fibers)
   #:use-module (8sync daydream)
   #:use-module (srfi srfi-1)
+  #:use-module (ice-9 atomic)
   #:use-module (system repl server)
   #:use-module (system repl coop-server)
-  #:export (<repl-manager>))
+  #:export (<repl-manager>
+            spawn-repl))
 
 (define-actor <repl-manager> (<actor>)
   ((add-subscriber repl-manager-add-subscriber)
@@ -79,3 +82,24 @@
   (set! (.subscribers repl-manager)
         (remove (lambda (x) (equal? x (message-from message)))
                 (.subscribers repl-manager))))
+
+
+
+(define* (spawn-repl #:key (path "/tmp/8sync-socket")
+                     (socket (make-unix-domain-server-socket #:path path))
+                     (poll-every 1/30)
+                     (stop? (make-atomic-box #f))
+                     (on-update #f))
+  "Spawn a cooperative REPL in a new fiber."
+  (define server
+    (spawn-coop-repl-server socket))
+  (spawn-fiber
+   (lambda ()
+     (while (not (atomic-box-ref stop?))
+       ;; Poll the server
+       (poll-coop-repl-server server)
+       ;; Call update hook, if any
+       (and on-update (on-update))
+       ;; Take a break!
+       (sleep poll-every))
+     (close socket))))
