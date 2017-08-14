@@ -65,10 +65,10 @@
               (method git-fetch)
               (uri (git-reference
                     (url "https://github.com/wingo/fibers.git")
-                    (commit "eb2fdb99713ed95422e21ef4c457e91e1d1b23df")))
+                    (commit "0fa1fd6adf9980229a46956503a6bf36e8154a78")))
               (sha256
                (base32
-                "08f6brg75g6mmhq3bjfghmz0f74jf6crakm7jbdyabzm4s0bdc0s"))))
+                "0a782aa0v2d115427h1h57jkxy04axklan60dzgnsry4axw9iq8r"))))
     (arguments
      `(#:phases (modify-phases %standard-phases
                   (add-before 'configure 'bootstrap
