@@ -196,16 +196,13 @@
            (big-random-number-string))
        #f))
 
-;; TODO: this should abort to the prompt, then check for errors
-;;   when resuming.
-
 (define (<-wait to action . args)
   (define prompt (*actor-prompt*))
   (when (not prompt)
     (error "Tried to <-wait without being in an actor's context..."))
 
   (let ((reply (abort-to-prompt prompt '<-wait to action args)))
-    (cond ((eq? action '*error*)
+    (cond ((eq? (message-action reply) '*error*)
            (throw 'hive-unresumable-coroutine
                   "Won't resume coroutine; got an *error* as a reply"
                   #:message reply))
