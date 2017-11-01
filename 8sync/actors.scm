@@ -677,11 +677,10 @@ create-actor*)."
 Like create-actor, but permits supplying an id-cookie."
   (%create-actor actor-class init-args id-cookie #t))
 
-(define* (self-destruct actor #:key (cleanup #t))
+(define (self-destruct actor)
   "Remove an actor from the hive.
 
-Unless #:cleanup is set to #f, this will first have the actor handle
-its '*cleanup* action handler."
+The actor will also call its `actor-cleanup!' method."
   (signal-condition! (address-dead? (actor-id actor)))
   (put-message (*hive-channel*) (list 'remove-actor (actor-id-actor actor)))
   ;; Set *actor-prompt* to nothing to prevent actor-cleanup! from sending
