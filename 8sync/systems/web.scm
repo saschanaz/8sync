@@ -24,6 +24,7 @@
 
 (define-module (8sync systems web)
   #:use-module (oop goops)
+  #:use-module (ice-9 control)
   #:use-module (ice-9 match)
   #:use-module (ice-9 receive)
   #:use-module (web http)
@@ -184,34 +185,45 @@ as we're alive."
             ((eof-object? (lookahead-u8 client))
              (close-port client))
             (else
-             (catch #t
-               (lambda ()
-                 (let* ((request (read-request client))
-                        (body (read-request-body request)))
-                   (cond
-                    ;; Should we "upgrade" the protocol?
-                    ;; Doing so "breaks out" of this loop, possibly into a new one
-                    ((maybe-upgrade-request web-server request body) =>
-                     (lambda (upgrade)
-                       ;; TODO: this isn't great because we're in this catch,
-                       ;;   which doesn't make sense once we've "upgraded"
-                       ;;   since we might not "respond" in the same way anymore.
-                       (upgrade web-server client request body)))
-                    (else
-                     (call-with-values
-                         (lambda ()
-                           ;; TODO: Add error handling in case we get an error
-                           ;;   response
-                           (<-wait (actor-id web-server) 'handle-request
-                                   request body))
-                       respond-and-maybe-continue)))))
-               (lambda (key . args)
-                 (display "While reading request:\n" (current-error-port))
-                 (print-exception (current-error-port) #f key args)
-                 (respond-and-maybe-continue
-                  (build-response #:version '(1 . 0) #:code 400
-                                  #:headers '((content-length . 0)))
-                  #vu8())))))))
+             (call/ec
+              (lambda (return)
+                (define (read-with-catch thunk)
+                  (catch #t
+                    thunk
+                    (lambda _
+                      (return
+                       (false-if-exception
+                        (respond-and-maybe-continue
+                         (build-response #:version '(1 . 0) #:code 400
+                                         #:headers '((content-length . 0)))
+                         #vu8()))))
+                    (let ((err (current-error-port)))
+                      (lambda (key . args)
+                        (false-if-exception
+                         (let ((stack (make-stack #t 4)))
+                           (display "While reading request:\n" err)
+                           ;; @@: Maybe comment this out or make it optional?
+                           (display-backtrace stack err)
+                           (print-exception err (stack-ref stack 0) key args)
+                           (newline err)))))))
+                (let* ((request (read-with-catch
+                                 (lambda () (read-request client))))
+                       (body (read-with-catch
+                              (lambda () (read-request-body request)))))
+                  (cond
+                   ;; Should we "upgrade" the protocol?
+                   ;; Doing so "breaks out" of this loop, possibly into a new one
+                   ((maybe-upgrade-request web-server request body) =>
+                    (lambda (upgrade)
+                      (upgrade web-server client request body)))
+                   (else
+                    (call-with-values
+                        (lambda ()
+                          ;; TODO: Add error handling in case we get an error
+                          ;;   response
+                          (<-wait (actor-id web-server) 'handle-request
+                                  request body))
+                      respond-and-maybe-continue))))))))))
        (lambda (k . args)
          (catch #t
            (lambda () (close-port client))
