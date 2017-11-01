@@ -86,7 +86,9 @@
 
             ;; Maybe the wrong place for this, or for it to be exported.
             ;; But it's used in websockets' server implementation at least...
-            live-wrap))
+            live-wrap
+
+            *debug-actor-ids*))
 
 ;; For ids
 (set! *random-state* (random-state-from-platform))
@@ -652,14 +654,22 @@ to spawn-hive... all remaining arguments passed to run-fibers."
     ;; return the address
     address))
 
+;;; Whether or not to attach the class' name as a cookie by default in
+;;; create-actor
+(define *debug-actor-ids*
+  (make-parameter #t))
+
 (define* (create-actor actor-class #:rest init-args)
   "Create an instance of actor-class.  Return the new actor's id.
 
 This is the method actors should call directly (unless they want
 to supply an id-cookie, in which case they should use
 create-actor*)."
-  (%create-actor actor-class init-args #f #t))
-
+  (%create-actor actor-class init-args
+                 (if (*debug-actor-ids*)
+                     (symbol->string (class-name actor-class))
+                     #f)
+                 #t))
 
 (define* (create-actor* actor-class id-cookie #:rest init-args)
   "Create an instance of actor-class.  Return the new actor's id.
