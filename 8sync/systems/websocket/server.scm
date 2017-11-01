@@ -171,41 +171,42 @@ called for each complete message that is received."
                 (lp))))))
 
     (with-actor-nonblocking-ports
-     (let loop ((fragments '())
-                (type #f))
-       (let ((frame (read-frame-maybe)))
-         (cond
-          ;; EOF - port is closed.
-          ;; @@: Sometimes the eof object appears here as opposed to
-          ;;   at lookahead, but I'm not sure why
-          ((or (not frame) (eof-object? frame))
-           (close-down))
-          ;; Per section 5.4, control frames may appear interspersed
-          ;; along with a fragmented message.
-          ((close-frame? frame)
-           ;; Per section 5.5.1, echo the close frame back to the
-           ;; client before closing the socket.  The client may no
-           ;; longer be listening.
-           (false-if-exception
-            (write-frame (make-close-frame (frame-data frame)) client))
-           (close-down))
-          ((ping-frame? frame)
-           ;; Per section 5.5.3, a pong frame must include the exact
-           ;; same data as the ping frame.
-           (write-frame (make-pong-frame (frame-data frame)) client)
-           (loop fragments type))
-          ((pong-frame? frame) ; silently ignore pongs
-           (loop fragments type))
-          ((first-fragment-frame? frame) ; begin accumulating fragments
-           (loop (list frame) (frame-type frame)))
-          ((final-fragment-frame? frame) ; concatenate all fragments
-           (handle-data-frame type (frame-concatenate (reverse fragments)))
-           (loop '() #f))
-          ((fragment-frame? frame) ; add a fragment
-           (loop (cons frame fragments) type))
-          ((data-frame? frame) ; unfragmented data frame
-           (handle-data-frame (frame-type frame) (frame-data frame))
-           (loop '() #f))))))))
+     (lambda ()
+       (let loop ((fragments '())
+                  (type #f))
+         (let ((frame (read-frame-maybe)))
+           (cond
+            ;; EOF - port is closed.
+            ;; @@: Sometimes the eof object appears here as opposed to
+            ;;   at lookahead, but I'm not sure why
+            ((or (not frame) (eof-object? frame))
+             (close-down))
+            ;; Per section 5.4, control frames may appear interspersed
+            ;; along with a fragmented message.
+            ((close-frame? frame)
+             ;; Per section 5.5.1, echo the close frame back to the
+             ;; client before closing the socket.  The client may no
+             ;; longer be listening.
+             (false-if-exception
+              (write-frame (make-close-frame (frame-data frame)) client))
+             (close-down))
+            ((ping-frame? frame)
+             ;; Per section 5.5.3, a pong frame must include the exact
+             ;; same data as the ping frame.
+             (write-frame (make-pong-frame (frame-data frame)) client)
+             (loop fragments type))
+            ((pong-frame? frame) ; silently ignore pongs
+             (loop fragments type))
+            ((first-fragment-frame? frame) ; begin accumulating fragments
+             (loop (list frame) (frame-type frame)))
+            ((final-fragment-frame? frame) ; concatenate all fragments
+             (handle-data-frame type (frame-concatenate (reverse fragments)))
+             (loop '() #f))
+            ((fragment-frame? frame) ; add a fragment
+             (loop (cons frame fragments) type))
+            ((data-frame? frame) ; unfragmented data frame
+             (handle-data-frame (frame-type frame) (frame-data frame))
+             (loop '() #f)))))))))
 
 (define (websocket-server-send websocket-server message client-id data)
   (with-actor-nonblocking-ports
