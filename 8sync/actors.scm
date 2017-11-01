@@ -19,6 +19,7 @@
 (define-module (8sync actors)
   #:use-module (oop goops)
   #:use-module (srfi srfi-9)
+  #:use-module (srfi srfi-9 gnu)
   #:use-module (ice-9 control)
   #:use-module (ice-9 format)
   #:use-module (ice-9 match)
@@ -164,7 +165,7 @@
   ;; If we need to track replies across hive boundaries we could
   ;; register unique ids across the ambassador barrier.
   (match to
-    (#(_ _ (? channel? channel) dead?)
+    (($ <address> _ _ (? channel? channel) dead?)
      (let ((message (make-message message-id to
                                   (and from-actor (actor-id from-actor))
                                   action args
@@ -175,7 +176,7 @@
          (put-operation channel message)
          (wait-operation dead?)))))
     ;; TODO: put remote addresses here.
-    (#(actor-id hive-id #f #f)
+    (($ <address> actor-id hive-id #f #f)
      ;; Here we'd make a call to our hive...
      'TODO)
     ;; A message sent to nobody goes nowhere.
@@ -240,10 +241,7 @@ to come after class definition."
                (live-wrap method)) ...)))
 
 (define-class <actor> ()
-  ;; An address object... a vector of #(actor-id hive-id inbox-channel dead?)
-  ;;  - inbox-channel is the receiving channel (as opposed to actor-inbox-deq)
-  ;;  - dead? is a fibers condition variable which is set once this actor
-  ;;    kicks the bucket
+  ;; An <address> object
   (id #:init-keyword #:address
       #:getter actor-id)
 
@@ -284,24 +282,37 @@ to come after class definition."
 (define-method (actor-cleanup! (actor <actor>))
   'no-op)
 
-;;; Addresses are vectors where the first part is the actor-id and
-;;; the second part is the hive-id.  This works well enough... they
-;;; look decent being pretty-printed.
+;;; Every actor has an address, which is how its identified.
+;;; We also pack in some routing information.
+(define-record-type <address>
+  (make-address actor-id hive-id channel dead?)
+  address?
+  ;; Unique-to-this-actor-on-this-hive part
+  (actor-id address-actor-id)
+  ;; Unique identifier for the hive we're connected to.
+  ;; If we don't have a "direct" link to the other actor through
+  ;; a channel, we'll have to look up if our hive has a way to route
+  ;; to the other hive.
+  (hive-id address-hive-id)
+  ;; The receiving channel (as opposed to actor-inbox-deq)
+  (channel address-channel)
+  ;; A fibers condition variable which is set once this actor kicks
+  ;; the bucket
+  (dead? address-dead?))
 
-(define (make-address actor-id hive-id channel dead?)
-  (vector actor-id hive-id channel dead?))
-
-(define (address-actor-id address)
-  (vector-ref address 0))
-
-(define (address-hive-id address)
-  (vector-ref address 1))
-
-(define (address-channel address)
-  (vector-ref address 2))
-
-(define (address-dead? address)
-  (vector-ref address 3))
+(set-record-type-printer!
+ <address>
+ (lambda (address port)
+   (format port "<address ~a ~a>"
+           (address->string address)
+           (if (address-channel address)
+               (string-append
+                ":local"
+                (if (atomic-box-ref
+                     ((@@ (fibers conditions) condition-signalled?)
+                      (address-dead? address)))
+                    " :dead" ""))
+               ":remote"))))
 
 (define (address->string address)
   (string-append (address-actor-id address) "@"
@@ -312,14 +323,10 @@ to come after class definition."
 
 This compares the actor-id and hive-id but ignores the channel and
 dead? condition."
-  (match address1
-    (#(actor-id-1 hive-id-1 _ _)
-     (match address2
-       (#(actor-id-2 hive-id-2)
-        (and (equal? actor-id-1 actor-id-2)
-             (and (equal? hive-id-1 hive-id-2))))
-       (_ #f)))
-    (_ #f)))
+  (and (equal? (address-actor-id address1)
+               (address-actor-id address2))
+       (equal? (address-hive-id address1)
+               (address-hive-id address2))))
 
 (define (actor-id-actor actor)
   "Get the actor id component of the actor-id"
