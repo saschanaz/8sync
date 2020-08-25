@@ -1,6 +1,6 @@
 AC_INIT([8sync], [0.4.2], [cwebber@dustycloud.org])
 
-PKG_CHECK_MODULES([GUILE], [guile-2.2])
+PKG_CHECK_MODULES([GUILE], [guile-3.0])
 
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 

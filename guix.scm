@@ -51,42 +51,11 @@
              (gnu packages autotools)
              (gnu packages gettext)
              (gnu packages guile)
+             (gnu packages guile-xyz)
              (gnu packages pkg-config)
              (gnu packages texinfo))
 
 (define %source-dir (dirname (current-filename)))
-
-(define guile-fibers-git
-  (package
-    (inherit guile-fibers)
-    (name "guile-fibers")
-    (version "git")
-    (source (origin
-              (method git-fetch)
-              (uri (git-reference
-                    (url "https://github.com/wingo/fibers.git")
-                    (commit "0fa1fd6adf9980229a46956503a6bf36e8154a78")))
-              (sha256
-               (base32
-                "0a782aa0v2d115427h1h57jkxy04axklan60dzgnsry4axw9iq8r"))))
-    (arguments
-     `(#:phases (modify-phases %standard-phases
-                  (add-before 'configure 'bootstrap
-                    (lambda _
-                      (zero? (system* "./autogen.sh"))))
-                  (add-before 'configure 'setenv
-                    (lambda _
-                      (setenv "GUILE_AUTO_COMPILE" "0"))))
-       ;; We wouldn't want this in the upstream fibers package, but gosh
-       ;; running tests takes forever and is painful
-       #:tests? #f))
-    (native-inputs
-     `(("autoconf" ,autoconf)
-       ("automake" ,automake)
-       ("libtool" ,libtool)
-       ("texinfo" ,texinfo)
-       ("gettext" ,gettext-minimal)
-       ,@(package-native-inputs guile-2.2)))))
 
 (package
   (name "guile-8sync")
@@ -97,10 +66,10 @@
   (build-system gnu-build-system)
   (native-inputs `(("autoconf" ,autoconf)
                    ("automake" ,automake)
-                   ("guile" ,guile-2.2)
+                   ("guile" ,guile-3.0)
                    ("pkg-config" ,pkg-config)
                    ("texinfo" ,texinfo)))
-  (propagated-inputs `(("guile-fibers" ,guile-fibers-git)))
+  (propagated-inputs `(("guile-fibers" ,guile-fibers)))
   (arguments
    `(#:phases (modify-phases %standard-phases
                 (add-before 'configure 'bootstrap
