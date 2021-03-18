@@ -1,5 +1,6 @@
 ;;; 8sync --- Asynchronous programming for Guile
 ;;; Copyright (C) 2016 Christopher Allan Webber <cwebber@dustycloud.org>
+;;; Copyright (C) 2021 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of 8sync.
 ;;;
@@ -93,5 +94,5 @@
      (test-equal (atomic-box-ref test-box)
        'we-did-it))))
 
-(test-end "test-actors")
 (test-exit)
+(test-end "test-actors")

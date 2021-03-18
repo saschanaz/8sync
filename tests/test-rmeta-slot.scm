@@ -1,5 +1,6 @@
 ;;; 8sync --- Asynchronous programming for Guile
 ;;; Copyright (C) 2017 Christopher Allan Webber <cwebber@dustycloud.org>
+;;; Copyright (C) 2021 Jan (janneke) Nieuwenhuizen <janneke@gnu.org>
 ;;;
 ;;; This file is part of 8sync.
 ;;;
@@ -62,5 +63,5 @@
   (class-rmeta-ref <sub-lassy> 'entries 'not-defined
                    #:dflt "no-way"))
 
-(test-end "test-rmeta-slot")
 (test-exit)
+(test-end "test-rmeta-slot")
