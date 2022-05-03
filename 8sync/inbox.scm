@@ -30,8 +30,9 @@
 ;; TODO: Add backpressure limit
 (define (delivery-agent inbox-enq inbox-deq stop?)
   "This starts up a loop doing delivery receiving from INBOX-ENQ and
-delivering to INBOX-DEQ, actually managing an (ice-9 q) object QUEUE.
-Atomic box STOP? can be set to indicate that this "
+delivering to INBOX-DEQ, actually managing an internal object QUEUE.
+Condidtion variable STOP? can be set to indicate that this agent
+should stop."
   (define queue
     (make-q))
   (define get-or-stop
