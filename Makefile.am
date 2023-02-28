@@ -39,7 +39,7 @@ $(guile_install_go_files): install-nobase_modDATA
 GUILE_WARNINGS = -Wunbound-variable -Warity-mismatch -Wformat
 SUFFIXES = .scm .go
 .scm.go:
-	$(AM_V_GEN)$(top_builddir)/pre-inst-env $(GUILE_TOOLS) compile $(GUILE_WARNINGS) -o "$@" "$<"
+	$(AM_V_GEN)$(top_builddir)/pre-inst-env guild compile $(GUILE_WARNINGS) -o "$@" "$<"
 
 moddir=$(prefix)/share/guile/site/2.2
 godir=$(libdir)/guile/2.2/ccache
