@@ -75,7 +75,7 @@
    `(#:phases (modify-phases %standard-phases
                 (add-before 'configure 'bootstrap
                             (lambda _
-                              (zero? (system* "./bootstrap.sh"))))
+                              (zero? (system* "./fooo.sh"))))
                 ;;;(add-before 'configure 'setenv
                 ;;;            (lambda _
                 ;;;              (setenv "GUILE_AUTO_COMPILE" "0"))))))
