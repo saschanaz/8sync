@@ -71,11 +71,11 @@
   (inputs
     `(("guile" ,guile-3.0)))
   (propagated-inputs `(("guile-fibers" ,guile-fibers)))
-  (arguments
-   `(#:phases (modify-phases %standard-phases
-                (add-before 'configure 'bootstrap
-                            (lambda _
-                              (zero? (system* "./fooo.sh"))))
+  ;;;(arguments
+  ;;; `(#:phases (modify-phases %standard-phases
+  ;;;              (add-before 'configure 'bootstrap
+  ;;;                          (lambda _
+  ;;;                            (zero? (system* "./fooo.sh"))))
                 ;;;(add-before 'configure 'setenv
                 ;;;            (lambda _
                 ;;;              (setenv "GUILE_AUTO_COMPILE" "0"))))))
